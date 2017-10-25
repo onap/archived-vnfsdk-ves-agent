@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_ea0ed433",
+        "filename": "veslibrary/ves_clibrary/LICENSE.TXT",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 335
+      },
+      "writtenOn": "2017-10-25T22:09:07Z",
+      "side": 1,
+      "message": "Why did you add this sentence?  Everything in ONAP should be licensed under Apache 2.0.  They gave instructions for how to include it (which you mostly follow). I would expect the license file to look like this:\n\nCopyright [yyyy] [name of copyright owner]\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an \"AS IS\" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.",
+      "revId": "8076e08b82c476f4df8f92d7c38a5e932c4c8452",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_ca13185b",
+        "filename": "veslibrary/ves_clibrary/VESreporting_vFW/LICENSE.TXT",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 335
+      },
+      "writtenOn": "2017-10-25T22:09:07Z",
+      "side": 1,
+      "message": "same comment as the last file. Why is this here?",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 63
+      },
+      "revId": "8076e08b82c476f4df8f92d7c38a5e932c4c8452",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
