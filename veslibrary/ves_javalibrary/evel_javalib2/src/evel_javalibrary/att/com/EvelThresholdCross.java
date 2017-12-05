@@ -480,7 +480,7 @@ public class EvelThresholdCross extends EvelHeader {
 	     * Encode the event as a JSON event object according to AT&T's schema.
 	     * retval : String of JSON TCA event message
 	     *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -494,7 +494,7 @@ public class EvelThresholdCross extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 	

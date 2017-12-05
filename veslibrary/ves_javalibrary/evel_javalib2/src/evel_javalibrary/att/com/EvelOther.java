@@ -51,7 +51,7 @@ public class EvelOther extends EvelHeader {
 	  /* Optional fields                                                         */
 	  /***************************************************************************/
 	  Map<String,String> additional_info;
-	  HashMap<String,Map<String,String>> evelmap;
+	  Map<String,Map<String,String>> evelmap;
 	  
 
 	  private static final Logger LOGGER = Logger.getLogger( EvelOther.class.getName() );
@@ -127,7 +127,7 @@ public class EvelOther extends EvelHeader {
 	   * @param name String             Name.
 	   * @param value String            Value.
 	   *****************************************************************************/
-	  public void evel_other_field_add_namedarray(String hashname,  String name, String value)
+	  public void evel_other_field_add_namedarray(String hashname,String name, String value)
 	  {
 	    EVEL_ENTER();
 
@@ -139,31 +139,39 @@ public class EvelOther extends EvelHeader {
 	    assert(name != null);
 	    assert(value != null);
 	    
-	    if( evelmap == null)
-	       evelmap = new HashMap<String,Map<String,String>>();
-	        
-	    LOGGER.debug("Adding hash : "+hashname+" name="+name+"value= "+value);
-	    
 	    Map<String,String> mymap = null;
-	    try{
-	     mymap = evelmap.get(hashname);
-	    } catch( Exception e)
-	    {
-	    	e.printStackTrace();
-	    }
 	    
-	    if(mymap == null)
-	    	mymap = new HashMap<String,String>();
-	    try{
-	    if( mymap.put(name, value) == null)
-	    	LOGGER.debug("Unable to add map hash : "+hashname+" name="+name+"value= "+value);;
-	    
-	    if( evelmap.put(hashname, mymap) == null)
-	    	LOGGER.debug("Unable to add hash entry : "+hashname+" name="+name+"value= "+value);;
-	    } catch( Exception e)
-	    {
-	    	e.printStackTrace();
-	    }
+        try{
+
+            if( evelmap == null)
+                    evelmap = new HashMap<String,Map<String,String>>();
+
+            if( evelmap.containsKey(hashname) )
+            {
+                    mymap = evelmap.get(hashname);
+            }
+            else
+            {
+                    mymap = new HashMap<String,String>();
+                    evelmap.put(hashname, mymap);
+                    LOGGER.debug("Inserted map hash : "+hashname+" name="+name);
+            }
+
+            if( mymap.containsKey(name) )
+            {
+                    String val = mymap.get(name);
+                    LOGGER.error("Error already contains key " + name + "val "+val );
+            }
+            else
+            {
+                    mymap.put(name, value);
+                    LOGGER.debug("Adding hash : "+hashname+" name="+name+"value= "+value);
+            }
+
+        } catch( Exception e)
+        {
+            e.printStackTrace();
+        }
 
 	    EVEL_EXIT();
 	  }
@@ -222,8 +230,10 @@ public class EvelOther extends EvelHeader {
 	    if(additional_info == null)
 	    	additional_info = new HashMap<String,String>();
 	    
-	    if( additional_info.put(name, value) == null)
-	    	LOGGER.debug("Unable to add map : name="+name+"value= "+value);
+	    if(additional_info.containsKey(name))
+	    	LOGGER.error("Already exists Unable to add map : name="+name+"value= "+value);
+	    else
+	    	additional_info.put(name, value);
 
 	    EVEL_EXIT();
 	  }
@@ -263,11 +273,11 @@ public class EvelOther extends EvelHeader {
 		  if( additional_info != null )
 		  {
 		    JsonArrayBuilder builder = Json.createArrayBuilder();
-           for(Map.Entry<String, String> entry : additional_info.entrySet()){
+            for(Map.Entry<String, String> entry : additional_info.entrySet()){
               LOGGER.debug(MessageFormat.format("Key : {0} and Value: {1}", entry.getKey(), entry.getValue()));
 			  JsonObject obj = Json.createObjectBuilder()
 			    	     .add("name", entry.getKey())
-			    	     .add("value", entry.getValue()).build();
+			    	     .add("value",entry.getValue()).build();
 			  builder.add(obj);
 		    }
 			eveloth.add("nameValuePairs", builder);
@@ -288,21 +298,21 @@ public class EvelOther extends EvelHeader {
 			    JsonArrayBuilder builder = Json.createArrayBuilder();
 		        for(Map.Entry<String, Map<String,String>> entry : evelmap.entrySet()){
 		              LOGGER.debug(MessageFormat.format("Key : {0} and Value: {1}", entry.getKey(), entry.getValue()));
-		              Map<String,String> item = entry.getValue();   
+		              Map<String,String> item = entry.getValue(); 
+		              
+					  JsonObjectBuilder obj = Json.createObjectBuilder()
+		                      .add( "name", entry.getKey());
 		              JsonArrayBuilder builder2 = Json.createArrayBuilder();              
 		              for(Map.Entry<String, String> entry2 : item.entrySet()){
 		                  LOGGER.debug(MessageFormat.format("Key : {0} and Value: {1}", entry2.getKey(), entry2.getValue()));
-		    			  JsonObject obj = Json.createObjectBuilder()
+		    			  JsonObjectBuilder obj2 = Json.createObjectBuilder()
 		    			    	     .add("name", entry2.getKey())
-		    			    	     .add("value", entry2.getValue()).build();
-		    			  builder2.add(obj);
+		    			    	     .add("value",entry2.getValue());
+		    			  builder2.add(obj2.build());
 		    		   }
 		              
-		              
-					  JsonObjectBuilder obj = Json.createObjectBuilder()
-					    	     .add(entry.getKey(),builder2);
-					  
-					  builder.add(obj);
+					  obj.add("arrayOfFields", builder2);
+					  builder.add(obj.build());
 				}
 				eveloth.add("hashOfNameValuePairArrays", builder);
 		   }
@@ -325,7 +335,7 @@ public class EvelOther extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -339,7 +349,7 @@ public class EvelOther extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 

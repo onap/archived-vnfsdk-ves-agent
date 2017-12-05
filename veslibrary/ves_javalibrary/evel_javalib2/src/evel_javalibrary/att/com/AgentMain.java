@@ -28,11 +28,12 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
 import java.io.BufferedReader;
+//import java.io.BufferedReader;
 import java.io.BufferedWriter;
 //import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-//import java.io.InputStreamReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -77,6 +78,7 @@ public enum EVEL_ERR_CODES {
 	
 	private static String url = null;
 	private static URL vesurl = null;
+	private static URL vesbatchurl = null;
 	private static HttpURLConnection con = null;
 	private static String userpass = null;
 	private static String version = "5";
@@ -89,7 +91,7 @@ public enum EVEL_ERR_CODES {
 	/* AgentDispatcher loops on messages in RingBuffer and POSTs them
 	 * to external Collector
 	 */
- private static class AgentDispatcher  implements Runnable {
+    private static class AgentDispatcher  implements Runnable {
     	
     	private String readStream(InputStream stream) throws Exception {
     	    StringBuilder builder = new StringBuilder();
@@ -109,17 +111,21 @@ public enum EVEL_ERR_CODES {
  
       String datatosend=null;  
       for(;;){
-    	  if( (datatosend = (String) ringb.take()) != null )
+    	  EvelObject tosend = ringb.take();
+    	  if( tosend != null && ((datatosend = (String) tosend.datastr) != null))
     	  {
     		  //process data
-    		  
     		  logger.trace(url + "Got an event size "+datatosend.length());
     		  logger.trace(datatosend);
     		  
 			  try {
    		  
     	  		//HttpsURLConnection con = (HttpsURLConnection) obj.openConnection();
-    	  		con = (HttpURLConnection) vesurl.openConnection();
+				  if( tosend.type == false)
+    	  		     con = (HttpURLConnection) vesurl.openConnection();
+				  else
+					 con = (HttpURLConnection) vesbatchurl.openConnection();
+				  
     	        if (con instanceof HttpsURLConnection) {
     	            HttpsURLConnection httpsConnection = (HttpsURLConnection) con;
     	            //SSLContext sc = SSLContext.getInstance("TLSv1.2");
@@ -277,6 +283,7 @@ public enum EVEL_ERR_CODES {
   		vesurl = null;
 		try {
 			vesurl = new URL(url);
+			vesbatchurl = new URL(url+"/eventBatch");
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			logger.info("Error in url input");
@@ -317,14 +324,36 @@ public enum EVEL_ERR_CODES {
      * @retval  boolean    True  On successful acceptance False on failure
      *****************************************************************************/
 
-	public static boolean evel_post_event(EvelHeader obj )
+	public static boolean evel_post_event(EvelHeader obj)
     {
-	    String data = obj.evel_json_encode_event();
-    	boolean ret = ringb.put(data);
+		String data = obj.evel_json_encode_event().toString();
+		EvelObject myobj = new EvelObject(data,false);
+    	boolean ret = ringb.put(myobj);
     	logger.info("Evel Post event ret:"+ret);
     	return ret;
     }
 
+	
+    /**************************************************************************//**
+     * Handle user formatted post message
+     *
+     * @note  This function handles VES 5.x formatted messages from all valid
+     *        Domains and stores them in RingBuffer.
+     *
+     * @param   obj     VES 5.x formatted user messages with common header
+     *                  and optional specialized body
+     *
+     * @retval  boolean    True  On successful acceptance False on failure
+     *****************************************************************************/
+
+	public static boolean evel_post_event(EvelBatch obj)
+    {
+		String data = obj.evel_json_encode_event().toString();
+		EvelObject myobj = new EvelObject(data,true);
+    	boolean ret = ringb.put(myobj);
+    	logger.info("Evel Post batch event ret:"+ret);
+    	return ret;
+    }
 	
 
 }
