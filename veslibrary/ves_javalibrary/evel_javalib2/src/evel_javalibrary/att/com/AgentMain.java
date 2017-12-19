@@ -11,7 +11,7 @@ package evel_javalibrary.att.com;
  *
  * License
  * -------
- * Unless otherwise specified, all software contained herein is
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,6 +30,7 @@ import org.apache.log4j.Level;
 import java.io.BufferedReader;
 //import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
 //import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,9 +42,14 @@ import java.net.MalformedURLException;
 //import java.net.ProtocolException;
 import java.net.URL;
 //import java.nio.charset.StandardCharsets;
-
+import java.security.KeyStore;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.log4j.BasicConfigurator;
 
@@ -81,6 +87,9 @@ public enum EVEL_ERR_CODES {
 	private static URL vesbatchurl = null;
 	private static HttpURLConnection con = null;
 	private static String userpass = null;
+	private static String keystore_pth = null;
+	private static String jks_passw = null;
+        private static String key_passw = null;
 	private static String version = "5";
 	
 	/* RingBuffer to forward messages on sending AgentDispatcher thread */
@@ -128,12 +137,44 @@ public enum EVEL_ERR_CODES {
 				  
     	        if (con instanceof HttpsURLConnection) {
     	            HttpsURLConnection httpsConnection = (HttpsURLConnection) con;
-    	            //SSLContext sc = SSLContext.getInstance("TLSv1.2");
-    	            // Init the SSLContext with a TrustManager[] and SecureRandom()
-    	            //sc.init(null, null, new java.security.SecureRandom());
-    	            //httpsConnection.setHostnameVerifier(getHostnameVerifier());
-    	            //httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
-    	            con  = httpsConnection;
+    	            
+    	            try { 
+    	            	
+	    	        SSLContext sc = SSLContext.getInstance("TLSv1.2");
+    	                /* Get the JKS contents */
+    	            	if( !keystore_pth.isEmpty() && !jks_passw.isEmpty() && !key_passw.isEmpty() )
+    	            	{
+    	                  final KeyStore keyStore = KeyStore.getInstance("JKS"); 
+    	                  try (final InputStream is = new FileInputStream(keystore_pth)) { 
+    	            	    keyStore.load(is, jks_passw.toCharArray()); 
+    	                  } 
+    	                  final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory 
+    	            	     .getDefaultAlgorithm()); 
+    	                  kmf.init(keyStore, key_passw.toCharArray()); 
+    	                  final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory 
+    	            	     .getDefaultAlgorithm()); 
+    	                  tmf.init(keyStore);
+    	                  sc.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new java.security.SecureRandom());
+    	            	}
+    	            	else
+    	            	{
+    	    	          // Init the SSLContext with a TrustManager[] and SecureRandom()
+    	    	          sc.init(null, null, new java.security.SecureRandom());
+    	            	}
+    	    	        httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
+                        httpsConnection.setHostnameVerifier(new HostnameVerifier()
+                        {
+                            public boolean verify(String hostname, SSLSession session)
+                            {
+                                 return true;
+                            }
+                        });
+    	    	        con  = httpsConnection;
+    	                
+    	            }
+    	            catch (final Exception exc) { 
+    	            	   exc.printStackTrace(); 
+    	            }
     	        }
     	  		
     	  		//add reuqest header
@@ -248,6 +289,9 @@ public enum EVEL_ERR_CODES {
             String topic,
             String username,
             String password,
+            String keystore_path,
+            String jks_password,
+            String key_password,
             Level level) throws IOException
     {
     	  EVEL_ERR_CODES rc = EVEL_ERR_CODES.EVEL_SUCCESS;
@@ -278,6 +322,10 @@ public enum EVEL_ERR_CODES {
     	  } else {
     		  version += "/example_vnf";
     	  }
+    	  
+          keystore_pth = keystore_path;
+          jks_passw = jks_password;
+          key_passw = key_password;
     	  
   		url = event_api_url+":"+Integer.toString(port)+path+"/eventListener/v"+version;
   		vesurl = null;

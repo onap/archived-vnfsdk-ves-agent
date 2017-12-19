@@ -56,12 +56,14 @@ public class Main
 
        try{
 
-        AgentMain.evel_initialize(//"http://127.0.0.1", 30000,
-                                    "http://1.2.3.4", 8080,
+        AgentMain.evel_initialize("http://127.0.0.1", 30000,
+                                  //  "http://1.2.3.4", 8080,
                               //"/vendor_event_listener","/example_vnf",
         		              null,null,
                 "will",
                 "pill",
+		null, null, null,
+		//"/home/gokul/newwk/demo/vnfs/VES5.0/evel/sslcerts2/my-keystore.jks", "changeit", "changeit",
                 Level.TRACE);
        } catch( Exception e )
        {
@@ -182,8 +184,6 @@ public class Main
               ev.evel_other_field_add_namedarray("a2", "b1", "c1");
               AgentMain.evel_post_event(ev);
               
-              
-
       		String dateStart = "01/14/2012 09:29:58";
       		String dateStop = "01/15/2012 10:31:48";
 
