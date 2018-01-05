@@ -77,8 +77,8 @@ public class EvelHeader {
 	  EVEL_MAX_PRIORITIES
 	}
 	
-	final int EVEL_HEADER_MAJOR_VERSION = 1;
-	final int EVEL_HEADER_MINOR_VERSION = 1;
+	final int EVEL_HEADER_MAJOR_VERSION = 3;
+	final int EVEL_HEADER_MINOR_VERSION = 0;
 	  /***************************************************************************/
 	  /* Version                                                                 */
 	  /***************************************************************************/
@@ -704,7 +704,7 @@ public class EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event header only message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 	        
 	    JsonObject obj = Json.createObjectBuilder()
@@ -714,7 +714,7 @@ public class EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 	  

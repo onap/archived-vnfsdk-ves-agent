@@ -11,7 +11,7 @@ package evel_javalibrary.att.com;
  *
  * License
  * -------
- * Unless otherwise specified, all software contained herein is
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,11 +28,13 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
 
 import java.io.BufferedReader;
+//import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
 //import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-//import java.io.InputStreamReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -40,9 +42,14 @@ import java.net.MalformedURLException;
 //import java.net.ProtocolException;
 import java.net.URL;
 //import java.nio.charset.StandardCharsets;
-
+import java.security.KeyStore;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.log4j.BasicConfigurator;
 
@@ -77,8 +84,12 @@ public enum EVEL_ERR_CODES {
 	
 	private static String url = null;
 	private static URL vesurl = null;
+	private static URL vesbatchurl = null;
 	private static HttpURLConnection con = null;
 	private static String userpass = null;
+	private static String keystore_pth = null;
+	private static String jks_passw = null;
+        private static String key_passw = null;
 	private static String version = "5";
 	
 	/* RingBuffer to forward messages on sending AgentDispatcher thread */
@@ -89,7 +100,7 @@ public enum EVEL_ERR_CODES {
 	/* AgentDispatcher loops on messages in RingBuffer and POSTs them
 	 * to external Collector
 	 */
- private static class AgentDispatcher  implements Runnable {
+    private static class AgentDispatcher  implements Runnable {
     	
     	private String readStream(InputStream stream) throws Exception {
     	    StringBuilder builder = new StringBuilder();
@@ -109,25 +120,61 @@ public enum EVEL_ERR_CODES {
  
       String datatosend=null;  
       for(;;){
-    	  if( (datatosend = (String) ringb.take()) != null )
+    	  EvelObject tosend = ringb.take();
+    	  if( tosend != null && ((datatosend = (String) tosend.datastr) != null))
     	  {
     		  //process data
-    		  
     		  logger.trace(url + "Got an event size "+datatosend.length());
     		  logger.trace(datatosend);
     		  
 			  try {
    		  
     	  		//HttpsURLConnection con = (HttpsURLConnection) obj.openConnection();
-    	  		con = (HttpURLConnection) vesurl.openConnection();
+				  if( tosend.type == false)
+    	  		     con = (HttpURLConnection) vesurl.openConnection();
+				  else
+					 con = (HttpURLConnection) vesbatchurl.openConnection();
+				  
     	        if (con instanceof HttpsURLConnection) {
     	            HttpsURLConnection httpsConnection = (HttpsURLConnection) con;
-    	            //SSLContext sc = SSLContext.getInstance("TLSv1.2");
-    	            // Init the SSLContext with a TrustManager[] and SecureRandom()
-    	            //sc.init(null, null, new java.security.SecureRandom());
-    	            //httpsConnection.setHostnameVerifier(getHostnameVerifier());
-    	            //httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
-    	            con  = httpsConnection;
+    	            
+    	            try { 
+    	            	
+	    	        SSLContext sc = SSLContext.getInstance("TLSv1.2");
+    	                /* Get the JKS contents */
+    	            	if( !keystore_pth.isEmpty() && !jks_passw.isEmpty() && !key_passw.isEmpty() )
+    	            	{
+    	                  final KeyStore keyStore = KeyStore.getInstance("JKS"); 
+    	                  try (final InputStream is = new FileInputStream(keystore_pth)) { 
+    	            	    keyStore.load(is, jks_passw.toCharArray()); 
+    	                  } 
+    	                  final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory 
+    	            	     .getDefaultAlgorithm()); 
+    	                  kmf.init(keyStore, key_passw.toCharArray()); 
+    	                  final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory 
+    	            	     .getDefaultAlgorithm()); 
+    	                  tmf.init(keyStore);
+    	                  sc.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new java.security.SecureRandom());
+    	            	}
+    	            	else
+    	            	{
+    	    	          // Init the SSLContext with a TrustManager[] and SecureRandom()
+    	    	          sc.init(null, null, new java.security.SecureRandom());
+    	            	}
+    	    	        httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
+                        httpsConnection.setHostnameVerifier(new HostnameVerifier()
+                        {
+                            public boolean verify(String hostname, SSLSession session)
+                            {
+                                 return true;
+                            }
+                        });
+    	    	        con  = httpsConnection;
+    	                
+    	            }
+    	            catch (final Exception exc) { 
+    	            	   exc.printStackTrace(); 
+    	            }
     	        }
     	  		
     	  		//add reuqest header
@@ -242,6 +289,9 @@ public enum EVEL_ERR_CODES {
             String topic,
             String username,
             String password,
+            String keystore_path,
+            String jks_password,
+            String key_password,
             Level level) throws IOException
     {
     	  EVEL_ERR_CODES rc = EVEL_ERR_CODES.EVEL_SUCCESS;
@@ -273,10 +323,15 @@ public enum EVEL_ERR_CODES {
     		  version += "/example_vnf";
     	  }
     	  
+          keystore_pth = keystore_path;
+          jks_passw = jks_password;
+          key_passw = key_password;
+    	  
   		url = event_api_url+":"+Integer.toString(port)+path+"/eventListener/v"+version;
   		vesurl = null;
 		try {
 			vesurl = new URL(url);
+			vesbatchurl = new URL(url+"/eventBatch");
 		} catch (MalformedURLException e) {
 			// TODO Auto-generated catch block
 			logger.info("Error in url input");
@@ -317,14 +372,36 @@ public enum EVEL_ERR_CODES {
      * @retval  boolean    True  On successful acceptance False on failure
      *****************************************************************************/
 
-	public static boolean evel_post_event(EvelHeader obj )
+	public static boolean evel_post_event(EvelHeader obj)
     {
-	    String data = obj.evel_json_encode_event();
-    	boolean ret = ringb.put(data);
+		String data = obj.evel_json_encode_event().toString();
+		EvelObject myobj = new EvelObject(data,false);
+    	boolean ret = ringb.put(myobj);
     	logger.info("Evel Post event ret:"+ret);
     	return ret;
     }
 
+	
+    /**************************************************************************//**
+     * Handle user formatted post message
+     *
+     * @note  This function handles VES 5.x formatted messages from all valid
+     *        Domains and stores them in RingBuffer.
+     *
+     * @param   obj     VES 5.x formatted user messages with common header
+     *                  and optional specialized body
+     *
+     * @retval  boolean    True  On successful acceptance False on failure
+     *****************************************************************************/
+
+	public static boolean evel_post_event(EvelBatch obj)
+    {
+		String data = obj.evel_json_encode_event().toString();
+		EvelObject myobj = new EvelObject(data,true);
+    	boolean ret = ringb.put(myobj);
+    	logger.info("Evel Post batch event ret:"+ret);
+    	return ret;
+    }
 	
 
 }

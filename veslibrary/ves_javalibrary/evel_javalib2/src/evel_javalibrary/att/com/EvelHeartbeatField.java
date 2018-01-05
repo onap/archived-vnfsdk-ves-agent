@@ -37,7 +37,7 @@ public class EvelHeartbeatField extends EvelHeader {
 	
 	//version of Heartbeat field format revisions
 	int major_version = 1;
-	int minor_version = 2;
+	int minor_version = 0;
 	
 	/**************************************************************************//**
 	 * Alert types.
@@ -192,7 +192,7 @@ public class EvelHeartbeatField extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -206,7 +206,7 @@ public class EvelHeartbeatField extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 	

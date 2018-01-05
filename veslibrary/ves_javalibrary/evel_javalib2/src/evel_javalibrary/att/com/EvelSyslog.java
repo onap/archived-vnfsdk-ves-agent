@@ -38,8 +38,8 @@ import evel_javalibrary.att.com.EvelFault.EVEL_SEVERITIES;
 
 public class EvelSyslog extends EvelHeader {
 	
-	int major_version = 1;
-	int minor_version = 2;
+	int major_version = 3;
+	int minor_version = 0;
 	
 	/**************************************************************************//**
 	 * Alert types.
@@ -462,7 +462,7 @@ public class EvelSyslog extends EvelHeader {
      * Encode the event as a JSON event object according to AT&T's schema.
      * retval : String of JSON syslog event message
      *****************************************************************************/
-	  String evel_json_encode_event()
+      JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -476,7 +476,7 @@ public class EvelSyslog extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 	  

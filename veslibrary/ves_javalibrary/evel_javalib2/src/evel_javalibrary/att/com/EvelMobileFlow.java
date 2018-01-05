@@ -38,8 +38,8 @@ import org.apache.log4j.Logger;
 
 public class EvelMobileFlow extends EvelHeader {
 	
-	int major_version = 1;
-	int minor_version = 2;
+	int major_version = 2;
+	int minor_version = 0;
 	
 	static int EVEL_TOS_SUPPORTED    =  256;
 	/**************************************************************************//**
@@ -2042,7 +2042,7 @@ public class EvelMobileFlow extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -2056,7 +2056,7 @@ public class EvelMobileFlow extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 
