@@ -40,7 +40,7 @@ import org.slf4j.helpers.MessageFormatter;
 public class EvelVoiceQuality extends EvelHeader {
 	
 	int major_version = 1;
-	int minor_version = 1;
+	int minor_version = 0;
 
 	/**************************************************************************//**
 	 * Vendor VNF Name fields.
@@ -649,7 +649,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	     * Encode the event as a JSON event object according to AT&T's schema.
 	     * retval : String of JSON Voice Quality event message
 	     *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -663,7 +663,7 @@ public class EvelVoiceQuality extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 

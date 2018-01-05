@@ -3619,8 +3619,8 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  for(int j=0;j<meas_group.measurements.size();j++) {
 				  custom_meas = meas_group.measurements.get(j);
 				  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-						                    .add("name", custom_meas.name)
-						                    .add("value",custom_meas.value);
+						                    .add("name",custom_meas.name)
+				                            .add("value",custom_meas.value);
 				  builder2.add(obj2.build());	  
 			  }
 			  obj.add("arrayOfFields", builder2);
@@ -3658,7 +3658,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	   *
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -3672,7 +3672,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 

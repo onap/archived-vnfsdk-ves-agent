@@ -38,7 +38,7 @@ import org.slf4j.helpers.MessageFormatter;
 public class EvelFault extends EvelHeader {
 	//version of EvelFault format revisions
 	int major_version = 2;
-	int minor_version = 1;
+	int minor_version = 0;
 	
 	/**************************************************************************//**
 	 * Fault / Threshold severities.
@@ -509,7 +509,7 @@ public class EvelFault extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_FAULT);
 		//encode common event header and body     
@@ -521,7 +521,7 @@ public class EvelFault extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 	

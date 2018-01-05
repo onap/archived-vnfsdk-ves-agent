@@ -34,7 +34,7 @@ public class RingBuffer {
 	    // lock semaphore
 	    public static Semaphore lock;
 
-	    public Object[] elements = null;
+	    public EvelObject[] elements = null;
 
 	    public int capacity  = 0;
 	    public int writePos  = 0;
@@ -45,7 +45,7 @@ public class RingBuffer {
 	     */
 	    public RingBuffer(int capacity) {
 	        this.capacity = capacity;
-	        this.elements = new Object[capacity];
+	        this.elements = new EvelObject[capacity];
 	        countsem = new Semaphore(1);
 	        spacesem = new Semaphore(capacity);
 	        lock = new Semaphore(1);
@@ -65,7 +65,7 @@ public class RingBuffer {
 
 
 	    //Puts Java object into ringbuffer
-	    public boolean put(Object element){
+	    public boolean put(EvelObject element){
 	    	
 	    	boolean ret = false;
 	    	//acquire locks
@@ -97,11 +97,11 @@ public class RingBuffer {
 	        return ret;
 	    }
 
-	    public int put(Object[] newElements){
+	    public int put(EvelObject[] newElements){
 	        return put(newElements, newElements.length);
 	    }
 
-	    public int put(Object[] newElements, int length){
+	    public int put(EvelObject[] newElements, int length){
 	    	//Acquire locks
 	    	try {
 				spacesem.acquire();
@@ -170,9 +170,9 @@ public class RingBuffer {
 	     * Takes a stored object in Ringbuffer and releases the space
 	     */
 
-	    public Object take() {
+	    public EvelObject take() {
 	    	
-	    	Object nextObj;
+	    	EvelObject nextObj;
 	    	//acquire lock
 	    	try {
 				countsem.acquire();
@@ -201,12 +201,12 @@ public class RingBuffer {
 	    }
 
 
-	    public int take(Object[] into){
+	    public int take(EvelObject[] into){
 	        return take(into, into.length);
 	    }
 
 
-	    public int take(Object[] into, int length){
+	    public int take(EvelObject[] into, int length){
 	        int intoPos = 0;
 	        
 	    	//acquire lock

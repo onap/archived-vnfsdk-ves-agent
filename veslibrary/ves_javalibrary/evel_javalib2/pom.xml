@@ -6,6 +6,9 @@
   <name>VESJavaLibrary</name>
   
         <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
  <!-- If the maven profile "docker" is specified the parameter -Dves.git.url=<MsoGitRepo> must be provided
                      i.e: mvn clean install -P docker -Dves.git.url=https://gerrit.onap.org/r-->
                 <ves.git.url>${env.GIT_NO_PROJECT}</ves.git.url>

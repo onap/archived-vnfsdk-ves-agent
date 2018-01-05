@@ -37,8 +37,8 @@ import org.slf4j.helpers.MessageFormatter;
 
 public class EvelSipSignaling extends EvelHeader {
 	
-	int major_version = 2;
-	int minor_version = 1;
+	int major_version = 1;
+	int minor_version = 0;
 	
 	/**************************************************************************//**
 	 * Vendor VNF Name fields.
@@ -536,7 +536,7 @@ public class EvelSipSignaling extends EvelHeader {
 	   *
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  String evel_json_encode_event()
+	  JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -550,7 +550,7 @@ public class EvelSipSignaling extends EvelHeader {
 
 	    EVEL_EXIT();
 	    
-	    return obj.toString();
+	    return obj;
 
 	  }
 
