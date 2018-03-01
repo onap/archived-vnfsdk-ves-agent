@@ -3,7 +3,7 @@
   <groupId>org.onap.vnfsdk.ves-agent</groupId>
   <artifactId>evel_javalib2</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>VESJavaLibrary</name>
+  <name>vnfsdk-ves-agent-vesjavalibrary</name>
   
     <properties>
             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
