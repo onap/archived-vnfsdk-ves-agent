@@ -15,10 +15,10 @@
             <ves.project.version>${project.version}</ves.project.version>
             <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
             <nexusproxy>https://nexus.onap.org</nexusproxy>
-            <snapshotNexusPath>/content/repositories/snapshots/</snapshotNexusPath>
-            <releaseNexusPath>/content/repositories/releases/</releaseNexusPath>
-            <stagingNexusPath>/content/repositories/staging/</stagingNexusPath>
-            <sitePath>/content/sites/site/org/onap/vnfsdk-ves-agent/${project.version}</sitePath>
+            <snapshotNexusPath>content/repositories/snapshots/</snapshotNexusPath>
+            <releaseNexusPath>content/repositories/releases/</releaseNexusPath>
+            <stagingNexusPath>content/repositories/staging/</stagingNexusPath>
+            <sitePath>content/sites/site/org/onap/vnfsdk-ves-agent/${project.version}</sitePath>
     </properties>
 
     <repositories>
@@ -48,7 +48,7 @@
                     <!-- added for javadoc -->
                     <site>
                         <id>ecomp-site</id>
-                        <url>dav:${nexusproxy}${sitePath}</url>
+                        <url>dav:${nexusproxy}/${sitePath}</url>
                     </site>
     </distributionManagement>
   <build>
