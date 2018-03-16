@@ -3,7 +3,7 @@
   <parent>
     <artifactId>oparent</artifactId>
     <groupId>org.onap.oparent</groupId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.0</version>
     <relativePath>../pom.xml/pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
