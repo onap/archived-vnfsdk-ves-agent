@@ -449,7 +449,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	   
 	   * @param concurrent_sessions The Concurrent Sessions to be set.
 	   *****************************************************************************/
-	  public void evel_measurement_conc_sess_set(int conc_sessions)
+	  public void evel_measurement_concurrent_sessions_set(int conc_sessions)
 	  {
 	    EVEL_ENTER();
 
@@ -474,8 +474,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	   
 	   * @param configured_entities The Configured Entities to be set.
 	   *****************************************************************************/
-	  public void evel_measurement_cfg_ents_set(EvelScalingMeasurement measurement,
-	                                     int config_entities)
+	  public void evel_measurement_config_entities_set(int config_entities)
 	  {
 	    EVEL_ENTER();
 
@@ -1273,6 +1272,26 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    disk_use.mergewritemin.SetValuePr(val, "Disk writemin set");
 	    EVEL_EXIT();
 	  }
+          /**************************************************************************//**
+           * Set number of logical write operations that were merged into physical read
+           * operations, e.g., two logical writes were served by one physical disk access;
+           * provide the maximum measurement within the measurement interval
+           *
+           * @note  The property is treated as immutable: it is only valid to call
+           *        the setter once.  However, we don't assert if the caller tries to
+           *        overwrite, just ignoring the update instead.
+           *
+           * @param disk_use     Pointer to the Disk Use.
+           * @param val          double
+           *****************************************************************************/
+          public void evel_measurement_disk_use_mergewriteavg_set(MEASUREMENT_DISK_USE  disk_use,
+                                              double val)
+          {
+            EVEL_ENTER();
+            disk_use.mergewriteavg.SetValuePr(val, "Disk writeavg set");
+            EVEL_EXIT();
+          }
+
 
 	  /**************************************************************************//**
 	   * Set number of octets per second read from a disk or partition;
@@ -3524,7 +3543,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					  
 			  builder.add(obj.build());
 		    }
-			evelmeasmt.add("vNicUsageArray", builder);
+			evelmeasmt.add("vNicPerformanceArray", builder);
 		  }  
 		  
 

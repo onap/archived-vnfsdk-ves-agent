@@ -28,6 +28,8 @@ import evel_javalibrary.att.com.EvelFault.EVEL_VF_STATUSES;
 import evel_javalibrary.att.com.EvelHeader.PRIORITIES;
 import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_CPU_USE;
+import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_MEM_USE;
+import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_DISK_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_VNIC_PERFORMANCE;
 import evel_javalibrary.att.com.EvelStateChange.EVEL_ENTITY_STATE;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_ALERT_TYPE;
@@ -160,7 +162,14 @@ public class TestJunit {
    @Test
    public void testMeasurement() {
               EvelScalingMeasurement sm  = new EvelScalingMeasurement(10.0,"Measurements_vVNF", "vmname_ip");
+              sm.evel_measurement_type_set("dummy");
+              sm.evel_measurement_addl_info_add("meas1","value1");
+              sm.evel_measurement_addl_info_add("meas2","value2");
+              sm.evel_measurement_concurrent_sessions_set(3);
+              sm.evel_measurement_config_entities_set(3);
               sm.evel_measurement_myerrors_set(10,20,30,40);
+              sm.evel_measurement_mean_req_lat_set(123.0);
+              sm.evel_measurement_request_rate_set(12);
               MEASUREMENT_CPU_USE my1 = sm.evel_measurement_new_cpu_use_add("cpu1", 100.0);
               my1.idle.SetValue(20.0);
               my1.sys.SetValue(21.0);
@@ -171,7 +180,16 @@ public class TestJunit {
               sm.evel_measurement_custom_measurement_add("group1","name2","val2");
               sm.evel_measurement_custom_measurement_add("group2","name1","val1");
               sm.evel_measurement_custom_measurement_add("group2","name2","val2");
+              sm.evel_measurement_cpu_use_idle_set(my1,0.5);
+              sm.evel_measurement_cpu_use_interrupt_set(my1,0.5);
+              sm.evel_measurement_cpu_use_nice_set(my1,0.5);
+              sm.evel_measurement_cpu_use_softirq_set(my1,0.5);
+              sm.evel_measurement_cpu_use_steal_set(my1,0.5);
+              sm.evel_measurement_cpu_use_system_set(my1,0.5);
+              sm.evel_measurement_cpu_use_usageuser_set(my1,0.5);
 
+              MEASUREMENT_MEM_USE mym1 = sm.evel_measurement_new_mem_use_add("mem1", "vm1",123456.0);
+              MEASUREMENT_DISK_USE mydisk1 = sm.evel_measurement_new_disk_use_add("disk1");
 
               MEASUREMENT_VNIC_PERFORMANCE vnic_p = sm.evel_measurement_new_vnic_performance("vnic1","true");
               vnic_p.recvd_bcast_packets_acc.SetValue(2400000.0);
@@ -180,6 +198,10 @@ public class TestJunit {
               vnic_p.tx_ucast_packets_acc.SetValue(547856576.0);
               vnic_p.tx_ucast_packets_delta.SetValue(540000.0);
               sm.evel_meas_vnic_performance_add(vnic_p);
+              sm.evel_measurement_fsys_use_add("fs1",40000.0, 5678.0, 5432.0,45.0,67.0,78.0);
+              sm.evel_measurement_feature_use_add("latefeature",40);
+              sm.evel_measurement_codec_use_add("codec",41);
+              sm.evel_measurement_vnic_performance_add("vnic","vals", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12.,13.,14.,15.,16.,17.,18.,19.,20.,21.,22.,23.,24.,25.,26.,27.,28.);
 
               when(mymainmock.evel_post_event(sm)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(sm);
