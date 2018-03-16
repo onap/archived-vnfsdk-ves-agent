@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a93c517_b9897870",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/dependency-reduced-pom.xml",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 335
+      },
+      "writtenOn": "2018-03-16T19:02:06Z",
+      "side": 1,
+      "message": "This should be 1.1.0.",
+      "range": {
+        "startLine": 6,
+        "startChar": 13,
+        "endLine": 6,
+        "endChar": 18
+      },
+      "revId": "d3440360743952b796b2bd128e5bd870b0f1bf13",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_19f2ec05",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/pom.xml",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 335
+      },
+      "writtenOn": "2018-03-16T19:02:06Z",
+      "side": 1,
+      "message": "1.1.0",
+      "range": {
+        "startLine": 26,
+        "startChar": 17,
+        "endLine": 26,
+        "endChar": 22
+      },
+      "revId": "d3440360743952b796b2bd128e5bd870b0f1bf13",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
