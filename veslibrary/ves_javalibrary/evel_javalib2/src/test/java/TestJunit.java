@@ -111,6 +111,9 @@ public class TestJunit {
                   EVEL_VF_STATUSES.EVEL_VF_STATUS_ACTIVE);
               flt.evel_fault_addl_info_add("nichw", "fail");
               flt.evel_fault_addl_info_add("nicsw", "fail");
+              flt.evel_fault_category_set("intftype");
+              flt.evel_fault_interface_set("eth0");
+              flt.evel_fault_type_set("vmintf");
               when(mymainmock.evel_post_event(flt)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(flt);
               LOG.info("Returned "+ret);
@@ -146,8 +149,8 @@ public class TestJunit {
  
 
               EvelStateChange stc  = new EvelStateChange("StateChange_vVNF", "vmname_ip",
-            		      EvelStateChange.EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_IN_SERVICE,
-                          EvelStateChange.EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_OUT_OF_SERVICE,"bgp");
+            		      EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_IN_SERVICE,
+                          EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_OUT_OF_SERVICE,"bgp");
               stc.evel_statechange_addl_info_add("bgpa", "fail");
               stc.evel_statechange_addl_info_add("bgpb", "fail");
               //AgentMain.evel_post_event(stc);
@@ -216,6 +219,11 @@ public class TestJunit {
             		                   "Router failed","JUNIPER");
               sysl.evel_syslog_proc_id_set(456);
               sysl.evel_syslog_proc_set("routed");
+              sysl.evel_syslog_type_set("named");
+              sysl.evel_syslog_addl_filter_set("syslfilter");
+              sysl.evel_syslog_event_source_host_set("vm2474");
+              sysl.evel_syslog_facility_set(EvelSyslog.EVEL_SYSLOG_FACILITIES.EVEL_SYSLOG_FACILITY_LOCAL7);
+              sysl.evel_syslog_severity_set("Warning");
               
               when(mymainmock.evel_post_event(sysl)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(sysl);
@@ -227,18 +235,51 @@ public class TestJunit {
    public void testHtbtField() {
               EvelHeartbeatField hfld = new EvelHeartbeatField(123,"HeartbeatField_vVNF", "vmname_ip");
               hfld.evel_hrtbt_interval_set(23);
+              hfld.evel_hrtbt_field_addl_info_add("bgpb", "fail");
+              hfld.evel_hrtbt_interval_set(100);
               
               when(mymainmock.evel_post_event(hfld)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(hfld);
               LOG.info("Returned "+ret);
               assertTrue( ret );
    }
-              
+
+
+   @Test
+   public void testEvelMobileFlow() {
+              EvelMobileFlow mf1 = new EvelMobileFlow("hello","there");
+              EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS gtp = mf1.new MOBILE_GTP_PER_FLOW_METRICS(12.0, 13.0, 1,2,3,4,5,6,7,new Date(), "mflow", 8,9,10,11,12,13,14,15,16, 17,18,19,20,21,22,23,24,25,26);
+              mf1.gtp_per_flow_metrics = gtp;
+
+              EvelMobileFlow mf = new EvelMobileFlow("MobileFlow_12", "MF_12345", "flowdir", gtp, "iptyp", 
+		"ipv4", "ipendp", 100, "endpou",1234);
+              mf.evel_mobile_flow_addl_field_add("bgpb", "fail");
+              mf.evel_mobile_flow_type_set("named");
+              mf.evel_mobile_flow_app_type_set("named");
+
+              when(mymainmock.evel_post_event(mf)).thenReturn(true);
+              boolean ret = mymainmock.evel_post_event(mf);
+              LOG.info("Returned "+ret);
+              assertTrue( ret );
+   }
+
+
    @Test
    public void testSipSignaling() {
               
               EvelSipSignaling sip = new EvelSipSignaling("SipSignaling_vVNF", "vmname_ip","aricent","corlator","127.0.0.1","5647","10.1.1.124","5678");
-              
+              sip.evel_signaling_type_set("BVOIP");
+              sip.evel_signaling_local_ip_address_set("1.2.3.4");
+              sip.evel_signaling_local_port_set("446");
+              sip.evel_signaling_remote_ip_address_set("1.2.3.4");
+              sip.evel_signaling_remote_port_set("1446");
+              sip.evel_signaling_vnfmodule_name_set("sipmc");
+              sip.evel_signaling_vnfname_set("SIPVM");
+              sip.evel_signaling_compressed_sip_set("comprsip");
+              sip.evel_signaling_summary_sip_set("summsip");
+              sip.evel_signaling_correlator_set("corl");
+              sip.evel_signaling_addl_info_add("bgpb", "fail");
+
               when(mymainmock.evel_post_event(sip)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(sip);
               LOG.info("Returned "+ret);
@@ -252,6 +293,15 @@ public class TestJunit {
       			    "callerSideCodc", "corlator",
     			    "midCllRtcp", "juniper");
               vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 15.1, 160.12, 170, 180, 190);
+              vq.evel_voice_quality_addl_info_add("bgpb", "fail");
+              vq.evel_voice_quality_callee_codec_set("codec1");
+              vq.evel_voice_quality_caller_codec_set("codec1");
+              vq.evel_voice_quality_correlator_set("codec1");
+              vq.evel_voice_quality_rtcp_data_set("codec1");
+              vq.evel_voice_quality_vnfmodule_name_set("mod1");
+              vq.evel_voice_quality_vnfname_set("mod1");
+              vq.evel_voice_quality_phone_number_set("1234-567-8910");
+              vq.evel_voice_quality_end_metrics_set("name","descr", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12,13.,14.,15.,16.,17.,18.,19.);
               
               when(mymainmock.evel_post_event(vq)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(vq);

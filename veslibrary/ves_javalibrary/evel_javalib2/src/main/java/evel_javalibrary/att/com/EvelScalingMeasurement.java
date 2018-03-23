@@ -643,7 +643,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( cpu_usage == null ){
 	    	cpu_usage = new ArrayList<MEASUREMENT_CPU_USE>();
-	    	if( cpu_usage == null)LOGGER.error("Unable to allocate new cpu usage");
+	    	LOGGER.debug("Allocate new cpu usage");
 	    }
 
 	    cpu_usage.add(cpu_use);
@@ -854,7 +854,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( mem_usage == null ){
 	    	mem_usage = new ArrayList<MEASUREMENT_MEM_USE>();
-	    	if( mem_usage == null )LOGGER.error("Unable to allocate new memory usage");
+	    	LOGGER.debug("Allocated new memory usage");
 	    }
 
 
@@ -1047,7 +1047,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( disk_usage == null ){
 	    	disk_usage = new ArrayList<MEASUREMENT_DISK_USE>();
-	    	if( disk_usage == null ) LOGGER.error("Unable to allocate new disk usage");
+	    	LOGGER.debug("Unable to allocate new disk usage");
 	    }
 
 	    
@@ -1862,7 +1862,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( filesystem_usage == null ){
 	    	filesystem_usage = new ArrayList<MEASUREMENT_FSYS_USE>();
-	    	if( filesystem_usage == null )LOGGER.error("Unable to allocate new file system usage");
+	    	LOGGER.debug("Allocated new file system usage");
 	    }
 
 	    filesystem_usage.add(fsys_use);
@@ -1907,7 +1907,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( feature_usage == null ){
 	    	feature_usage = new ArrayList<MEASUREMENT_FEATURE_USE>();
-	    	if( feature_usage == null )LOGGER.error("Unable to allocate new feature usage");
+	    	LOGGER.debug("Allocate new feature usage");
 	    }
 
 	    feature_usage.add(feature_use);
@@ -1988,9 +1988,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	      if( additional_measurements == null){
 	    	  LOGGER.debug("Creating new Measurement Group list"+group);
 	    	  additional_measurements = new ArrayList<MEASUREMENT_GROUP>();
-	    	  if( additional_measurements == null ){
-	    		  LOGGER.error("Unable to allocate additional measurements ");
-	    	  }
+	    	  LOGGER.debug("Allocate additional measurements ");
 	      }
 	      additional_measurements.add(measurement_group);
 	    }
@@ -2039,7 +2037,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( codec_usage == null ){
 	    	codec_usage = new ArrayList<MEASUREMENT_CODEC_USE>();
-	    	if( codec_usage == null )LOGGER.error("Unable to allocate new codec usage");
+	    	LOGGER.debug("Allocated new codec usage");
 	    }
 
 	    codec_usage.add(codec_use);
@@ -2219,7 +2217,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( latency_distribution == null ){
 	    	latency_distribution = new ArrayList<MEASUREMENT_LATENCY_BUCKET>();
-	    	if( latency_distribution == null )LOGGER.error("Unable to allocate new file system usage");
+	    	LOGGER.debug("Allocate new file system usage");
 	    }
 	    latency_distribution.add(bucket);
 
@@ -3146,7 +3144,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( vnic_usage == null ){
 	    	vnic_usage = new ArrayList<MEASUREMENT_VNIC_PERFORMANCE>();
-	    	if( vnic_usage == null )LOGGER.error("Unable to allocate new file system usage");
+	    	LOGGER.debug("Allocate new file system usage");
 	    }
 
 	    vnic_usage.add(vnic_performance);

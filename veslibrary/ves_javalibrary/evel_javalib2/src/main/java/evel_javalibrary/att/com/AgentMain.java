@@ -252,8 +252,10 @@ public enum EVEL_ERR_CODES {
     		  try {
 				Thread.sleep(5);
 			  } catch (InterruptedException e) {
-    		                logger.trace("Interrupted on "+url);
-				e.printStackTrace();
+    		                Thread.currentThread().interrupt();
+				logger.trace("Interrupted on "+url);
+				System.out.println("Interrupted on "+url);
+				//e.printStackTrace();
 			  }
     	  }
       }//end for

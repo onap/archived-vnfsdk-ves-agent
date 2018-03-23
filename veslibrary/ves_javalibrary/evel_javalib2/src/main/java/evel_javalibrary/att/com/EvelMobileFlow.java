@@ -449,6 +449,10 @@ public class EvelMobileFlow extends EvelHeader {
 	  /*****************************************************************************/
 	  
 	 
+	  public EvelMobileFlow(String evname, String evid)
+          {
+            super(evname,evid);
+          }
 	  /**************************************************************************//**
 	   * Create a new Mobile Flow event.
 	   *

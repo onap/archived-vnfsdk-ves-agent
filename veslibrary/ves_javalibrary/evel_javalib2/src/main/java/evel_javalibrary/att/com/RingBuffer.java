@@ -73,8 +73,7 @@ public class RingBuffer {
 				spacesem.acquire();
 				lock.acquire();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Thread.currentThread().interrupt();
 			}
 	    	
 
@@ -107,8 +106,7 @@ public class RingBuffer {
 				spacesem.acquire();
 				lock.acquire();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Thread.currentThread().interrupt();
 			}
 	    	
 	        int readPos = 0;
@@ -178,8 +176,7 @@ public class RingBuffer {
 				countsem.acquire();
 				lock.acquire();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Thread.currentThread().interrupt();
 			}
 	    	
 	        if(available == 0){
@@ -201,7 +198,7 @@ public class RingBuffer {
 	    }
 
 
-	    public int take(EvelObject[] into){
+	    public int take(EvelObject[] into) {
 	        return take(into, into.length);
 	    }
 
@@ -214,8 +211,7 @@ public class RingBuffer {
 				countsem.acquire();
 				lock.acquire();
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				Thread.currentThread().interrupt();
 			}
 
 	        if(available <= writePos){

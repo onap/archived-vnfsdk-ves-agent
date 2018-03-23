@@ -43,7 +43,7 @@ public class EvelBatch {
 	
 	public EvelBatch(){
 		batch_events = new ArrayList<EvelHeader>();
-		if( batch_events == null ) LOGGER.error("Unable to allocate new batch");
+		LOGGER.trace("Allocated new batch");
 	}
 	
 	public boolean addEvent(EvelHeader element){
