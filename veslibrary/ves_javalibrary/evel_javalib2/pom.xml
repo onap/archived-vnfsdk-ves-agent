@@ -52,6 +52,7 @@ ECOMP is a trademark and service mark of AT&T Intellectual Property.
         <releaseNexusPath>content/repositories/releases/</releaseNexusPath>
         <stagingNexusPath>content/repositories/staging/</stagingNexusPath>
         <sitePath>content/sites/site/org/onap/vnfsdk-ves-agent/${project.version}</sitePath>
+        <sonar.exclusions>src_test/evel_javalibrary/att/com/maindir/Main.java, src/test/java/*</sonar.exclusions>
     </properties>
 
 
