@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 
 /**************************************************************************//**
@@ -113,7 +113,7 @@ EVEL_JSON_OBJECT_INSTANCE * evel_new_jsonobjinstance(const char *const yourjson)
   assert(len > 0);
 
   /***************************************************************************/
-  /*  Validate JSON for json object
+  /*  Validate JSON for json object */
   /***************************************************************************/
   jsmn_init(&p);
   resultCode = jsmn_parse(&p, yourjson, len, tokens, sizeof(tokens)/sizeof(tokens[0]));
@@ -397,7 +397,7 @@ void evel_free_jsonobjinst(EVEL_JSON_OBJECT_INSTANCE * objinst)
   free(objinst->jsonstring);
 
   /***************************************************************************/
-  /* Free all internal internal keys
+  /* Free all internal internal keys */
   /***************************************************************************/
   other_field = dlist_pop_last(&objinst->object_keys);
   while (other_field != NULL)

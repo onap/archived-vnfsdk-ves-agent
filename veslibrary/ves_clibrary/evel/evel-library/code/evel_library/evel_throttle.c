@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 
 /**************************************************************************//**
@@ -125,6 +125,7 @@ static const char * const evel_json_token_strings[JSON_TOKEN_TYPES] = {
 /*****************************************************************************/
 static const char * evel_domain_strings[EVEL_MAX_DOMAINS] = {
   "internal",
+  "batch",
   "heartbeat",
   "fault",
   "measurementsForVfScaling",
@@ -134,7 +135,7 @@ static const char * evel_domain_strings[EVEL_MAX_DOMAINS] = {
   "signaling",
   "stateChange",
   "syslog",
-  "other"
+  "other",
   "voiceQuality",
   "maxDomain"
 };
