@@ -29,6 +29,7 @@ import evel_javalibrary.att.com.EvelHeader.PRIORITIES;
 import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_CPU_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_MEM_USE;
+import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_LATENCY_BUCKET;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_DISK_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_VNIC_PERFORMANCE;
 import evel_javalibrary.att.com.EvelStateChange.EVEL_ENTITY_STATE;
@@ -92,7 +93,6 @@ public class TestJunit {
               header  = EvelHeader.evel_new_heartbeat("Hearbeat_vAFX","vmname_ip");
               header.evel_nfnamingcode_set("vVNF");
               header.evel_nfcnamingcode_set("vVNF");
-
               when(mymainmock.evel_post_event(header)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(header);
               LOG.info("Returned "+ret);
@@ -192,7 +192,56 @@ public class TestJunit {
               sm.evel_measurement_cpu_use_usageuser_set(my1,0.5);
 
               MEASUREMENT_MEM_USE mym1 = sm.evel_measurement_new_mem_use_add("mem1", "vm1",123456.0);
-              MEASUREMENT_DISK_USE mydisk1 = sm.evel_measurement_new_disk_use_add("disk1");
+              sm.evel_measurement_mem_use_memcache_set(mym1, 456.);
+	      sm.evel_measurement_mem_use_memconfig_set(mym1, 456.);
+	      sm.evel_measurement_mem_use_memfree_set(mym1, 456.);
+	      sm.evel_measurement_mem_use_slab_reclaimed_set(mym1, 456.);
+	      sm.evel_measurement_mem_use_slab_unreclaimable_set(mym1, 456.);
+	      sm.evel_measurement_mem_use_usedup_set(mym1, 456.);
+
+              MEASUREMENT_DISK_USE dsk = sm.evel_measurement_new_disk_use_add("disk1");
+	      sm.evel_measurement_disk_use_iotimeavg_set(dsk, 1.0); 
+	      sm.evel_measurement_disk_use_iotimelast_set(dsk, 1.0); 
+	      sm.evel_measurement_disk_use_iotimemax_set(dsk, 100.0); 
+	      sm.evel_measurement_disk_use_mergereadavg_set(dsk, 67.);
+	      sm.evel_measurement_disk_use_mergereadlast_set(dsk, 67.);
+	      sm.evel_measurement_disk_use_mergereadmax_set(dsk, 678.);
+	      sm.evel_measurement_disk_use_mergereadmin_set(dsk, 678.);
+	      sm.evel_measurement_disk_use_mergewritelast_set(dsk,456.);
+	      sm.evel_measurement_disk_use_mergewritemax_set(dsk,678.);
+	      sm.evel_measurement_disk_use_mergewritemin_set(dsk,67.);
+	      sm.evel_measurement_disk_use_octetsreadavg_set(dsk,65.);
+	      sm.evel_measurement_disk_use_octetsreadlast_set(dsk,78.);
+	      sm.evel_measurement_disk_use_octetsreadmax_set(dsk,56.);
+	      sm.evel_measurement_disk_use_octetsreadmin_set(dsk,345.);
+	      sm.evel_measurement_disk_use_octetswriteavg_set(dsk,34.);
+	      sm.evel_measurement_disk_use_octetswritelast_set(dsk,676.);
+	      sm.evel_measurement_disk_use_octetswritemax_set(dsk, 56.);
+	      sm.evel_measurement_disk_use_octetswritemin_set(dsk,678.);
+	      sm.evel_measurement_disk_use_opsreadavg_set(dsk,67.);
+	      sm.evel_measurement_disk_use_opsreadlast_set(dsk,33.);
+	      sm.evel_measurement_disk_use_opsreadmax_set(dsk,678.);
+	      sm.evel_measurement_disk_use_opsreadmin_set(dsk,23.);
+	      sm.evel_measurement_disk_use_opswriteavg_set(dsk,23.);
+	      sm.evel_measurement_disk_use_opswritelast_set(dsk,23.);
+	      sm.evel_measurement_disk_use_opswritemax_set(dsk,23.);
+	      sm.evel_measurement_disk_use_opswritemin_set(dsk,23.);
+
+	      sm.evel_measurement_disk_use_pendingopsavg_set(dsk,23.);
+	      sm.evel_measurement_disk_use_pendingopslast_set(dsk,23.);
+	      sm.evel_measurement_disk_use_pendingopsmax_set(dsk,23.);
+	      sm.evel_measurement_disk_use_pendingopsmin_set(dsk,23.);
+
+	      sm.evel_measurement_disk_use_timereadavg_set(dsk,45.);
+	      sm.evel_measurement_disk_use_timereadlast_set(dsk,45.);
+	      sm.evel_measurement_disk_use_timereadmax_set(dsk,45.);
+	      sm.evel_measurement_disk_use_timereadmin_set(dsk,45.);
+
+	      sm.evel_measurement_disk_use_timewriteavg_set(dsk,45.);
+	      sm.evel_measurement_disk_use_timewritelast_set(dsk,45.);
+	      sm.evel_measurement_disk_use_timewritemax_set(dsk,45.);
+	      sm.evel_measurement_disk_use_timewritemin_set(dsk,45.);
+
 
               MEASUREMENT_VNIC_PERFORMANCE vnic_p = sm.evel_measurement_new_vnic_performance("vnic1","true");
               vnic_p.recvd_bcast_packets_acc.SetValue(2400000.0);
@@ -204,6 +253,13 @@ public class TestJunit {
               sm.evel_measurement_fsys_use_add("fs1",40000.0, 5678.0, 5432.0,45.0,67.0,78.0);
               sm.evel_measurement_feature_use_add("latefeature",40);
               sm.evel_measurement_codec_use_add("codec",41);
+
+              MEASUREMENT_LATENCY_BUCKET myb = sm.evel_new_meas_latency_bucket(10);
+              sm.evel_meas_latency_bucket_high_end_set(myb,1000.);
+              sm.evel_meas_latency_bucket_low_end_set(myb,1.);
+              sm.evel_meas_latency_bucket_add(myb);
+              sm.evel_measurement_latency_add(1.,10.,20);
+
               sm.evel_measurement_vnic_performance_add("vnic","vals", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12.,13.,14.,15.,16.,17.,18.,19.,20.,21.,22.,23.,24.,25.,26.,27.,28.);
 
               when(mymainmock.evel_post_event(sm)).thenReturn(true);
@@ -224,6 +280,10 @@ public class TestJunit {
               sysl.evel_syslog_event_source_host_set("vm2474");
               sysl.evel_syslog_facility_set(EvelSyslog.EVEL_SYSLOG_FACILITIES.EVEL_SYSLOG_FACILITY_LOCAL7);
               sysl.evel_syslog_severity_set("Warning");
+              sysl.evel_syslog_version_set(10);
+              sysl.evel_syslog_s_data_set("hello");
+              sysl.evel_syslog_sdid_set("hello");
+              sysl.evel_syslog_severity_set("critical");
               
               when(mymainmock.evel_post_event(sysl)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(sysl);
@@ -361,6 +421,12 @@ public class TestJunit {
               tca.evel_thresholdcross_addl_info_add("n2", "v2");
               tca.evel_thresholdcross_alertid_add("alert1");
               tca.evel_thresholdcross_alertid_add("alert2");
+              tca.evel_threshold_cross_possible_rootcause_set("ns345");
+              tca.evel_threshold_cross_networkservice_set("ns345");
+              tca.evel_threshold_cross_interfacename_set("eth0");
+              tca.evel_threshold_cross_data_elementtype_set("alert2");
+              tca.evel_threshold_cross_data_collector_set("alert2");
+              tca.evel_threshold_cross_alertvalue_set("value");
               
               when(mymainmock.evel_post_event(tca)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(tca);
