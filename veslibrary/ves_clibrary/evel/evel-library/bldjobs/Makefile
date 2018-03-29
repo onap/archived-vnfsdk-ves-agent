@@ -126,6 +126,7 @@ API_SOURCES=$(EVELLIB_ROOT)/evel.c \
             $(EVELLIB_ROOT)/ring_buffer.c \
             $(EVELLIB_ROOT)/double_list.c \
             $(EVELLIB_ROOT)/hashtable.c \
+            $(EVELLIB_ROOT)/evel_batch.c \
             $(EVELLIB_ROOT)/evel_event.c \
             $(EVELLIB_ROOT)/evel_fault.c \
             $(EVELLIB_ROOT)/evel_mobile_flow.c \

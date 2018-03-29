@@ -3,7 +3,6 @@
  *
  * Copyright © 2017 AT&T Intellectual Property. All rights reserved.
  *
- * Unless otherwise specified, all software contained herein is
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -192,9 +191,17 @@ int main(int argc, char** argv)
                      port, 	                   /* Port                  */
                      NULL,                         /* optional path         */
                      NULL,                         /* optional topic        */
+                     100,                          /* Ring Buffer size      */
                      0,                            /* HTTPS?                */
+                     NULL,                         /* cert file             */
+                     NULL,                         /* key  file             */
+                     NULL,                         /* ca   info             */
+                     NULL,                         /* ca   file             */
+                     0,                            /* verify peer           */
+                     0,                            /* verify host           */
                      "",                           /* Username              */
                      "",                           /* Password              */
+                     NULL,                         /* Source ip             */
                      EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
                      "vFirewall",      	           /* Role                  */
                      1))                           /* Verbosity             */
@@ -246,7 +253,7 @@ int main(int argc, char** argv)
       packets_out_this_round = 0;
     }
 
-    vpp_m = evel_new_measurement(READ_INTERVAL,"Measurement_vVNF","TrafficStats_1.2.3.4");
+    vpp_m = evel_new_measurement(READ_INTERVAL,"vFirewallBroadcastPackets","TrafficStats_1.2.3.4");
     vnic_performance = (MEASUREMENT_VNIC_PERFORMANCE *)evel_measurement_new_vnic_performance("eth0", "true");
     evel_meas_vnic_performance_add(vpp_m, vnic_performance);
 

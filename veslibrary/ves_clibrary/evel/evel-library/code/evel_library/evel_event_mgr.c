@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 
 /**************************************************************************//**
@@ -102,6 +102,7 @@ static EVT_HANDLER_STATE evt_handler_state = EVT_HANDLER_UNINITIALIZED;
  *****************************************************************************/
 static char * evel_event_api_url;
 static char * evel_throt_api_url;
+static char * evel_batch_api_url;
 
 /**************************************************************************//**
  * Initialize the event handler.
@@ -113,6 +114,15 @@ static char * evel_throt_api_url;
  *                      to be.
  * @param[in] throt_api_url
  *                      The URL where the Throttling API is expected to be.
+ * @param[in] source_ip  Source IP of VES Agent
+ * @param[in] ring_buf_size     Initial size of ring buffer
+ * @param[in] secure     Whether Using http or https
+ * @param[in] cert_file_path  Path to Client Certificate file
+ * @param[in] key_file_path   Path to Client key file
+ * @param[in] ca_info         Path to CA info file
+ * @param[in] ca_file_path    Path to CA file 
+ * @param[in] verify_peer     Using peer verification or not 0 or 1
+ * @param[in] verify_host     Using host verification or not 0 or 1
  * @param[in] username  The username for the Basic Authentication of requests.
  * @param[in] password  The password for the Basic Authentication of requests.
  * @param     verbosity 0 for normal operation, positive values for chattier
@@ -120,12 +130,23 @@ static char * evel_throt_api_url;
  *****************************************************************************/
 EVEL_ERR_CODES event_handler_initialize(const char * const event_api_url,
                                         const char * const throt_api_url,
+                                        const char * const source_ip,
+                                        int ring_buf_size,
+                                        int secure,
+                                        const char * const cert_file_path,
+                                        const char * const key_file_path,
+                                        const char * const ca_info,
+                                        const char * const ca_file_path,
+                                        long verify_peer,
+                                        long verify_host,
                                         const char * const username,
                                         const char * const password,
                                         int verbosity)
 {
   int rc = EVEL_SUCCESS;
   CURLcode curl_rc = CURLE_OK;
+  char batch_api_url[EVEL_MAX_URL_LEN + 1] = {0};
+  char local_address[64];
 
   EVEL_ENTER();
 
@@ -142,6 +163,9 @@ EVEL_ERR_CODES event_handler_initialize(const char * const event_api_url,
   /***************************************************************************/
   evel_event_api_url = strdup(event_api_url);
   assert(evel_event_api_url != NULL);
+  sprintf(batch_api_url,"%s/eventBatch",event_api_url);
+  evel_batch_api_url = strdup(batch_api_url);
+  assert(evel_batch_api_url != NULL);
   evel_throt_api_url = strdup(throt_api_url);
   assert(evel_throt_api_url != NULL);
 
@@ -234,6 +258,114 @@ EVEL_ERR_CODES event_handler_initialize(const char * const event_api_url,
                     "Error code=%d (%s)", curl_rc, curl_err_string);
     goto exit_label;
   }
+
+  /***************************************************************************/
+  /* configure local ip address if provided */
+  /* Default ip if NULL */
+  /***************************************************************************/
+  if( source_ip != NULL )
+  {
+    snprintf(local_address,sizeof(local_address),source_ip);
+    if( local_address[0] != '\0' )
+    {
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_INTERFACE,
+                             local_address);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the local address. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+    }
+  }
+
+  /***************************************************************************/
+  /* configure SSL options for HTTPS transfers */
+  /***************************************************************************/
+  if( secure )
+  {
+    if( cert_file_path != NULL )
+    {
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_SSLCERT,
+                             cert_file_path);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the client cert. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+    }
+
+    if( key_file_path != NULL )
+    {
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_SSLKEY,
+                             key_file_path);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the client key. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+    }
+
+    if( ca_info != NULL )
+    {
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_CAINFO,
+                             ca_info);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the CA cert file. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+    }
+
+    if( ca_file_path != NULL )
+    {
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_CAPATH,
+                             ca_file_path);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the CA cert path. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+    }
+
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_SSL_VERIFYPEER,
+                             verify_peer);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with SSL Server verification. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+      curl_rc = curl_easy_setopt(curl_handle,
+                             CURLOPT_SSL_VERIFYHOST,
+                             verify_host);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with Client host verification. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+        goto exit_label;
+      }
+
+  }
+
+
 
   /***************************************************************************/
   /* some servers don't like requests that are made without a user-agent     */
@@ -343,6 +475,12 @@ EVEL_ERR_CODES event_handler_initialize(const char * const event_api_url,
   /* Initialize a message ring-buffer to be used between the foreground and  */
   /* the thread which sends the messages.  This can't fail.                  */
   /***************************************************************************/
+  if( ring_buf_size < EVEL_EVENT_BUFFER_DEPTH )
+  {
+    log_error_state("Warning: Failed to initialize Ring buffer size to %d. ",
+                    ring_buf_size);
+    goto exit_label;
+  }
   ring_buffer_initialize(&event_buffer, EVEL_EVENT_BUFFER_DEPTH);
 
   /***************************************************************************/
@@ -468,6 +606,11 @@ EVEL_ERR_CODES event_handler_terminate()
   {
     free(evel_event_api_url);
     evel_event_api_url = NULL;
+  }
+  if (evel_batch_api_url != NULL)
+  {
+    free(evel_batch_api_url);
+    evel_batch_api_url = NULL;
   }
   if (evel_throt_api_url != NULL)
   {
@@ -790,7 +933,37 @@ static void * event_handler(void * arg __attribute__ ((unused)))
     /* Internal events get special treatment while regular events get posted */
     /* to the far side.                                                      */
     /*************************************************************************/
-    if (msg->event_domain != EVEL_DOMAIN_INTERNAL)
+    if (msg->event_domain == EVEL_DOMAIN_BATCH )
+    {
+      EVEL_DEBUG("Batch event received");
+
+      /***********************************************************************/
+      /* Encode the event in JSON.                                           */
+      /***********************************************************************/
+      json_size = evel_json_encode_batch_event(json_body, EVEL_MAX_JSON_BODY, msg);
+
+      /***************************************************************************/
+      /* Set the URL for the API.                                                */
+      /***************************************************************************/
+      curl_rc = curl_easy_setopt(curl_handle, CURLOPT_URL, evel_batch_api_url);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the Batch API URL. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+      }
+
+      /***********************************************************************/
+      /* Send the JSON across the API.                                       */
+      /***********************************************************************/
+      EVEL_DEBUG("Sending Batch JSON of size %d is: %s", json_size, json_body);
+      rc = evel_post_api(json_body, json_size);
+      if (rc != EVEL_SUCCESS)
+      {
+        EVEL_ERROR("Failed to transfer the data. Error code=%d", rc);
+      }
+    }
+    else if (msg->event_domain != EVEL_DOMAIN_INTERNAL )
     {
       EVEL_DEBUG("External event received");
 
@@ -798,6 +971,17 @@ static void * event_handler(void * arg __attribute__ ((unused)))
       /* Encode the event in JSON.                                           */
       /***********************************************************************/
       json_size = evel_json_encode_event(json_body, EVEL_MAX_JSON_BODY, msg);
+
+      /***************************************************************************/
+      /* Set the URL for the API.                                                */
+      /***************************************************************************/
+      curl_rc = curl_easy_setopt(curl_handle, CURLOPT_URL, evel_event_api_url);
+      if (curl_rc != CURLE_OK)
+      {
+        rc = EVEL_CURL_LIBRARY_FAIL;
+        log_error_state("Failed to initialize libCURL with the API URL. "
+                    "Error code=%d (%s)", curl_rc, curl_err_string);
+      }
 
       /***********************************************************************/
       /* Send the JSON across the API.                                       */
