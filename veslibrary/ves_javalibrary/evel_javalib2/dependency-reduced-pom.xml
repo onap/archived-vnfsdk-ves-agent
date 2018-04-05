@@ -227,7 +227,7 @@
     <stagingNexusPath>content/repositories/staging/</stagingNexusPath>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <releaseNexusPath>content/repositories/releases/</releaseNexusPath>
-    <maven.build.timestamp.format>yyyyMMdd'T'HHmmss</maven.build.timestamp.format>
+    <maven.build.timestamp.format>yyyyMMdd'T'HHmmss'Z'</maven.build.timestamp.format>
     <swagger-core.version>1.5.8</swagger-core.version>
     <snapshots.path>content/repositories/snapshots/</snapshots.path>
     <logback.version>1.2.3</logback.version>
