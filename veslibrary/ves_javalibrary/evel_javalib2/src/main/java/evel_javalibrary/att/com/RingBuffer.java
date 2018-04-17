@@ -57,6 +57,10 @@ public class RingBuffer {
 	        this.available = 0;
 	    }
 
+        public boolean isEmpty() {
+            return this.remainingCapacity() == this.capacity;
+        }
+
 	    //returns available capacity
 	    public int remainingCapacity() {
 	        return this.capacity - this.available;

@@ -2088,10 +2088,28 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  {
 	    EVEL_ENTER();
 
+        LOGGER.warn("Called evel_measurement_vnfc_scaling_metric_set with 2 arguments. The first argument is unused and callers should use the single-parameter version instead");
+
 	    /***************************************************************************/
 	    /* Check preconditions.                                                    */
 	    /***************************************************************************/
 	    assert(measurement != null);
+	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+	    assert(scaling_metric >= 0.0);
+
+	    vnfc_scaling_metric.SetValuePr(
+	                           scaling_metric,
+	                           "VNFC Scaling Metric");
+	    EVEL_EXIT();
+	  }
+
+	  public void evel_measurement_vnfc_scaling_metric_set(int scaling_metric)
+	  {
+	    EVEL_ENTER();
+
+	    /***************************************************************************/
+	    /* Check preconditions.                                                    */
+	    /***************************************************************************/
 	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
 	    assert(scaling_metric >= 0.0);
 
