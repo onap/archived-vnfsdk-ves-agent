@@ -2073,36 +2073,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    EVEL_EXIT();
 	  }
 
-	  /**************************************************************************//**
-	   * Set the VNFC Scaling Metric property of the Measurement.
-	   *
-	   * @note  The property is treated as immutable: it is only valid to call
-	   *        the setter once.  However, we don't assert if the caller tries to
-	   *        overwrite, just ignoring the update instead.
-	   *
-	   * 
-	   * @param scaling_metric  The scaling metric to set.
-	   *****************************************************************************/
-	  public void evel_measurement_vnfc_scaling_metric_set(EvelScalingMeasurement measurement,
-	                                                int scaling_metric)
-	  {
-	    EVEL_ENTER();
-
-        LOGGER.warn("Called evel_measurement_vnfc_scaling_metric_set with 2 arguments. The first argument is unused and callers should use the single-parameter version instead");
-
-	    /***************************************************************************/
-	    /* Check preconditions.                                                    */
-	    /***************************************************************************/
-	    assert(measurement != null);
-	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-	    assert(scaling_metric >= 0.0);
-
-	    vnfc_scaling_metric.SetValuePr(
-	                           scaling_metric,
-	                           "VNFC Scaling Metric");
-	    EVEL_EXIT();
-	  }
-
 	  public void evel_measurement_vnfc_scaling_metric_set(int scaling_metric)
 	  {
 	    EVEL_ENTER();
@@ -3281,7 +3251,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    
 	    if( vnic_usage == null ){
 	    	vnic_usage = new ArrayList<MEASUREMENT_VNIC_PERFORMANCE>();
-	    	if( vnic_usage == null )LOGGER.error("Unable to allocate new file system usage");
+	    	LOGGER.debug("Allocate new file system usage");
 	    }
 	    
 	    vnic_usage.add(vnic_performance);

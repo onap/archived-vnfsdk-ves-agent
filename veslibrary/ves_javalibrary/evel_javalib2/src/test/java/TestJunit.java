@@ -58,6 +58,10 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Date;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+
 
 @PrepareForTest({AgentMain.class})
 @RunWith(PowerMockRunner.class)
@@ -183,6 +187,44 @@ public class TestJunit {
               sm.evel_measurement_custom_measurement_add("group1","name2","val2");
               sm.evel_measurement_custom_measurement_add("group2","name1","val1");
               sm.evel_measurement_custom_measurement_add("group2","name2","val2");
+
+           JsonObjectBuilder jsonObjBld1 =
+                      Json.createObjectBuilder()
+                              .add("trackIdentifier", 12345)
+                              .add("remoteSource", "vm1235")
+                              .add("ended", "12:45:67")
+                              .add("detached", 633453)
+                              .add("frameWidth", 765765)
+                              .add("frameHeight", 767867)
+                              .add("framesPerSecond", 334343)
+                              .add("framesSent", 8976786)
+                              .add("framesReceived", 233423)
+                              .add("frameHeight", 8897896)
+                              .add("framesDecoded", 3434533)
+                              .add("framesDropped", 87867676)
+                              .add("framesCorrupted", 3345342)
+                              .add("audioLevel", "-45dBm");
+              JsonObject custom1 = jsonObjBld1.build();
+              sm.evel_measurement_add_jsonobj(custom1);
+            JsonObjectBuilder jsonObjBld2 =
+                      Json.createObjectBuilder()
+                              .add("trackIdentifier", 12345)
+                              .add("remoteSource", "vm1235")
+                              .add("ended", "12:45:67")
+                              .add("detached", 633453)
+                              .add("frameWidth", 765765)
+                              .add("frameHeight", 767867)
+                              .add("framesPerSecond", 334343)
+                              .add("framesSent", 8976786)
+                              .add("framesReceived", 233423)
+                              .add("frameHeight", 8897896)
+                              .add("framesDecoded", 3434533)
+                              .add("framesDropped", 87867676)
+                              .add("framesCorrupted", 3345342)
+                              .add("audioLevel", "-45dBm");
+              JsonObject custom2 = jsonObjBld2.build();
+              sm.evel_measurement_add_jsonobj(custom2);
+
               sm.evel_measurement_cpu_use_idle_set(my1,0.5);
               sm.evel_measurement_cpu_use_interrupt_set(my1,0.5);
               sm.evel_measurement_cpu_use_nice_set(my1,0.5);
@@ -379,6 +421,26 @@ public class TestJunit {
               ev.evel_other_field_add_namedarray("a1", "b2", "c2");
               ev.evel_other_field_add_namedarray("a2", "b1", "c1");
               ev.evel_other_field_add_namedarray("a2", "b1", "c1");
+
+              JsonObjectBuilder jsonObjBld =
+                      Json.createObjectBuilder()
+                              .add("trackIdentifier", 12345)
+                              .add("remoteSource", "vm1235")
+                              .add("ended", "12:45:67")
+                              .add("detached", 633453)
+                              .add("frameWidth", 765765)
+                              .add("frameHeight", 767867)
+                              .add("framesPerSecond", 334343)
+                              .add("framesSent", 8976786)
+                              .add("framesReceived", 233423)
+                              .add("frameHeight", 8897896)
+                              .add("framesDecoded", 3434533)
+                              .add("framesDropped", 87867676)
+                              .add("framesCorrupted", 3345342)
+                              .add("audioLevel", "-45dBm");
+              JsonObject custom = jsonObjBld.build();
+
+              ev.evel_other_field_add_jsonobj(custom);
               
               when(mymainmock.evel_post_event(ev)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(ev);
