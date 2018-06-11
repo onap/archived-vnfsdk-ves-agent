@@ -96,7 +96,7 @@ public class EvelHeader {
 	  PRIORITIES priority;
 	  Long start_epoch_microsec = 0L;
 	  Long last_epoch_microsec = 0L;
-	  int sequence;
+	  int sequence = 0;
 
 	  /***************************************************************************/
 	  /* Optional fields                                                         */
@@ -111,7 +111,7 @@ public class EvelHeader {
 	  /**************************************************************************//**
 	   * Unique sequence number for events from this VNF.
 	   *****************************************************************************/
-	  static int event_sequence = 1;
+	  int event_sequence = 1;
 	  private static final Logger LOGGER = Logger.getLogger( EvelHeader.class.getName() );
 
 		protected static void EVEL_EXIT() {
@@ -128,12 +128,12 @@ public class EvelHeader {
 	   *
 	   * @param sequence      The next sequence number to use.
 	   *****************************************************************************/
-	  void evel_set_next_event_sequence( int sequence)
+	  void evel_set_next_event_sequence( int seqnce)
 	  {
 	    EVEL_ENTER();
 
 	    LOGGER.info(MessageFormat.format("Setting event sequence to {0}, was {1} ", sequence, event_sequence));
-	    event_sequence = sequence;
+	    sequence = seqnce;
 
 	    EVEL_EXIT();
 	  }
@@ -167,10 +167,14 @@ public class EvelHeader {
 	    /***************************************************************************/
 	    this.event_domain = DOMAINS.EVEL_DOMAIN_HEARTBEAT;
 	    if(ev_id == null){
+                event_sequence ++;
+                sequence = event_sequence;
 	    	event_id = MessageFormat.format("{0}", event_sequence);
 	    	LOGGER.warning("WARNING:not confirming to Common Event Format 28.3 standard");
-	    } else
+	    } else {
 	    	event_id = ev_id;
+	        sequence = 0;
+	    }
 	    event_name = eventname;
 	    start_epoch_microsec = last_epoch_microsec;
 	    last_epoch_microsec = System.nanoTime()/1000;
@@ -231,11 +235,9 @@ public class EvelHeader {
 	    
 	    reporting_entity_name = hostname;
 	    source_name = hostname;
-	    sequence = event_sequence;
 
 	    major_version = EVEL_HEADER_MAJOR_VERSION;
 	    minor_version = EVEL_HEADER_MINOR_VERSION;
-	    event_sequence++;
 
 	    /***************************************************************************/
 	    /* Optional parameters.                                                    */

@@ -40,7 +40,7 @@ import org.slf4j.helpers.MessageFormatter;
 public class EvelOther extends EvelHeader {
 
 	  int major_version = 1;
-	  int minor_version = 1;
+	  int minor_version = 0;
 
 	  /***************************************************************************/
 	  /* Mandatory fields                                                        */

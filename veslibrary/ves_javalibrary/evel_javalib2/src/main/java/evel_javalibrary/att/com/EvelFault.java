@@ -154,8 +154,12 @@ public class EvelFault extends EvelHeader {
 		category = new EvelOptionString(false, null);
 		alarm_interface_a = new EvelOptionString(false, null);
 		additional_info = null;		
+		if( severity.equals(EVEL_SEVERITIES.EVEL_SEVERITY_NORMAL))
+			sequence = 0;
+		else
+			sequence = 1;
 	}
-	
+
 	/**************************************************************************//**
 	 * Add an additional value name/value pair to the Fault.
 	 *

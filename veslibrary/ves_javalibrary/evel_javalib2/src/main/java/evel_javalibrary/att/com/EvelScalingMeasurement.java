@@ -37,7 +37,7 @@ import org.slf4j.helpers.MessageFormatter;
 public class EvelScalingMeasurement extends EvelHeader {
 	
 	int major_version = 2;
-	int minor_version = 1;
+	int minor_version = 0;
 	
 	/**************************************************************************//**
 	 * CPU Usage.
