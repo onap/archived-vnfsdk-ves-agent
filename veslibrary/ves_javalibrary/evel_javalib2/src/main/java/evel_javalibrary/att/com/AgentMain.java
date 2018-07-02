@@ -101,7 +101,7 @@ public class AgentMain {
      */
     private static class AgentDispatcher  implements Runnable {
 
-        private String readStream(InputStream stream) throws Exception {
+        private static String readStream(InputStream stream) throws Exception {
             StringBuilder builder = new StringBuilder();
             try (BufferedReader in = new BufferedReader(new InputStreamReader(stream))) {
                 String line;
@@ -116,21 +116,25 @@ public class AgentMain {
         }
 
         // Create a trust manager that does not validate certificate chains
-        TrustManager[] trustAllCerts = new TrustManager[] { 
-            new X509TrustManager() {     
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
+        static TrustManager[] trustAllCerts = new TrustManager[] {
+            new X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                     return new java.security.cert.X509Certificate[0];
-                } 
-                public void checkClientTrusted( 
-                        java.security.cert.X509Certificate[] certs, String authType) {
-                        } 
-                public void checkServerTrusted( 
-                        java.security.cert.X509Certificate[] certs, String authType) {
-                        }
-            } 
-        }; 
+                }
+                public void checkClientTrusted(
+                    java.security.cert.X509Certificate[] certs, String authType) {
+                }
+                public void checkServerTrusted(
+                    java.security.cert.X509Certificate[] certs, String authType) {
+                }
+            }
+        };
 
         private void send_object(EvelObject tosend){
+          AgentDispatcher.send_object_with_return(tosend);
+        }
+
+        public static int send_object_with_return(EvelObject tosend){
             String datatosend = (String) tosend.datastr;
             //process data
             logger.trace(url + "Got an event size "+datatosend.length());
@@ -146,21 +150,21 @@ public class AgentMain {
                 if (con instanceof HttpsURLConnection) {
                     HttpsURLConnection httpsConnection = (HttpsURLConnection) con;
 
-                    try { 
+                    try {
 
                         SSLContext sc = SSLContext.getInstance("TLSv1.2");
                         /* Get the JKS contents */
                         if( !keystore_pth.isEmpty() && !jks_passw.isEmpty() && !key_passw.isEmpty() )
                         {
-                            final KeyStore keyStore = KeyStore.getInstance("JKS"); 
-                            try (final InputStream is = new FileInputStream(keystore_pth)) { 
-                                keyStore.load(is, jks_passw.toCharArray()); 
-                            } 
-                            final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory 
-                                    .getDefaultAlgorithm()); 
-                            kmf.init(keyStore, key_passw.toCharArray()); 
-                            final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory 
-                                    .getDefaultAlgorithm()); 
+                            final KeyStore keyStore = KeyStore.getInstance("JKS");
+                            try (final InputStream is = new FileInputStream(keystore_pth)) {
+                                keyStore.load(is, jks_passw.toCharArray());
+                            }
+                            final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory
+                                    .getDefaultAlgorithm());
+                            kmf.init(keyStore, key_passw.toCharArray());
+                            final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory
+                                    .getDefaultAlgorithm());
                             tmf.init(keyStore);
                             sc.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new java.security.SecureRandom());
                         }
@@ -180,8 +184,8 @@ public class AgentMain {
                         con  = httpsConnection;
 
                     }
-                    catch (final Exception exc) { 
-                        exc.printStackTrace(); 
+                    catch (final Exception exc) {
+                        exc.printStackTrace();
                         logger.error("SSL/TLS connection error");
                     }
                 }
@@ -211,7 +215,7 @@ public class AgentMain {
                 writer.write(datatosend);
                 writer.flush();
                 writer.close();
-                os.close();	
+                os.close();
                 //Handle the response code for POST request
                 int respCode = con.getResponseCode();
                 logger.trace(url + "Connection HTTP Response code :"+respCode);
@@ -231,20 +235,23 @@ public class AgentMain {
                     logger.warn(url + " **SERVER ERROR**");
 
                     InputStream es = con.getErrorStream();
-                    readStream(es);
+                    AgentDispatcher.readStream(es);
                 }
 
+                return respCode;
 
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error("Exception during POST", e);
+                return 0;
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Exception during POST", e);
+                return 0;
             }
         }
 
         public void run() {
 
-            String datatosend=null;  
+            String datatosend=null;
             while (!should_stop){
                 EvelObject tosend = ringb.take();
                 if( tosend != null && ((datatosend = (String) tosend.datastr) != null))
@@ -370,7 +377,7 @@ public class AgentMain {
         thr.start();
 
         EVEL_EXIT();
-        return rc; 
+        return rc;
 
     }
 
@@ -416,6 +423,31 @@ public class AgentMain {
         return ret;
     }
 
+  /**************************************************************************//**
+     * Handle user formatted post message, post the event, and return the HTTP error code
+     *
+     * @note  This function handles VES 5.x formatted messages from all valid
+     *        Domains and stores them in RingBuffer.
+     *
+     * @param   obj     VES 5.x formatted user messages with common header
+     *                  and optional specialized body
+     *
+     * @retval  int    The http code retturned when sending the event
+     *****************************************************************************/
+
+    public static int evel_post_event_immediate(EvelHeader obj)
+    {
+        if (should_stop){
+            logger.error("evel_post_event_immediate called whilst agent is shutting down - event will not be posted");
+            return 0;
+        }
+
+        String data = obj.evel_json_encode_event().toString();
+        EvelObject myobj = new EvelObject(data,false);
+        int ret = AgentDispatcher.send_object_with_return(myobj);
+        logger.info("Evel Post event ret:"+ret);
+        return ret;
+    }
 
     /**************************************************************************//**
      * Handle user formatted post message
