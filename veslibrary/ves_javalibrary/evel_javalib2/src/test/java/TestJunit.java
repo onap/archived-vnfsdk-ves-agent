@@ -62,6 +62,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import java.net.HttpURLConnection;
 
 @PrepareForTest({AgentMain.class})
 @RunWith(PowerMockRunner.class)
@@ -555,6 +556,26 @@ public class TestJunit {
               assertTrue( ret );
    }
 
+   @Test
+   public void testBlockingPost() throws Exception, IOException {
+	      EvelFault flt  = new EvelFault("Fault_vVNF", "vmname_ip",
+                          "NIC error", "Hardware failed",
+                  EvelHeader.PRIORITIES.EVEL_PRIORITY_HIGH,
+                  EVEL_SEVERITIES.EVEL_SEVERITY_MAJOR,
+                  EVEL_SOURCE_TYPES.EVEL_SOURCE_CARD,
+                  EVEL_VF_STATUSES.EVEL_VF_STATUS_ACTIVE);
+              flt.evel_fault_addl_info_add("nichw", "fail");
+              flt.evel_fault_addl_info_add("nicsw", "fail");
+              flt.evel_fault_category_set("intftype");
+              flt.evel_fault_interface_set("eth0");
+              flt.evel_fault_type_set("vmintf");
+      	      when(mymainmock.sendObjectWithReturn(any(EvelObject.class))).thenReturn(200);
+	      when(mymainmock.evel_post_event_immediate(flt)).thenCallRealMethod();
+	      int ret = mymainmock.evel_post_event_immediate(flt);
+	      LOG.info("Returned "+ret);
+              assertEquals(200,  ret);
+
+   }
 
 }
 

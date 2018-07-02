@@ -31,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -101,150 +102,13 @@ public class AgentMain {
      */
     private static class AgentDispatcher  implements Runnable {
 
-        private String readStream(InputStream stream) throws Exception {
-            StringBuilder builder = new StringBuilder();
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(stream))) {
-                String line;
-                while ((line = in.readLine()) != null) {
-                    builder.append(line); // + "\r\n"(no need, json has no line breaks!)
-                }
-                in.close();
-            }
-            logger.error("Resp: " + builder.toString());
-            //System.out.println("Resp: " + builder.toString());
-            return builder.toString();
-        }
-
-        // Create a trust manager that does not validate certificate chains
-        TrustManager[] trustAllCerts = new TrustManager[] { 
-            new X509TrustManager() {     
-                public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
-                    return new java.security.cert.X509Certificate[0];
-                } 
-                public void checkClientTrusted( 
-                        java.security.cert.X509Certificate[] certs, String authType) {
-                        } 
-                public void checkServerTrusted( 
-                        java.security.cert.X509Certificate[] certs, String authType) {
-                        }
-            } 
-        }; 
-
         private void send_object(EvelObject tosend){
-            String datatosend = (String) tosend.datastr;
-            //process data
-            logger.trace(url + "Got an event size "+datatosend.length());
-            logger.trace(datatosend);
-
-            try {
-
-                if( tosend.type == false)
-                    con = (HttpURLConnection) vesurl.openConnection();
-                else
-                    con = (HttpURLConnection) vesbatchurl.openConnection();
-
-                if (con instanceof HttpsURLConnection) {
-                    HttpsURLConnection httpsConnection = (HttpsURLConnection) con;
-
-                    try { 
-
-                        SSLContext sc = SSLContext.getInstance("TLSv1.2");
-                        /* Get the JKS contents */
-                        if( !keystore_pth.isEmpty() && !jks_passw.isEmpty() && !key_passw.isEmpty() )
-                        {
-                            final KeyStore keyStore = KeyStore.getInstance("JKS"); 
-                            try (final InputStream is = new FileInputStream(keystore_pth)) { 
-                                keyStore.load(is, jks_passw.toCharArray()); 
-                            } 
-                            final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory 
-                                    .getDefaultAlgorithm()); 
-                            kmf.init(keyStore, key_passw.toCharArray()); 
-                            final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory 
-                                    .getDefaultAlgorithm()); 
-                            tmf.init(keyStore);
-                            sc.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new java.security.SecureRandom());
-                        }
-                        else
-                        {
-                            // Init the SSLContext with a TrustManager[] and SecureRandom()
-                            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-                        }
-                        httpsConnection.setDefaultHostnameVerifier(new HostnameVerifier()
-                                {
-                                    public boolean verify(String hostname, SSLSession session)
-                        {
-                            return true;
-                        }
-                        });
-                        httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
-                        con  = httpsConnection;
-
-                    }
-                    catch (final Exception exc) { 
-                        exc.printStackTrace(); 
-                        logger.error("SSL/TLS connection error");
-                    }
-                }
-
-                //add reuqest header
-                con.setRequestMethod("POST");
-                // No caching, we want the real thing.
-                con.setUseCaches (false);
-                // Specify the content type.
-                con.setRequestProperty("Content-Type", "application/json");
-                con.setInstanceFollowRedirects( false );
-                //Basic username password authentication
-                String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes("UTF-8"));
-                con.setRequestProperty ("Authorization", basicAuth);
-
-                con.setReadTimeout(15000 /* milliseconds */);
-                con.setConnectTimeout(15000 /* milliseconds */);
-                // Send post request
-                con.setDoOutput(true);
-                con.setDoInput(true);
-
-                con.setFixedLengthStreamingMode(datatosend.length());
-                OutputStream os = con.getOutputStream();
-                BufferedWriter writer = new BufferedWriter(
-                        new OutputStreamWriter(os, "UTF-8"));
-                //Call writer POST
-                writer.write(datatosend);
-                writer.flush();
-                writer.close();
-                os.close();	
-                //Handle the response code for POST request
-                int respCode = con.getResponseCode();
-                logger.trace(url + "Connection HTTP Response code :"+respCode);
-                if(respCode < HttpURLConnection.HTTP_OK ) {
-                    logger.trace(url + " **INFO**");
-                }
-                else if(respCode >= HttpURLConnection.HTTP_OK && respCode < HttpURLConnection.HTTP_MULT_CHOICE )
-                {
-                    logger.trace(url + " **OK**");
-                }
-                else if(respCode >= HttpURLConnection.HTTP_MULT_CHOICE  && respCode < HttpURLConnection.HTTP_BAD_REQUEST )
-                {
-                    logger.warn(url + " **REDIRECTION**");
-                }
-                else if(respCode >= HttpURLConnection.HTTP_BAD_REQUEST )
-                {
-                    logger.warn(url + " **SERVER ERROR**");
-
-                    InputStream es = con.getErrorStream();
-                    readStream(es);
-                }
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            AgentMain.sendObjectWithReturn(tosend);
         }
 
         public void run() {
 
-            String datatosend=null;  
+            String datatosend=null;
             while (!should_stop){
                 EvelObject tosend = ringb.take();
                 if( tosend != null && ((datatosend = (String) tosend.datastr) != null))
@@ -277,6 +141,151 @@ public class AgentMain {
             logger.trace("Send buffer is empty, shutting down");
         }//end run
     }//end AgentDispatcher
+
+    public static int doPost(HttpURLConnection con, String dataToSend) throws IOException, UnsupportedEncodingException {
+              OutputStream os = con.getOutputStream();
+              BufferedWriter writer = new BufferedWriter(
+                  new OutputStreamWriter(os, "UTF-8"));
+              //Call writer POST
+              writer.write(dataToSend);
+              writer.flush();
+              writer.close();
+              os.close();
+              //Handle the response code for POST request
+              return con.getResponseCode();
+        }
+
+    private static String readStream(InputStream stream) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(stream))) {
+            String line;
+            while ((line = in.readLine()) != null) {
+                builder.append(line); // + "\r\n"(no need, json has no line breaks!)
+            }
+            in.close();
+        }
+        logger.error("Resp: " + builder.toString());
+        //System.out.println("Resp: " + builder.toString());
+        return builder.toString();
+    }
+
+    // Create a trust manager that does not validate certificate chains
+    private static TrustManager[] trustAllCerts = new TrustManager[] {
+        new X509TrustManager() {
+            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                return new java.security.cert.X509Certificate[0];
+            }
+            public void checkClientTrusted(
+                java.security.cert.X509Certificate[] certs, String authType) {
+            }
+            public void checkServerTrusted(
+                java.security.cert.X509Certificate[] certs, String authType) {
+            }
+        }
+    };
+
+    public static int sendObjectWithReturn(EvelObject tosend){
+        String datatosend = (String) tosend.datastr;
+        //process data
+        logger.trace(url + "Got an event size "+datatosend.length());
+        logger.trace(datatosend);
+
+        try {
+
+            if( tosend.type == false)
+                con = (HttpURLConnection) vesurl.openConnection();
+            else
+                con = (HttpURLConnection) vesbatchurl.openConnection();
+
+            if (con instanceof HttpsURLConnection) {
+                HttpsURLConnection httpsConnection = (HttpsURLConnection) con;
+
+                try {
+
+                    SSLContext sc = SSLContext.getInstance("TLSv1.2");
+                    /* Get the JKS contents */
+                    if( !keystore_pth.isEmpty() && !jks_passw.isEmpty() && !key_passw.isEmpty() )
+                    {
+                        final KeyStore keyStore = KeyStore.getInstance("JKS");
+                        try (final InputStream is = new FileInputStream(keystore_pth)) {
+                            keyStore.load(is, jks_passw.toCharArray());
+                        }
+                        final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory
+                                .getDefaultAlgorithm());
+                        kmf.init(keyStore, key_passw.toCharArray());
+                        final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory
+                                .getDefaultAlgorithm());
+                        tmf.init(keyStore);
+                        sc.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new java.security.SecureRandom());
+                    }
+                    else
+                    {
+                        // Init the SSLContext with a TrustManager[] and SecureRandom()
+                        sc.init(null, trustAllCerts, new java.security.SecureRandom());
+                    }
+                    httpsConnection.setDefaultHostnameVerifier(new HostnameVerifier()
+                            {
+                                public boolean verify(String hostname, SSLSession session)
+                    {
+                        return true;
+                    }
+                    });
+                    httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
+                    con  = httpsConnection;
+
+                }
+                catch (final Exception exc) {
+                    exc.printStackTrace();
+                    logger.error("SSL/TLS connection error");
+                }
+            }
+
+            //add reuqest header
+            con.setRequestMethod("POST");
+            // No caching, we want the real thing.
+            con.setUseCaches (false);
+            // Specify the content type.
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setInstanceFollowRedirects( false );
+            //Basic username password authentication
+            String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes("UTF-8"));
+            con.setRequestProperty ("Authorization", basicAuth);
+
+            con.setReadTimeout(15000 /* milliseconds */);
+            con.setConnectTimeout(15000 /* milliseconds */);
+            // Send post request
+            con.setDoOutput(true);
+            con.setDoInput(true);
+
+            con.setFixedLengthStreamingMode(datatosend.length());
+            int respCode = AgentMain.doPost(con, datatosend);
+            logger.trace(url + "Connection HTTP Response code :"+respCode);
+            if(respCode < HttpURLConnection.HTTP_OK ) {
+                logger.trace(url + " **INFO**");
+            }
+            else if(respCode >= HttpURLConnection.HTTP_OK && respCode < HttpURLConnection.HTTP_MULT_CHOICE )
+            {
+                logger.trace(url + " **OK**");
+            }
+            else if(respCode >= HttpURLConnection.HTTP_MULT_CHOICE  && respCode < HttpURLConnection.HTTP_BAD_REQUEST )
+            {
+                logger.warn(url + " **REDIRECTION**");
+            }
+            else if(respCode >= HttpURLConnection.HTTP_BAD_REQUEST )
+            {
+                logger.warn(url + " **SERVER ERROR**");
+
+                InputStream es = con.getErrorStream();
+                AgentMain.readStream(es);
+            }
+
+            return respCode;
+
+        } catch (IOException e) {
+            logger.error("Exception during POST", e);
+            return 0;
+        }
+    }
 
     // Validate URL
     public static boolean isValidURL(String urlStr) {
@@ -370,7 +379,7 @@ public class AgentMain {
         thr.start();
 
         EVEL_EXIT();
-        return rc; 
+        return rc;
 
     }
 
@@ -416,6 +425,31 @@ public class AgentMain {
         return ret;
     }
 
+  /**************************************************************************//**
+     * Handle user formatted post message, post the event, and return the HTTP error code
+     *
+     * @note  This function handles VES 5.x formatted messages from all valid
+     *        Domains and stores them in RingBuffer.
+     *
+     * @param   obj     VES 5.x formatted user messages with common header
+     *                  and optional specialized body
+     *
+     * @retval  int    The http code returned when sending the event
+     *****************************************************************************/
+
+    public static int evel_post_event_immediate(EvelHeader obj)
+    {
+        if (should_stop){
+            logger.error("evel_post_event_immediate called while agent is shutting down - event will not be posted");
+            return 0;
+        }
+
+        String data = obj.evel_json_encode_event().toString();
+        EvelObject myobj = new EvelObject(data,false);
+        int ret = AgentMain.sendObjectWithReturn(myobj);
+        logger.info("Evel Post event ret:"+ret);
+        return ret;
+    }
 
     /**************************************************************************//**
      * Handle user formatted post message
