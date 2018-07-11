@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a93c517_cdd0c7cb",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/src/main/java/evel_javalibrary/att/com/AgentMain.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 741
+      },
+      "writtenOn": "2018-07-11T14:37:02Z",
+      "side": 1,
+      "message": "in Java, camel casing is better option on naming.",
+      "range": {
+        "startLine": 137,
+        "startChar": 26,
+        "endLine": 137,
+        "endChar": 49
+      },
+      "revId": "bce2124c7a0975863b5425d1de36fc57688f5c83",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_4d4d97c3",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/src/main/java/evel_javalibrary/att/com/AgentMain.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 741
+      },
+      "writtenOn": "2018-07-11T14:37:02Z",
+      "side": 1,
+      "message": "make it one exception handler as you are doing the same.\nusually generate Exception catching is not advised. thanks",
+      "range": {
+        "startLine": 243,
+        "startChar": 14,
+        "endLine": 246,
+        "endChar": 35
+      },
+      "revId": "bce2124c7a0975863b5425d1de36fc57688f5c83",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_2dca8b1a",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/src/main/java/evel_javalibrary/att/com/AgentMain.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 427,
+      "author": {
+        "id": 741
+      },
+      "writtenOn": "2018-07-11T14:37:02Z",
+      "side": 1,
+      "message": "pls add UT cases for this one.",
+      "range": {
+        "startLine": 426,
+        "startChar": 5,
+        "endLine": 427,
+        "endChar": 9
+      },
+      "revId": "bce2124c7a0975863b5425d1de36fc57688f5c83",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_0dc78f13",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/src/main/java/evel_javalibrary/att/com/AgentMain.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 435,
+      "author": {
+        "id": 741
+      },
+      "writtenOn": "2018-07-11T14:37:02Z",
+      "side": 1,
+      "message": "spell mistake",
+      "range": {
+        "startLine": 435,
+        "startChar": 37,
+        "endLine": 435,
+        "endChar": 47
+      },
+      "revId": "bce2124c7a0975863b5425d1de36fc57688f5c83",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a93c517_6d4893b3",
+        "filename": "veslibrary/ves_javalibrary/evel_javalib2/src/main/java/evel_javalibrary/att/com/AgentMain.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 741
+      },
+      "writtenOn": "2018-07-11T14:37:02Z",
+      "side": 1,
+      "message": "spell mistake",
+      "range": {
+        "startLine": 441,
+        "startChar": 59,
+        "endLine": 441,
+        "endChar": 65
+      },
+      "revId": "bce2124c7a0975863b5425d1de36fc57688f5c83",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
