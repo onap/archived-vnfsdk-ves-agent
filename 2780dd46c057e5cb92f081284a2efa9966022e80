@@ -1,0 +1,7 @@
+Code-Review+2: Chris Donley <christopher.donley@huawei.com>
+Verified+1: ONAP Jobbuilder <onap-jobbuilder@jenkins.onap.org>
+Submitted-by: Chris Donley <christopher.donley@huawei.com>
+Submitted-at: Mon, 23 Jul 2018 22:26:37 +0000
+Reviewed-on: https://gerrit.onap.org/r/57243
+Project: vnfsdk/ves-agent
+Branch: refs/heads/master
