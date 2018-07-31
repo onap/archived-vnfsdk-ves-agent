@@ -435,7 +435,7 @@ public class EvelSyslog extends EvelHeader {
 		  /* Mandatory fields                                                        */
 		  /***************************************************************************/
 		  JsonObjectBuilder obj = Json.createObjectBuilder()
-		   	         .add("eventSourceType", event_source_type.toString())
+		   	         .add("eventSourceType", EvelFault.evel_source_type(event_source_type))
 		   	         .add("syslogMsg", syslog_msg)
 		   	         .add("syslogTag", syslog_tag)
 		   	         .add("syslogFieldsVersion",version);

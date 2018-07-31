@@ -292,7 +292,7 @@ public class EvelFault extends EvelHeader {
 	 * @param source_type   The source type to convert.
 	 * @returns The equivalent string.
 	 *****************************************************************************/
-	String evel_source_type(EVEL_SOURCE_TYPES source_type)
+	static String evel_source_type(EVEL_SOURCE_TYPES source_type)
 	{
 	  String result;
 
