@@ -74,7 +74,9 @@ public class EvelFault extends EvelHeader {
 	  /* Vendor-specific values should be added here, and handled appropriately  */
 	  /* in evel_event.c.                                                        */
 	  /***************************************************************************/
-
+	  EVEL_SOURCE_OLT,
+	  EVEL_SOURCE_ONT,
+	  EVEL_SOURCE_ONU,
 	  /***************************************************************************/
 	  /* END OF VENDOR-SPECIFIC VALUES                                           */
 	  /***************************************************************************/
@@ -338,6 +340,18 @@ public class EvelFault extends EvelHeader {
 
 	    case EVEL_SOURCE_VIRTUAL_NETWORK_FUNCTION:
 	      result = "virtualNetworkFunction";
+	      break;
+
+	    case EVEL_SOURCE_OLT:
+	      result = "OLT";
+	      break;
+            
+	    case EVEL_SOURCE_ONT:
+	      result = "ONT";
+	      break;
+	    
+	     case EVEL_SOURCE_ONU:
+	      result = "ONU";
 	      break;
 
 	    default:
