@@ -43,7 +43,7 @@ static int event_sequence = 1;
  *
  * @param sequence      The next sequence number to use.
  *****************************************************************************/
-void evel_set_next_event_sequence(const int sequence)
+void evel_set_global_event_sequence(const int sequence)
 {
   EVEL_ENTER();
 
@@ -145,6 +145,9 @@ void evel_init_header(EVENT_HEADER * const header,const char *const eventname)
 {
   char scratchpad[EVEL_MAX_STRING_LEN + 1] = {0};
   struct timeval tv;
+  char eventListenerVersion[10] = {0};
+  int offset;
+  int offset1;
 
   EVEL_ENTER();
 
@@ -168,20 +171,39 @@ void evel_init_header(EVENT_HEADER * const header,const char *const eventname)
   header->priority = EVEL_PRIORITY_NORMAL;
   header->reporting_entity_name = strdup(openstack_vm_name());
   header->source_name = strdup(openstack_vm_name());
-  header->sequence = event_sequence;
+  header->sequence = 0;
   header->start_epoch_microsec = header->last_epoch_microsec;
   header->major_version = EVEL_HEADER_MAJOR_VERSION;
   header->minor_version = EVEL_HEADER_MINOR_VERSION;
   event_sequence++;
 
   /***************************************************************************/
+  /* Event Listener Version                                                  */
+  /***************************************************************************/
+  offset = sprintf(eventListenerVersion, "%d", EVEL_API_MAJOR_VERSION);
+  if ((EVEL_API_MINOR_VERSION != 0) && (EVEL_API_PATCH_VERSION == 0))
+  {
+    sprintf(eventListenerVersion + offset, ".%d", EVEL_API_MINOR_VERSION);
+  }
+  else if (EVEL_API_PATCH_VERSION != 0)
+  {
+    offset1 = sprintf(eventListenerVersion + offset, ".%d", EVEL_API_MINOR_VERSION);
+    offset = offset + offset1;
+    sprintf(eventListenerVersion + offset, ".%d", EVEL_API_PATCH_VERSION);
+  }
+
+  EVEL_INFO("Setting event listener version to %s", eventListenerVersion);
+  header->event_listener_version = strdup(eventListenerVersion);
+  /***************************************************************************/
   /* Optional parameters.                                                    */
   /***************************************************************************/
   evel_init_option_string(&header->event_type);
   evel_init_option_string(&header->nfcnaming_code);
   evel_init_option_string(&header->nfnaming_code);
-  evel_force_option_string(&header->reporting_entity_id, openstack_vm_uuid());
-  evel_force_option_string(&header->source_id, openstack_vm_uuid());
+  evel_init_option_string(&header->reporting_entity_id);
+  evel_init_option_string(&header->timezone_offset);
+  evel_init_option_string(&header->nfVendor_name);
+  evel_init_option_string(&header->source_id);
   evel_init_option_intheader(&header->internal_field);
   dlist_initialize(&header->batch_events);
 
@@ -200,6 +222,9 @@ void evel_init_header(EVENT_HEADER * const header,const char *const eventname)
 void evel_init_header_nameid(EVENT_HEADER * const header,const char *const eventname, const char *eventid)
 {
   struct timeval tv;
+  char eventListenerVersion[10] = {0};
+  int offset;
+  int offset1;
 
   EVEL_ENTER();
 
@@ -210,7 +235,7 @@ void evel_init_header_nameid(EVENT_HEADER * const header,const char *const event
   gettimeofday(&tv, NULL);
 
   /***************************************************************************/
-  /* Initialize the header.  Get a new event sequence number.  Note that if  */
+  /* Initialize the header.  Reset event sequence number.  Note that if      */
   /* any memory allocation fails in here we will fail gracefully because     */
   /* everything downstream can cope with NULLs.                              */
   /***************************************************************************/
@@ -221,20 +246,38 @@ void evel_init_header_nameid(EVENT_HEADER * const header,const char *const event
   header->priority = EVEL_PRIORITY_NORMAL;
   header->reporting_entity_name = strdup(openstack_vm_name());
   header->source_name = strdup(openstack_vm_name());
-  header->sequence = event_sequence;
+  header->sequence = 0;
   header->start_epoch_microsec = header->last_epoch_microsec;
   header->major_version = EVEL_HEADER_MAJOR_VERSION;
   header->minor_version = EVEL_HEADER_MINOR_VERSION;
-  event_sequence++;
 
+  /***************************************************************************/
+  /* Event Listener Version                                                  */
+  /***************************************************************************/
+  offset = sprintf(eventListenerVersion, "%d", EVEL_API_MAJOR_VERSION);
+  if ((EVEL_API_MINOR_VERSION != 0) && (EVEL_API_PATCH_VERSION == 0))
+  {
+    sprintf(eventListenerVersion + offset, ".%d", EVEL_API_MINOR_VERSION);
+  }
+  else if (EVEL_API_PATCH_VERSION != 0)
+  {
+    offset1 = sprintf(eventListenerVersion + offset, ".%d", EVEL_API_MINOR_VERSION);
+    offset = offset + offset1;
+    sprintf(eventListenerVersion + offset, ".%d", EVEL_API_PATCH_VERSION);
+  }
+
+  EVEL_INFO("Setting event listener version to %s", eventListenerVersion);
+  header->event_listener_version = strdup(eventListenerVersion);
   /***************************************************************************/
   /* Optional parameters.                                                    */
   /***************************************************************************/
   evel_init_option_string(&header->event_type);
   evel_init_option_string(&header->nfcnaming_code);
   evel_init_option_string(&header->nfnaming_code);
-  evel_force_option_string(&header->reporting_entity_id, openstack_vm_uuid());
-  evel_force_option_string(&header->source_id, openstack_vm_uuid());
+  evel_init_option_string(&header->reporting_entity_id);
+  evel_init_option_string(&header->timezone_offset);
+  evel_init_option_string(&header->source_id);
+  evel_init_option_string(&header->nfVendor_name);
   evel_init_option_intheader(&header->internal_field);
   dlist_initialize(&header->batch_events);
 
@@ -268,6 +311,29 @@ void evel_header_type_set(EVENT_HEADER * const header,
 
   EVEL_EXIT();
 }
+
+/**************************************************************************//**
+ * Set the Event Sequence property of the event header.
+ *
+ * @note The Start Epoch defaults to the time of event creation.
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param start_epoch_microsec
+ *                      The start epoch to set, in microseconds.
+ *****************************************************************************/
+void evel_event_sequence_set(EVENT_HEADER * const header,const int sequence_number)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions and assign the new value.                           */
+  /***************************************************************************/
+  assert(header != NULL);
+  header->sequence = sequence_number;
+
+  EVEL_EXIT();
+}
+
 
 /**************************************************************************//**
  * Set the Start Epoch property of the event header.
@@ -389,6 +455,36 @@ void evel_reporting_entity_name_set(EVENT_HEADER * const header,
 }
 
 /**************************************************************************//**
+ * Set the source Name property of the event header.
+ *
+ * @note The source Name defaults to the OpenStack VM Name.
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param source_name   The entity name to set.
+ *****************************************************************************/
+void evel_source_name_set(EVENT_HEADER * const header,
+                                    const char * const source_name)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions and assign the new value.                           */
+  /***************************************************************************/
+  assert(header != NULL);
+  assert(source_name != NULL);
+  assert(header->source_name != NULL);
+
+  /***************************************************************************/
+  /* Free the previously allocated memory and replace it with a copy of the  */
+  /* provided one.                                                           */
+  /***************************************************************************/
+  free(header->source_name);
+  header->source_name = strdup(source_name);
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
  * Set the Reporting Entity Id property of the event header.
  *
  * @note The Reporting Entity Id defaults to the OpenStack VM UUID.
@@ -413,6 +509,57 @@ void evel_reporting_entity_id_set(EVENT_HEADER * const header,
   /***************************************************************************/
   evel_free_option_string(&header->reporting_entity_id);
   evel_force_option_string(&header->reporting_entity_id, entity_id);
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the time zone offset
+ *
+ * @param timeZoneOffset      Time zone offset to use.
+ *****************************************************************************/
+void evel_time_zone_offset_set(EVENT_HEADER * const header, char * timeZoneOffset)
+{
+  EVEL_ENTER();
+
+  assert(header != NULL);
+  assert(timeZoneOffset != NULL);
+  EVEL_INFO("Setting time zone offset to %s", timeZoneOffset);
+  evel_set_option_string(&header->timezone_offset, timeZoneOffset, "Time Zone Offset to GMT");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the NF Vendor Name
+ *
+ * @param nfVendorName      NF Vendor Name to use
+ *****************************************************************************/
+void evel_nf_vendor_name_set(EVENT_HEADER * const header, char * nfVendorName)
+{
+  EVEL_ENTER();
+
+  assert(header != NULL);
+  assert(nfVendorName != NULL);
+  EVEL_INFO("Setting NF Vendor Name to %s", nfVendorName);
+  evel_set_option_string(&header->nfVendor_name, nfVendorName, "NF Vendor Name");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the source ID
+ *
+ * @param sourceId      source ID to use
+ *****************************************************************************/
+void evel_source_id_set(EVENT_HEADER * const header, char * sourceId)
+{
+  EVEL_ENTER();
+
+  assert(header != NULL);
+  assert(sourceId != NULL);
+  EVEL_INFO("Setting source ID to %s", sourceId);
+  evel_set_option_string(&header->source_id, sourceId, "source ID");
 
   EVEL_EXIT();
 }
@@ -449,6 +596,7 @@ void evel_json_encode_header(EVEL_JSON_BUFFER * jbuf,
   evel_enc_kv_string(jbuf, "domain", domain);
   evel_enc_kv_string(jbuf, "eventId", event->event_id);
   evel_enc_kv_string(jbuf, "eventName", event->event_name);
+  evel_enc_kv_string(jbuf, "vesEventListenerVersion", event->event_listener_version);
   evel_enc_kv_ull(jbuf, "lastEpochMicrosec", event->last_epoch_microsec);
   evel_enc_kv_string(jbuf, "priority", priority);
   evel_enc_kv_string(
@@ -456,8 +604,10 @@ void evel_json_encode_header(EVEL_JSON_BUFFER * jbuf,
   evel_enc_kv_int(jbuf, "sequence", event->sequence);
   evel_enc_kv_string(jbuf, "sourceName", event->source_name);
   evel_enc_kv_ull(jbuf, "startEpochMicrosec", event->start_epoch_microsec);
-  evel_enc_version(
-    jbuf, "version", event->major_version, event->minor_version);
+  char * version = "4.0.2";
+  evel_enc_kv_string(jbuf, "version", version);
+ // evel_enc_version(
+ //   jbuf, "version", event->major_version, event->minor_version);
 
   /***************************************************************************/
   /* Optional fields.                                                        */
@@ -468,6 +618,8 @@ void evel_json_encode_header(EVEL_JSON_BUFFER * jbuf,
   evel_enc_kv_opt_string(jbuf, "sourceId", &event->source_id);
   evel_enc_kv_opt_string(jbuf, "nfcNamingCode", &event->nfcnaming_code);
   evel_enc_kv_opt_string(jbuf, "nfNamingCode", &event->nfnaming_code);
+  evel_enc_kv_opt_string(jbuf, "timeZoneOffset", &event->timezone_offset);
+  evel_enc_kv_opt_string(jbuf, "nfVendorName", &event->nfVendor_name);
 
   evel_json_close_object(jbuf);
 
@@ -499,7 +651,10 @@ void evel_free_header(EVENT_HEADER * const event)
   free(event->event_id);
   evel_free_option_string(&event->event_type);
   free(event->event_name);
+  free(event->event_listener_version);
   evel_free_option_string(&event->reporting_entity_id);
+  evel_free_option_string(&event->timezone_offset);
+  evel_free_option_string(&event->nfVendor_name);
   free(event->reporting_entity_name);
   evel_free_option_string(&event->source_id);
   evel_free_option_string(&event->nfcnaming_code);
@@ -555,6 +710,14 @@ void evel_json_encode_eventtype(
 
         case EVEL_DOMAIN_STATE_CHANGE:
           evel_json_encode_state_change(jbuf, (EVENT_STATE_CHANGE *)event);
+          break;
+
+        case EVEL_DOMAIN_NOTIFICATION:
+          evel_json_encode_notification(jbuf, (EVENT_NOTIFICATION *)event);
+          break;
+
+        case EVEL_DOMAIN_PNF_REGISTRATION:
+          evel_json_encode_pnf_registration(jbuf, (EVENT_PNF_REGISTRATION *)event);
           break;
 
         case EVEL_DOMAIN_SYSLOG:
@@ -833,14 +996,14 @@ void evel_json_encode_vendor_field(EVEL_JSON_BUFFER * jbuf,
   assert(vfield != NULL);
   assert(vfield->vendorname != NULL);
 
-  evel_json_open_named_object(jbuf, "vendorVnfNameFields");
+  evel_json_open_named_object(jbuf, "vendorNfNameFields");
 
   /***************************************************************************/
   /* Mandatory fields.                                                       */
   /***************************************************************************/
   evel_enc_kv_string(jbuf, "vendorName", vfield->vendorname);
-  evel_enc_kv_opt_string(jbuf, "vfModuleName", &vfield->vfmodule);
-  evel_enc_kv_opt_string(jbuf, "vnfName", &vfield->vnfname);
+  evel_enc_kv_opt_string(jbuf, "nfModuleName", &vfield->vfmodule);
+  evel_enc_kv_opt_string(jbuf, "nfName", &vfield->vnfname);
 
   /***************************************************************************/
   /* Optional fields.                                                        */

@@ -20,7 +20,7 @@
 
 /**************************************************************************//**
  * @file
- * A simple hashtable.
+ * A flexible dynamic hashtable
  *
  * @note  No thread protection so you will need to use appropriate
  * synchronization if use spans multiple threads.
@@ -38,20 +38,52 @@ typedef struct entry_s {
 
 typedef struct hashtable_s {
 	size_t size;
+	int n;
+        char *hmName;
 	struct entry_s **table;	
 } HASHTABLE_T;
+
+typedef struct hashtable_s *HASHTABLE;
+
+#define INITIAL_SIZE (2)
+#define GROWTH_FACTOR (2)
+#define MAX_LOAD_FACTOR (2)
 
 /**************************************************************************//**
  * Hashtable initialization.
  *
- * Initialize the list supplied to be empty.
- *
+ * Initialize hashtable internal finction
  * @param   size  Size of hashtable
-
- * @returns Hashtable pointer
+ * @returns Hashtable 
 ******************************************************************************/
 /* Create a new hashtable. */
-HASHTABLE_T *ht_create( size_t size );
+HASHTABLE_T *ht_sizecreate( size_t size );
+
+/**************************************************************************//**
+ * Hashtable initialization.
+ *
+ * Initialize hashtable default function
+ * @returns Hashtable
+******************************************************************************/
+HASHTABLE_T *ht_create(void);
+
+/**************************************************************************//**
+ * Named Hashtable initialization.
+ *
+ * Initialize Named hashtable default function
+ * @param hashtable_name
+ * @returns Hashtable
+******************************************************************************/
+HASHTABLE_T *nht_create(char * hashtable_name);
+
+/**************************************************************************//**
+ * Hashtable Destruction
+ *
+ * Initialize hashtable destroy function
+ * @returns Hashtable
+******************************************************************************/
+void ht_destroy(HASHTABLE_T *hashtable);
+
 
 /**************************************************************************//**
  * Hash a string for a particular hash table.
@@ -63,7 +95,7 @@ HASHTABLE_T *ht_create( size_t size );
 
  * @returns hashvalue
 ******************************************************************************/
-size_t ht_hash( HASHTABLE_T *hashtable, char *key );
+size_t ht_hash( HASHTABLE_T* hashtable, char *key );
 
 /**************************************************************************//**
  * Create a key-value pair.
@@ -83,7 +115,7 @@ ENTRY_T *ht_newpair( char *key, void *value );
  *
  * @returns Nothing
 ******************************************************************************/
-void ht_set( HASHTABLE_T *hashtable, char *key, void *value );
+void ht_insert( HASHTABLE_T* hashtable, char *key, void *value );
 
 /**************************************************************************//**
  *  Retrieve a key-value pair from a hash table.
@@ -92,6 +124,16 @@ void ht_set( HASHTABLE_T *hashtable, char *key, void *value );
  *
  * @returns  value string
 ******************************************************************************/
-void *ht_get( HASHTABLE_T *hashtable, char *key );
+void *ht_search( HASHTABLE_T* hashtable, char *key );
+
+/**************************************************************************//**
+ *  Delete a key-value pair from a hash table.
+ *
+ * @param   key     key string
+ *
+ * @returns  value string
+******************************************************************************/
+void ht_delete( HASHTABLE_T* hashtable, char *key );
+
 
 #endif

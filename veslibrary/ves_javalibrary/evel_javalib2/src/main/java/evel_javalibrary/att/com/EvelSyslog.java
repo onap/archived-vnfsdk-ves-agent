@@ -24,6 +24,10 @@ package evel_javalibrary.att.com;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -100,6 +104,9 @@ public class EvelSyslog extends EvelHeader {
 	  EvelOptionString syslog_severity;
 	  double syslog_fver;
 	  EvelOptionInt syslog_ver;
+	  EvelOptionString syslogmsg_host;
+	  
+	  HashMap<String, String > additional_inf;
 
 	
 	  private static final Logger LOGGER = Logger.getLogger( EvelSyslog.class.getName() );
@@ -137,6 +144,10 @@ public class EvelSyslog extends EvelHeader {
 	    syslog_s_data = new EvelOptionString();
 	    syslog_sdid = new EvelOptionString();
 	    syslog_severity = new EvelOptionString();	
+	    
+	    syslogmsg_host = new EvelOptionString();	
+	    
+	    additional_inf =null;
 	}	  
 	  
 	  /**************************************************************************//**
@@ -158,6 +169,44 @@ public class EvelSyslog extends EvelHeader {
 
 	    EVEL_EXIT();
 	  }
+	  
+	  //VES 7.O added 4Sept2018
+	  /**************************************************************************//**
+	   * Add an additional value name/value pair to the Syslog.
+	   *
+	   * The name and value are null delimited ASCII strings.  The library takes
+	   * a copy so the caller does not have to preserve values after the function
+	   * returns.
+	   *
+	   * 
+	   * @param name      ASCIIZ string with the attribute's name.  The caller
+	   *                  does not need to preserve the value once the function
+	   *                  returns.
+	   * @param value     ASCIIZ string with the attribute's value.  The caller
+	   *                  does not need to preserve the value once the function
+	   *                  returns.
+	   *****************************************************************************/
+	  public void evel__syslog_addl_info_add(String name, String value)
+	  {
+	    EVEL_ENTER();
+
+	    /***************************************************************************/
+	    /* Check preconditions.                                                    */
+	    /***************************************************************************/
+	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG);
+	    assert(name != null);
+		assert(value != null);
+
+		if( additional_inf == null )
+		  {
+			  additional_inf = new HashMap<>();
+		  }
+		
+		LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
+		additional_inf.put(name,  value);
+		
+	    EVEL_EXIT();
+	  }
 
 	  /**************************************************************************//**
 	   * Add an additional value name/value pair to the Syslog.
@@ -174,7 +223,7 @@ public class EvelSyslog extends EvelHeader {
 	   *                  does not need to preserve the value once the function
 	   *                  returns.
 	   *****************************************************************************/
-	  public void evel_syslog_addl_filter_set(String filter)
+	  public void evel_syslog_addl_filter_set(String filter) 
 	  {
 	    EVEL_ENTER();
 
@@ -188,6 +237,36 @@ public class EvelSyslog extends EvelHeader {
 	                           filter,
 	                           "Syslog filter string");
 
+	    EVEL_EXIT();
+	  }
+	  
+	  
+	  
+	  /**************************************************************************//**
+	   * Set the Event Source Host property of the Syslog.
+	   *
+	   * @note  The property is treated as immutable: it is only valid to call
+	   *        the setter once.  However, we don't assert if the caller tries to
+	   *        overwrite, just ignoring the update instead.
+	   *
+	   * 
+	   * @param host       The Event Source Host to be set. ASCIIZ string. The caller
+	   *                   does not need to preserve the value once the function
+	   *                   returns.
+	   *****************************************************************************/
+	  public void evel_syslog_priority_set(int priority)
+	  {
+	    EVEL_ENTER();
+
+	    /***************************************************************************/
+	    /* Check preconditions.                                                    */
+	    /***************************************************************************/
+	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG);
+	    assert(priority > 0);
+
+	    syslog_priority.SetValuePr(
+	    		priority,
+	                        "Priority");
 	    EVEL_EXIT();
 	  }
 
@@ -355,6 +434,37 @@ public class EvelSyslog extends EvelHeader {
 	                           "Structured Data");
 	    EVEL_EXIT();
 	  }
+	  
+	  
+	  /**************************************************************************//**
+	   * Set the Structured SDID property of the Syslog.
+	   *
+	   * @note  The property is treated as immutable: it is only valid to call
+	   *        the setter once.  However, we don't assert if the caller tries to
+	   *        overwrite, just ignoring the update instead.
+	   *
+	   * 
+	   * @param sdid     The Structured Data to be set. ASCIIZ string. name@number
+	   *                 Caller does not need to preserve the value once the function
+	   *                   returns.
+	   *****************************************************************************/
+	  public void evel_syslog_msghost_set(String msghost)
+	  {
+	    EVEL_ENTER();
+
+	    /***************************************************************************/
+	    /* Check preconditions.                                                    */
+	    /***************************************************************************/
+	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG);
+	    assert(msghost != null);
+
+	    syslogmsg_host.SetValuePr(
+	    		msghost,
+	                           "SysLog msg log");
+	    EVEL_EXIT();
+	  }
+
+	  
 
 	  /**************************************************************************//**
 	   * Set the Structured SDID property of the Syslog.
@@ -425,8 +535,8 @@ public class EvelSyslog extends EvelHeader {
 		 JsonObjectBuilder evelSyslogObject()
 		 {
 		  String evt_source_type;
-		  double version = major_version+(double)minor_version/10;
-
+		//  double version = major_version+(double)minor_version/10;
+          String version = "4.0";
 		  EVEL_ENTER();
 		  
 		  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG);
@@ -435,7 +545,7 @@ public class EvelSyslog extends EvelHeader {
 		  /* Mandatory fields                                                        */
 		  /***************************************************************************/
 		  JsonObjectBuilder obj = Json.createObjectBuilder()
-		   	         .add("eventSourceType", EvelFault.evel_source_type(event_source_type))
+		   	         .add("eventSourceType", event_source_type.toString())
 		   	         .add("syslogMsg", syslog_msg)
 		   	         .add("syslogTag", syslog_tag)
 		   	         .add("syslogFieldsVersion",version);
@@ -452,6 +562,25 @@ public class EvelSyslog extends EvelHeader {
 		  syslog_sdid.encJsonValue(obj, "syslogSdId");
 		  syslog_severity.encJsonValue(obj, "syslogSev");
 		  syslog_ver.encJsonValue(obj, "syslogVer");
+		  syslogmsg_host.encJsonValue(obj, "syslogMsgHost");
+		  
+		  
+		  if(additional_inf != null) {
+			  //JsonArrayBuilder builder = Json.createArrayBuilder();
+			  JsonObjectBuilder builder = Json.createObjectBuilder();
+			  Iterator<Entry<String, String>> it = additional_inf.entrySet().iterator();
+			  while(it.hasNext()) {
+				  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
+				  String addl_info_key = add_inf.getKey();
+				  String addl_info_value = add_inf.getValue();
+//				  JsonObject obj1 = Json.createObjectBuilder()
+//				    	     .add("name", addl_info_key)
+//				    	     .add("value", addl_info_value).build();
+				  builder.add(addl_info_key, addl_info_value);
+			  }
+			  obj.add("additionalFields", builder);
+		  }
+		  
 
 		  EVEL_EXIT();
 		  

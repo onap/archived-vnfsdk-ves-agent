@@ -1,0 +1,10 @@
+eventName Measurement_vFirewall-AT&T_nicPerformance
+eventType platform
+nfcNamingCode ssc
+nfNamingCode scfx
+nfVendorName AT&T
+reportingEntityId cc305d54-75b4-431b-adb2-eb6b9e541234
+reportingEntityName ibcx0001vm002oam001
+sourceId de305d54-75b4-431b-adb2-eb6b9e546014
+timeZoneOffset UTC-05:30
+measurementInterval 30

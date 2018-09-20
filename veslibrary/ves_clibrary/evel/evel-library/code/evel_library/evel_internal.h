@@ -172,27 +172,36 @@ typedef struct evel_throttle_spec {
  * @param[in] event_api_url
  *                      The URL where the Vendor Event Listener API is expected
  *                      to be.
+ * @param[in] bakup_api_url
+ *                      The BakupURL where the Vendor Backup Listener is expected
+ *                      to be.
  * @param[in] throt_api_url
  *                      The URL where the Throttling API is expected to be.
- * @param[in] source_ip  Source IP of VES Agent
- * @param[in] ring_buf_size     Initialization size of Ring Buffer
+ * @param[in] source_ip        Source IP of VES Agent
+ * @param[in] bakup_source_ip  Backup Source IP of VES Agent
+ * @param[in] ring_buf_size    Initialization size of Ring Buffer
  * @param[in] secure     Whether Using http or https
  * @param[in] cert_file_path  Path to Client Certificate file
  * @param[in] key_file_path   Path to Client key file
  * @param[in] ca_info         Path to CA info file
- * @param[in] ca_file_path    Path to CA file 
- * @param[in] verify_peer     Using peer verification or not
+ * @param[in] ca_file_path    Path to CA file
+* @param[in] verify_peer     Using peer verification or not
  * @param[in] verify_host     Using host verification or not
  * @param[in] username  The username for the Basic Authentication of requests.
  * @param[in] password  The password for the Basic Authentication of requests.
+ * @param[in] username2  The username for the Bakup requests.
+ * @param[in] password2  The password for the Bakup requests.
  * @param     verbosity 0 for normal operation, positive values for chattier
  *                        logs.
  *****************************************************************************/
 EVEL_ERR_CODES event_handler_initialize(const char * const event_api_url,
+                                        const char * const bakup_api_url,
                                         const char * const throt_api_url,
                                         const char * const source_ip,
+                                        const char * const bakup_source_ip,
                                         int ring_buf_size,
                                         int secure,
+                                        int activitymode,
                                         const char * const cert_file_path,
                                         const char * const key_file_path,
                                         const char * const ca_info,
@@ -201,6 +210,8 @@ EVEL_ERR_CODES event_handler_initialize(const char * const event_api_url,
                                         long verify_host,
                                         const char * const username,
                                         const char * const password,
+                                        const char * const username2,
+                                        const char * const password2,
                                         int verbosity);
 
 /**************************************************************************//**
@@ -357,6 +368,15 @@ void evel_json_encode_state_change(EVEL_JSON_BUFFER * jbuf,
                                    EVENT_STATE_CHANGE * state_change);
 
 /**************************************************************************//**
+ * Encode the notification as a JSON event
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION to encode.
+ *****************************************************************************/
+void evel_json_encode_notification(EVEL_JSON_BUFFER * jbuf,
+                                   EVENT_NOTIFICATION * notification);
+
+/**************************************************************************//**
  * Encode the Syslog in JSON according to AT&T's schema for the event type.
  *
  * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
@@ -373,6 +393,44 @@ void evel_json_encode_syslog(EVEL_JSON_BUFFER * jbuf,
  *****************************************************************************/
 void evel_json_encode_other(EVEL_JSON_BUFFER * jbuf,
                             EVENT_OTHER * event);
+
+/**************************************************************************//**
+ * Encode the PNF Registration as a JSON PNF Registration
+ *
+ * @param jbuf              Pointer to the ::EVEL_JSON_BUFFER to encode into.
+ * @param pnf_registration  Pointer to the ::EVENT_PNF_REGISTRATION to encode.
+ *****************************************************************************/
+void evel_json_encode_pnf_registration(EVEL_JSON_BUFFER * jbuf,
+                               EVENT_PNF_REGISTRATION * pnf_registration);
+
+/**************************************************************************//**
+ * Encode the Voce Quality in JSON according to AT&T's schema for the voice
+ * quality type.
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
+ * @param event         Pointer to the ::EVENT_HEADER to encode.
+ *****************************************************************************/
+void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
+                            EVENT_VOICE_QUALITY * event);
+
+/**************************************************************************//**
+ * Encode the Signaling in JSON according to AT&T's schema for the
+ * event type.
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
+ * @param event         Pointer to the ::EVENT_HEADER to encode.
+ *****************************************************************************/
+void evel_json_encode_threshold_cross(EVEL_JSON_BUFFER * const jbuf,
+                                EVENT_THRESHOLD_CROSS * const event);
+
+/**************************************************************************//**
+ * Encode the instance id as a JSON object according to AT&T's schema.
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
+ * @param vfield        Pointer to the ::VENDOR_VNFNAME_FIELD to encode.
+ *****************************************************************************/
+void evel_json_encode_vendor_field(EVEL_JSON_BUFFER * jbuf,
+                                  VENDOR_VNFNAME_FIELD * vfield);
 
 /**************************************************************************//**
  * Set the next event_sequence to use.
@@ -450,6 +508,17 @@ bool evel_enc_kv_opt_int(EVEL_JSON_BUFFER * jbuf,
 void evel_enc_kv_int(EVEL_JSON_BUFFER * jbuf,
                      const char * const key,
                      const int value);
+
+/**************************************************************************//**
+ * Encode a string key and json object value to a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param key           Pointer to the key to encode.
+ * @param value         The corresponding json string to encode.
+ *****************************************************************************/
+void evel_enc_kv_object(EVEL_JSON_BUFFER * jbuf,
+                     const char * const key,
+                     const char * value);
 
 /**************************************************************************//**
  * Encode a string key and double value to a ::EVEL_JSON_BUFFER.
@@ -532,6 +601,50 @@ void evel_enc_version(EVEL_JSON_BUFFER * jbuf,
                       const char * const key,
                       const int major_version,
                       const int minor_version);
+/**************************************************************************//**
+ * Initialize an event instance id.
+ *
+ * @param vfield        Pointer to the event vnfname field being initialized.
+ * @param vendor_id     The vendor id to encode in the event instance id.
+ * @param event_id      The event id to encode in the event instance id.
+ *****************************************************************************/
+void evel_init_vendor_field(VENDOR_VNFNAME_FIELD * const vfield,
+                                 const char * const vendor_name);
+
+/**************************************************************************//**
+ * Set the Vendor module property of the Vendor.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param vfield        Pointer to the Vendor field.
+ * @param module_name   The module name to be set. ASCIIZ string. The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ *****************************************************************************/
+void evel_vendor_field_module_set(VENDOR_VNFNAME_FIELD * const vfield,
+                                    const char * const module_name);
+/**************************************************************************//**
+ * Set the Vendor VNF name
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param vfield        Pointer to the Vendor field.
+ * @param vnfname       The VNF Name to be set. ASCIIZ string. The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ *****************************************************************************/
+void evel_vendor_field_vnfname_set(VENDOR_VNFNAME_FIELD * const vfield,
+                                    const char * const vnfname);
+/**************************************************************************//**
+ * Free an event instance id.
+ *
+ * @param vfield   Pointer to the event vnfname_field being freed.
+ *****************************************************************************/
+void evel_free_event_vendor_field(VENDOR_VNFNAME_FIELD * const vfield);
 
 /**************************************************************************//**
  * Add the key and opening bracket of an optional named list to a JSON buffer.
@@ -789,7 +902,7 @@ char * evel_alert_action(const EVEL_ALERT_ACTIONS alert_action);
  * @param alert_type    The alert_type to convert.
  * @returns The equivalent string.
  *****************************************************************************/
-char * evel_alert_type(const EVEL_ALERT_TYPES alert_type);
+char * evel_alert_type(const EVEL_ALERT_TYPE alert_type);
 
 /**************************************************************************//**
  * Map an ::EVEL_EVENT_DOMAINS enum value to the equivalent string.
@@ -854,8 +967,8 @@ void evel_init_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option);
  * @param option        Pointer to the ::EVEL_OPTION_INTHEADER_FIELDS.
  * @param value         The value to set.
  *****************************************************************************/
-void evel_force_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
-                           const void* value);
+void evel_force_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * option,
+                            void* value);
 /**************************************************************************//**
  * Set the value of an ::EVEL_OPTION_INTHEADER_FIELDS.
  *
@@ -863,8 +976,8 @@ void evel_force_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
  * @param value         The value to set.
  * @param description   Description to be used in logging.
  *****************************************************************************/
-void evel_set_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
-                         const void * value,
+void evel_set_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * option,
+                         void * value,
                          const char * const description);
 /**************************************************************************//**
  * Free the underlying resources of an ::EVEL_OPTION_INTHEADER_FIELDS.
@@ -872,5 +985,23 @@ void evel_set_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
  * @param option        Pointer to the ::EVEL_OPTION_INTHEADER_FIELDS.
  *****************************************************************************/
 void evel_free_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option);
+
+/**************************************************************************//**
+ * Initialize an ::EVEL_OPTION_STATE to a not-set state.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_INT.
+ *****************************************************************************/
+void evel_init_option_state(EVEL_OPTION_STATE * const option);
+
+/**************************************************************************//**
+ * Set the value of an ::EVEL_OPTION_STATE.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_STATE.
+ * @param value         The value to set.
+ * @param description   Description to be used in logging.
+ *****************************************************************************/
+void evel_set_option_state(EVEL_OPTION_STATE * const option,
+                         const int value,
+                         const char * const description);
 
 #endif

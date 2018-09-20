@@ -92,13 +92,18 @@ EVENT_FAULT * evel_new_fault(const char * ev_name,
   fault->major_version = EVEL_FAULT_MAJOR_VERSION;
   fault->minor_version = EVEL_FAULT_MINOR_VERSION;
   fault->event_severity = severity;
+  if( severity == EVEL_SEVERITY_NORMAL )
+     evel_event_sequence_set(&fault->header,0);
+  else
+     evel_event_sequence_set(&fault->header,1);
   fault->event_source_type = ev_source_type;
   fault->vf_status = status;
   fault->alarm_condition = strdup(condition);
   fault->specific_problem = strdup(specific_problem);
   evel_init_option_string(&fault->category);
   evel_init_option_string(&fault->alarm_interface_a);
-  dlist_initialize(&fault->additional_info);
+/** Prakash dlist_initialize(&fault->additional_info); **/
+  fault->additional_info = ht_create();
 
 exit_label:
   EVEL_EXIT();
@@ -122,7 +127,9 @@ exit_label:
  *****************************************************************************/
 void evel_fault_addl_info_add(EVENT_FAULT * fault, char * name, char * value)
 {
-  FAULT_ADDL_INFO * addl_info = NULL;
+  char *nam=NULL;
+  char *val=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -134,7 +141,7 @@ void evel_fault_addl_info_add(EVENT_FAULT * fault, char * name, char * value)
   assert(value != NULL);
 
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  addl_info = malloc(sizeof(FAULT_ADDL_INFO));
+/** Prakash  addl_info = malloc(sizeof(FAULT_ADDL_INFO)); 
   assert(addl_info != NULL);
   memset(addl_info, 0, sizeof(FAULT_ADDL_INFO));
   addl_info->name = strdup(name);
@@ -143,6 +150,14 @@ void evel_fault_addl_info_add(EVENT_FAULT * fault, char * name, char * value)
   assert(addl_info->value != NULL);
 
   dlist_push_last(&fault->additional_info, addl_info);
+**********/
+
+  EVEL_DEBUG("Adding name=%s value=%s", name, value);
+
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(fault->additional_info, nam, val);
 
   EVEL_EXIT();
 }
@@ -243,8 +258,11 @@ void evel_fault_type_set(EVENT_FAULT * fault, const char * const type)
 void evel_json_encode_fault(EVEL_JSON_BUFFER * jbuf,
                             EVENT_FAULT * event)
 {
-  FAULT_ADDL_INFO * addl_info = NULL;
-  DLIST_ITEM * addl_info_item = NULL;
+/*** Prakash  FAULT_ADDL_INFO * addl_info = NULL;
+  DLIST_ITEM * addl_info_item = NULL;  ****/
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
+
   char * fault_severity;
   char * fault_source_type;
   char * fault_vf_status;
@@ -284,34 +302,46 @@ void evel_json_encode_fault(EVEL_JSON_BUFFER * jbuf,
   /* Checkpoint, so that we can wind back if all fields are suppressed.      */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "alarmAdditionalInformation"))
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    bool item_added = false;
-
-    addl_info_item = dlist_get_first(&event->additional_info);
-    while (addl_info_item != NULL)
+    bool added = false;
+    if( ht->size > 0)
     {
-      addl_info = (FAULT_ADDL_INFO*) addl_info_item->item;
-      assert(addl_info != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "alarmAdditionalInformation",
-                                          addl_info->name))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "alarmAdditionalInformation"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", addl_info->name);
-        evel_enc_kv_string(jbuf, "value", addl_info->value);
-        evel_json_close_object(jbuf);
-        item_added = true;
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding alarmAdditionalInformation %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                                "alarmAdditionalInformation",
+                                                entry->key))
+            {
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      addl_info_item = dlist_get_next(addl_info_item);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
 
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
     /*************************************************************************/
-    if (!item_added)
+    if (!added)
     {
       evel_json_rewind(jbuf);
     }
@@ -333,7 +363,8 @@ void evel_json_encode_fault(EVEL_JSON_BUFFER * jbuf,
  *****************************************************************************/
 void evel_free_fault(EVENT_FAULT * event)
 {
-  FAULT_ADDL_INFO * addl_info = NULL;
+/*** Prakash  FAULT_ADDL_INFO * addl_info = NULL; **/
+  HASHTABLE_T *ht;
 
   EVEL_ENTER();
 
@@ -347,17 +378,12 @@ void evel_free_fault(EVENT_FAULT * event)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  addl_info = dlist_pop_last(&event->additional_info);
-  while (addl_info != NULL)
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Additional Info (%s, %s)",
-               addl_info->name,
-               addl_info->value);
-    free(addl_info->name);
-    free(addl_info->value);
-    free(addl_info);
-    addl_info = dlist_pop_last(&event->additional_info);
+     ht_destroy(ht);
   }
+
   free(event->alarm_condition);
   free(event->specific_problem);
   evel_free_option_string(&event->category);

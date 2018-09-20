@@ -46,8 +46,9 @@ extern "C" {
 /*****************************************************************************/
 /* Supported API version.                                                    */
 /*****************************************************************************/
-#define EVEL_API_MAJOR_VERSION 5
+#define EVEL_API_MAJOR_VERSION 7
 #define EVEL_API_MINOR_VERSION 0
+#define EVEL_API_PATCH_VERSION 2
 
 /**************************************************************************//**
  * Error codes
@@ -76,6 +77,7 @@ typedef enum {
  *****************************************************************************/
 typedef enum {
   EVEL_LOG_MIN               = 0,
+  EVEL_LOG_WARN               = 1,
   EVEL_LOG_SPAMMY            = 30,
   EVEL_LOG_DEBUG             = 40,
   EVEL_LOG_INFO              = 50,
@@ -131,6 +133,8 @@ typedef enum {
   EVEL_DOMAIN_OTHER,          /** Another event.                             */
   EVEL_DOMAIN_THRESHOLD_CROSS,  /** A Threshold Crossing  Event		     */
   EVEL_DOMAIN_VOICE_QUALITY,  /** A Voice Quality Event		 	     */
+  EVEL_DOMAIN_NOTIFICATION,   /** A Notification event.                      */
+  EVEL_DOMAIN_PNF_REGISTRATION, /** A PNF Registration event.                 */
   EVEL_MAX_DOMAINS            /** Maximum number of recognized Event types.  */
 } EVEL_EVENT_DOMAINS;
 
@@ -234,8 +238,8 @@ typedef enum {
 } EVEL_ALERT_TYPES;
 
 /**************************************************************************//**
- * Alert types.
- * JSON equivalent fields: newState, oldState
+ * Entity state.
+ * JSON equivalent fields: new_state, old_state
  *****************************************************************************/
 typedef enum {
   EVEL_ENTITY_STATE_IN_SERVICE,
@@ -243,6 +247,16 @@ typedef enum {
   EVEL_ENTITY_STATE_OUT_OF_SERVICE,
   EVEL_MAX_ENTITY_STATES
 } EVEL_ENTITY_STATE;
+
+/**************************************************************************//**
+ * Operational state.
+ * JSON equivalent fields: operationalState, administrativeState
+ *****************************************************************************/
+typedef enum {
+  EVEL_OPER_STATE_IN_SERVICE,
+  EVEL_OPER_STATE_OUT_OF_SERVICE,
+  EVEL_MAX_OPER_STATES
+} EVEL_OPER_STATE;
 
 /**************************************************************************//**
  * Syslog facilities.
@@ -362,6 +376,18 @@ typedef struct evel_option_string
   EVEL_BOOLEAN is_set;
 } EVEL_OPTION_STRING;
 
+typedef struct evel_option_state
+{
+  EVEL_ENTITY_STATE state;
+  EVEL_BOOLEAN is_set;
+} EVEL_OPTION_STATE;
+
+typedef struct evel_option_op_state
+{
+  EVEL_OPER_STATE state;
+  EVEL_BOOLEAN is_set;
+} EVEL_OPTION_OP_STATE;
+
 /**************************************************************************//**
  * Optional parameter holder for int.
  *****************************************************************************/
@@ -402,7 +428,7 @@ typedef struct internal_header_fields
 /*****************************************************************************/
 /* Supported Common Event Header version.                                    */
 /*****************************************************************************/
-#define EVEL_HEADER_MAJOR_VERSION 3
+#define EVEL_HEADER_MAJOR_VERSION 4
 #define EVEL_HEADER_MINOR_VERSION 0
 
 #define EVEL_BATCH_MAJOR_VERSION 1
@@ -426,6 +452,7 @@ typedef struct event_header {
   char * event_name;
   char * source_name;
   char * reporting_entity_name;
+  char * event_listener_version;
   EVEL_EVENT_PRIORITIES priority;
   unsigned long long start_epoch_microsec;
   unsigned long long last_epoch_microsec;
@@ -440,6 +467,8 @@ typedef struct event_header {
   EVEL_OPTION_INTHEADER_FIELDS internal_field;
   EVEL_OPTION_STRING nfcnaming_code;
   EVEL_OPTION_STRING nfnaming_code;
+  EVEL_OPTION_STRING nfVendor_name;
+  EVEL_OPTION_STRING timezone_offset;
   DLIST batch_events;
 
 } EVENT_HEADER;
@@ -494,8 +523,8 @@ void evel_free_batch(EVENT_HEADER * event);
 /*****************************************************************************/
 /* Supported Fault version.                                                  */
 /*****************************************************************************/
-#define EVEL_FAULT_MAJOR_VERSION 2
-#define EVEL_FAULT_MINOR_VERSION 1
+#define EVEL_FAULT_MAJOR_VERSION 4
+#define EVEL_FAULT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Fault.
@@ -523,7 +552,7 @@ typedef struct event_fault {
   /***************************************************************************/
   EVEL_OPTION_STRING category;
   EVEL_OPTION_STRING alarm_interface_a;
-  DLIST additional_info;
+  HASHTABLE_T *additional_info;
 
 } EVENT_FAULT;
 
@@ -531,11 +560,10 @@ typedef struct event_fault {
  * Fault Additional Info.
  * JSON equivalent field: alarmAdditionalInformation
  *****************************************************************************/
-typedef struct fault_additional_info {
+  typedef struct fault_additional_info {
   char * name;
   char * value;
 } FAULT_ADDL_INFO;
-
 
 /**************************************************************************//**
  * optional field block for fields specific to heartbeat events
@@ -558,9 +586,313 @@ typedef struct event_heartbeat_fields
   /***************************************************************************/
   /* Optional fields                                                         */
   /***************************************************************************/
-  DLIST additional_info;
+  HASHTABLE_T *additional_info;
 
 } EVENT_HEARTBEAT_FIELD;
+
+/**************************************************************************//**
+ * Create a new Heartbeat fields event.
+ *
+ * @note    The mandatory fields on the Heartbeat fields must be supplied to
+ *          this factory function and are immutable once set.  Optional fields
+ *          have explicit setter functions, but again values may only be set
+ *          once so that the event has immutable properties.
+ * @param event_name  Unique Event Name confirming Domain AsdcModel Description
+ * @param event_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
+ * @param vendor_id     The vendor id to encode in the event instance id.
+ * @param event_id      The vendor event id to encode in the event instance id.
+ * @returns pointer to the newly manufactured ::EVENT_HEARTBEAT_FIELD.  If the event
+ *          is not used (i.e. posted) it must be released using
+ *          ::evel_free_hrtbt_field.
+ * @retval  NULL  Failed to create the event.
+ *****************************************************************************/
+EVENT_HEARTBEAT_FIELD * evel_new_heartbeat_field(int interval,const char* ev_name, const char *ev_id);
+
+/**************************************************************************//**
+ * Add a name/value pair to the Heartbeat fields, under the additionalFields array.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param event     Pointer to the Heartbeat fields event.
+ * @param name      ASCIIZ string with the field's name.  The caller does not
+ *                  need to preserve the value once the function returns.
+ * @param value     ASCIIZ string with the field's value.  The caller does not
+ *                  need to preserve the value once the function returns.
+ *****************************************************************************/
+void evel_hrtbt_field_addl_field_add(EVENT_HEARTBEAT_FIELD * const event,
+                                 const char * const name,
+                                 const char * const value);
+
+/**************************************************************************//**
+ * Set the Interval property of the Heartbeat fields event.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param event         Pointer to the Heartbeat fields event.
+ * @param product_id    The vendor product id to be set. ASCIIZ string. The
+ *                      caller does not need to preserve the value once the
+ *                      function returns.
+ *****************************************************************************/
+void evel_hrtbt_interval_set(EVENT_HEARTBEAT_FIELD * const event,
+                                 const int interval);
+
+/**************************************************************************//**
+ * Free a Heartbeat fields event.
+ *
+ * Free off the event supplied.  Will free all the contained allocated memory.
+ *
+ * @note It does not free the event itself, since that may be part of a larger
+ * structure.
+ *****************************************************************************/
+void evel_free_hrtbt_field(EVENT_HEARTBEAT_FIELD * const event);
+
+
+/*****************************************************************************/
+/* Supported PNF Registration version.                                           */
+/*****************************************************************************/
+#define EVEL_PNF_REGISTRATION_MAJOR_VERSION 2
+#define EVEL_PNF_REGISTRATION_MINOR_VERSION 0
+
+/**************************************************************************//**
+ * PNF Registration
+ * JSON equivalent field: pnfRegistrationFields
+ *****************************************************************************/
+typedef struct event_PNF_REGISTRATION {
+  /***************************************************************************/
+  /* Header and version                                                      */
+  /***************************************************************************/
+  EVENT_HEADER header;
+  int major_version;
+  int minor_version;
+
+  /***************************************************************************/
+  /* Mandatory fields                                                        */
+  /***************************************************************************/
+  double version;
+
+  /***************************************************************************/
+  /* Optional fields                                                         */
+  /***************************************************************************/
+  EVEL_OPTION_STRING last_service_date;
+  EVEL_OPTION_STRING mac_address;
+  EVEL_OPTION_STRING manufacture_date;
+  EVEL_OPTION_STRING model_number;
+  EVEL_OPTION_STRING oam_v4_ipaddress;
+  EVEL_OPTION_STRING oam_v6_ipaddress;
+  EVEL_OPTION_STRING serial_number;
+  EVEL_OPTION_STRING sw_version;
+  EVEL_OPTION_STRING unit_family;
+  EVEL_OPTION_STRING unit_type;
+  EVEL_OPTION_STRING vendor_name;
+  HASHTABLE_T *additional_fields;
+
+} EVENT_PNF_REGISTRATION;
+
+/**************************************************************************//**
+ * Create a new PNF Registration event.
+ *
+ * @note    The mandatory fields on the PNF Registration must be supplied to the
+ *          factory function and are immutable once set.  Optional fields have
+ *          explicit setter functions, but again values may only be set once
+ *          so that the State Change has immutable properties.
+ *
+ * @param event_name  Unique Event Name confirming Domain AsdcModel Description
+ * @param event_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
+ *
+ * @returns pointer to the newly manufactured ::EVENT_PNF_REGISTRATION. If the
+ *          event is not used it must be released using
+ *          ::evel_free_pnf_registration
+ * @retval  NULL  Failed to create the event.
+ *****************************************************************************/
+EVENT_PNF_REGISTRATION * evel_new_pnf_registration(const char* ev_name, const char *ev_id );
+
+/**************************************************************************//**
+ * Free a PNF Registration.
+ *
+ * Free off the PNF Registration supplied. Will free all contained allocated
+ * memory.
+ *
+ * @note It does not free the PNF Registration itself, since that may be part
+ * of a larger structure.
+ *****************************************************************************/
+void evel_free_pnf_registration(EVENT_PNF_REGISTRATION * const pnf_registration);
+
+/**************************************************************************//**
+ * Add an additional field name/value pair to the PNF Registration
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param pnf_registration  Pointer to the ::EVENT_PNF_REGISTRATION.
+ * @param name          ASCIIZ string with the attribute's name.  The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ * @param value         ASCIIZ string with the attribute's value.  The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ *****************************************************************************/
+void evel_pnf_registration_addl_field_add(
+                             EVENT_PNF_REGISTRATION * const pnf_registration,
+                             const char * const name,
+                             const char * const value);
+
+
+ /****************************************************************//**
+ * Set the last service date
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once. However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param last_service_date   The last service date to be set. ASCIIZ
+ *                            string. The caller does not need to preserve
+ *                            the value once the function returns.
+*********************************************************************/
+void evel_pnfRegistration_last_service_date_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const last_service_date);
+
+/************************************************************************//**
+ * Set the Mac Address
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param mac_address   The mac address to be set. ASCIIZ string. The
+ *                      caller does not need to preserve the value once
+ *                      the function returns.
+***************************************************************************/
+void evel_pnfRegistration_mac_address_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const mac_address);
+
+/***********************************************************************//**
+ * Set the Manufacture Date
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param manufacture_date    The manufacture date to be set. ASCIIZ string.
+ *                            The caller does not need to preserve the value
+ *                            once the function returns.
+***************************************************************************/
+void evel_pnfRegistration_manufacture_date_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const manufacture_date);
+
+/***********************************************************************//**
+ * Set the Model Number
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param model_number   The model Number to be set. ASCIIZ string. The caller
+ *                       does not need to preserve the value once the
+ *                       function returns.
+***************************************************************************/
+void evel_pnfRegistration_model_number_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const model_number);
+
+/***********************************************************************//**
+ * Set the OAM v4 ipaddress
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param oam_v4_ipaddress    Set the oam IP address. ASCIIZ string.
+ *                            The caller does not need
+ *                            preserve the value once the function returns.
+*************************************************************************/
+void evel_pnfRegistration_oam_v4_ipaddress_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const oam_v4_ipaddress);
+
+/**********************************************************************//**
+ * Set the oam v6 ipaddress
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param oam_v6_ipaddress    Set the oam IP address. ASCIIZ string.
+ *                            The caller does not need
+ *                            preserve the value once the function returns.
+**************************************************************************/
+void evel_pnfRegistration_oam_v6_ipaddress_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const oam_v6_ipaddress);
+
+/**********************************************************************//**
+ * Set the Serial Number
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param serial_number   The serial number to be set. ASCIIZ string.
+ *                        The caller does not need to preserve the
+ *                        value once the function returns.
+**************************************************************************/
+void evel_pnfRegistration_serial_number_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const serial_number);
+
+/***********************************************************************//**
+ * Set the Software Version
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param sw_version  The SW Version to be set. ASCIIZ string. The caller does
+ *                   not need to preserve the value once the function returns.
+****************************************************************************/
+void evel_pnfRegistration_sw_version_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const sw_version);
+
+/***********************************************************************//**
+ * Set the Unit Family
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param unit_family   The unit family to be set. ASCIIZ string. The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+***************************************************************************/
+void evel_pnfRegistration_unit_family_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const unit_family);
+
+/**********************************************************************//**
+ * Set the Unit type
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param unit_type   The unit type to be set. ASCIIZ string. The caller does
+ *                   not need to preserve the value once the function returns.
+****************************************************************************/
+void evel_pnfRegistration_unit_type_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const unit_type);
+
+/***********************************************************************//**
+ * Set the Vendor name
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries
+ *        to overwrite, just ignoring the update instead.
+ *
+ * @param pnfRegistration     Pointer to the pnfRegistration
+ * @param vendor_name   The vendor name to be set. ASCIIZ string. The
+ *                      caller does not need to preserve the value once
+ *                      the function returns.
+***************************************************************************/
+void evel_pnfRegistration_vendor_name_set(EVENT_PNF_REGISTRATION * pnfRegistration, const char * const vendor_name);
 
 /**************************************************************************//**
  * tuple which provides the name of a key along with its value and
@@ -581,7 +913,7 @@ typedef struct json_object_instance
 {
 
   char *jsonstring;
-  unsigned long long objinst_epoch_microsec;
+  EVEL_OPTION_ULL objinst_epoch_microsec;
   DLIST object_keys; /*EVEL_INTERNAL_KEY list */
 
 } EVEL_JSON_OBJECT_INSTANCE;
@@ -648,19 +980,8 @@ void evel_free_jsonobject(EVEL_JSON_OBJECT * jsobj);
 /*****************************************************************************/
 /* Supported Measurement version.                                            */
 /*****************************************************************************/
-#define EVEL_MEASUREMENT_MAJOR_VERSION 2
-#define EVEL_MEASUREMENT_MINOR_VERSION 1
-
-/**************************************************************************//**
- * Errors.
- * JSON equivalent field: errors
- *****************************************************************************/
-typedef struct measurement_errors {
-  int receive_discards;
-  int receive_errors;
-  int transmit_discards;
-  int transmit_errors;
-} MEASUREMENT_ERRORS;
+#define EVEL_MEASUREMENT_MAJOR_VERSION 4
+#define EVEL_MEASUREMENT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Measurement.
@@ -682,26 +1003,201 @@ typedef struct event_measurement {
   /***************************************************************************/
   /* Optional fields                                                         */
   /***************************************************************************/
-  DLIST additional_info;
-  DLIST additional_measurements;
-  DLIST additional_objects;
+  HASHTABLE_T * additional_info;
+  DLIST additional_measurements; // arry of named hashmap
+  DLIST additional_objects; //array of json objects
   DLIST codec_usage;
   EVEL_OPTION_INT concurrent_sessions;
   EVEL_OPTION_INT configured_entities;
   DLIST cpu_usage;
+
+  //VES6.0 Added field 14/07/2018
+  DLIST huge_pages;
+  DLIST loads;
+  DLIST process_stats;
+  DLIST ipmis;
+
   DLIST disk_usage;
-  MEASUREMENT_ERRORS * errors;
-  DLIST feature_usage;
+  DLIST machine_check_exception;
+  HASHTABLE_T * feature_usage;
   DLIST filesystem_usage;
   DLIST latency_distribution;
   EVEL_OPTION_DOUBLE mean_request_latency;
   DLIST mem_usage;
   EVEL_OPTION_INT media_ports_in_use;
-  EVEL_OPTION_INT request_rate;
+  EVEL_OPTION_DOUBLE request_rate;
   EVEL_OPTION_INT vnfc_scaling_metric;
-  DLIST vnic_usage;
+  DLIST nic_performance;
 
 } EVENT_MEASUREMENT;
+
+typedef struct Measurement_machine_check_exception {
+  char * process_id;
+  EVEL_OPTION_DOUBLE corrected_memory_errors;
+  EVEL_OPTION_DOUBLE corrected_memory_errors_in_1Hr;
+  EVEL_OPTION_DOUBLE uncorrected_memory_errors;
+  EVEL_OPTION_DOUBLE uncorrected_memory_errors_in_1Hr;
+
+} MACHINE_CHECK_EXCEPTION;
+/**************************************************************************//**
+* Huge Pages.
+* JSON equivalent field: hugePages
+*****************************************************************************/
+typedef struct measurement_huge_page {
+  char * hugePagesIdentifier;
+  EVEL_OPTION_DOUBLE bytesUsed;
+  EVEL_OPTION_DOUBLE bytesFree;
+  EVEL_OPTION_DOUBLE vmPageNumberUsed;
+  EVEL_OPTION_DOUBLE vmPageNumberFree;
+  EVEL_OPTION_DOUBLE percentUsed;
+  EVEL_OPTION_DOUBLE percentFree;
+  } MEASUREMENT_HUGE_PAGE;
+
+/**************************************************************************//**
+* Process Stats.
+* JSON equivalent field: processStats
+*****************************************************************************/
+typedef struct measurement_process_stats {
+  char * processIdentifier;
+  EVEL_OPTION_DOUBLE forkRate;
+  EVEL_OPTION_DOUBLE psStateBlocked;
+  EVEL_OPTION_DOUBLE psStatePaging;
+  EVEL_OPTION_DOUBLE psStateRunning;
+  EVEL_OPTION_DOUBLE psStateSleeping;
+  EVEL_OPTION_DOUBLE psStateStopped;
+  EVEL_OPTION_DOUBLE psStateZombie;
+
+  } MEASUREMENT_PROCESS_STATS;
+
+/**************************************************************************//**
+* Load.
+* JSON equivalent field: load
+*****************************************************************************/
+typedef struct measurement_load {
+  EVEL_OPTION_DOUBLE shortTerm;
+  EVEL_OPTION_DOUBLE midTerm;
+  EVEL_OPTION_DOUBLE longTerm;
+
+  } MEASUREMENT_LOAD;
+
+/**************************************************************************//**
+ * Convert a ::EVEL_OPTION_OP_STATE to it's string form for JSON encoding.
+ *
+ * @param state         The entity state to encode.
+ *
+ * @returns the corresponding string
+ *****************************************************************************/
+char * evel_entity_opt_op_state (EVEL_OPTION_OP_STATE * const state);
+
+/**************************************************************************//**
+ * Initialize an ::EVEL_OPTION_STATE to a not-set state.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_INT.
+ *****************************************************************************/
+void evel_init_option_op_state(EVEL_OPTION_OP_STATE * const option);
+
+/**************************************************************************//**
+ * Set the value of an ::EVEL_OPTION_STATE.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_STATE.
+ * @param value         The value to set.
+ * @param description   Description to be used in logging.
+ *****************************************************************************/
+void evel_set_option_op_state(EVEL_OPTION_OP_STATE * const option,
+                         const int value,
+                         const char * const description);
+/**************************************************************************//**
+ * Add a huge page to measurement
+ *
+ * @param measurement            Pointer to measurement
+ * @param hugePagesIdentifier    Huge Page Identifier to add
+ *****************************************************************************/
+MEASUREMENT_HUGE_PAGE * evel_measurement_new_huge_page_add(
+                                  EVENT_MEASUREMENT * measurement,
+                                  const char * const hugePagesIdentifier );
+
+/**************************************************************************//**
+ * Set bytes used value in a huge page
+ *
+ * @param huge_page        Pointer to huge page
+ * @param val              bytes used value
+ *****************************************************************************/
+void evel_measurement_huge_page_bytesUsed_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set bytes free value in a huge page
+ *
+ * @param huge_page        Pointer to huge page
+ * @param val              bytes free value
+ *****************************************************************************/
+void evel_measurement_huge_page_bytesFree_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set Number of used VM Pages in numbers in a huge page
+ *
+ * @param huge_page        Pointer to huge page
+ * @param val              value
+ *****************************************************************************/
+void evel_measurement_huge_page_vmPageNumberUsed_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set Number of free VM Pages in numbers in a huge page
+ *
+ * @param huge_page        Pointer to huge page
+ * @param val              value
+ *****************************************************************************/
+void evel_measurement_huge_page_vmPageNumberFree_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set Number of used hugePages in percent in a huge page
+ *
+ * @param huge_page        Pointer to huge page
+ * @param val              value
+ *****************************************************************************/
+void evel_measurement_huge_page_percentUsed_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set umber of free hugePages in percent in a huge page
+ *
+ * @param huge_page        Pointer to huge page
+ * @param val              value
+ *****************************************************************************/
+void evel_measurement_huge_page_percentFree_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val);
+
+/**************************************************************************//**
+ * Add an additional value name/value pair to the Measurement.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param measurement     Pointer to the measurement.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_measurement_addl_info_add(EVENT_MEASUREMENT * measurement, char * name, char * value);
+
+/**************************************************************************//**
+ * Add a json object to jsonObject list.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param measurement     Pointer to the ScalingMeasurement
+ * @param jsonobj   Pointer to json object
+ *****************************************************************************/
+void evel_measurement_addl_object_add(EVENT_MEASUREMENT * measurement, EVEL_JSON_OBJECT *jsonobj);
 
 /**************************************************************************//**
  * CPU Usage.
@@ -718,6 +1214,18 @@ typedef struct measurement_cpu_use {
   EVEL_OPTION_DOUBLE sys;
   EVEL_OPTION_DOUBLE user;
   EVEL_OPTION_DOUBLE wait;
+
+  /*
+  * Ves6.0 added fields 14/07/2018
+  */
+  EVEL_OPTION_DOUBLE cpuCapacityContention;
+  EVEL_OPTION_DOUBLE cpuDemandAvg;
+  EVEL_OPTION_DOUBLE cpuDemandMhz;
+  EVEL_OPTION_DOUBLE cpuDemandPct;
+  EVEL_OPTION_DOUBLE cpuLatencyAvg;
+  EVEL_OPTION_DOUBLE cpuOverheadAvg;
+  EVEL_OPTION_DOUBLE cpuSwapWaitTime;
+
 } MEASUREMENT_CPU_USE;
 
 
@@ -767,6 +1275,23 @@ typedef struct measurement_disk_use {
   EVEL_OPTION_DOUBLE timewritelast;
   EVEL_OPTION_DOUBLE timewritemax;
   EVEL_OPTION_DOUBLE timewritemin;
+  /*
+  * VES6.0 Added fields 14/07/2018
+  */
+  EVEL_OPTION_DOUBLE diskBusResets;
+  EVEL_OPTION_DOUBLE diskCommandsAborted;
+  EVEL_OPTION_DOUBLE diskTime;
+  EVEL_OPTION_DOUBLE diskFlushRequests;
+  EVEL_OPTION_DOUBLE diskFlushTime;
+  EVEL_OPTION_DOUBLE diskCommandsAvg;
+  EVEL_OPTION_DOUBLE diskReadCommandsAvg;
+  EVEL_OPTION_DOUBLE diskWriteCommandsAvg;
+  EVEL_OPTION_DOUBLE diskTotalReadLatencyAvg;
+  EVEL_OPTION_DOUBLE diskTotalWriteLatencyAvg;
+  EVEL_OPTION_DOUBLE diskWeightedIoTimeAvg;
+  EVEL_OPTION_DOUBLE diskWeightedIoTimeLast;
+  EVEL_OPTION_DOUBLE diskWeightedIoTimeMax;
+  EVEL_OPTION_DOUBLE diskWeightedIoTimeMin;
 
 } MEASUREMENT_DISK_USE;
 
@@ -782,6 +1307,785 @@ typedef struct measurement_disk_use {
  * @param usage         Disk utilization.
  *****************************************************************************/
 MEASUREMENT_DISK_USE * evel_measurement_new_disk_use_add(EVENT_MEASUREMENT * measurement, char * id);
+
+/**************************************************************************//**
+ * Set milliseconds spent doing input/output operations over 1 sec; treat
+ * this metric as a device load percentage where 1000ms  matches 100% load;
+ * provide the average over the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_iotimeavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds spent doing input/output operations over 1 sec; treat
+ * this metric as a device load percentage where 1000ms  matches 100% load;
+ * provide the last value within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_iotimelast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+/**************************************************************************//**
+ * Set milliseconds spent doing input/output operations over 1 sec; treat
+ * this metric as a device load percentage where 1000ms  matches 100% load;
+ * provide the maximum value within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_iotimemax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds spent doing input/output operations over 1 sec; treat
+ * this metric as a device load percentage where 1000ms  matches 100% load;
+ * provide the minimum value within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_iotimemin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical read operations that were merged into physical read
+ * operations, e.g., two logical reads were served by one physical disk access;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergereadavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical read operations that were merged into physical read
+ * operations, e.g., two logical reads were served by one physical disk access;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergereadlast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical read operations that were merged into physical read
+ * operations, e.g., two logical reads were served by one physical disk access;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergereadmax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+/**************************************************************************//**
+ * Set number of logical read operations that were merged into physical read
+ * operations, e.g., two logical reads were served by one physical disk access;
+ * provide the minimum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergereadmin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical write operations that were merged into physical read
+ * operations, e.g., two logical writes were served by one physical disk access;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergewritelast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical write operations that were merged into physical read
+ * operations, e.g., two logical writes were served by one physical disk access;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergewritemax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical write operations that were merged into physical read
+ * operations, e.g., two logical writes were served by one physical disk access;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergewriteavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of logical write operations that were merged into physical read
+ * operations, e.g., two logical writes were served by one physical disk access;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_mergewritemin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second read from a disk or partition;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetsreadavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second read from a disk or partition;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetsreadlast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second read from a disk or partition;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetsreadmax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second read from a disk or partition;
+ * provide the minimum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetsreadmin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second written to a disk or partition;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetswriteavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second written to a disk or partition;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetswritelast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second written to a disk or partition;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetswritemax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of octets per second written to a disk or partition;
+ * provide the minimum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_octetswritemin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of read operations per second issued to the disk;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opsreadavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of read operations per second issued to the disk;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opsreadlast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of read operations per second issued to the disk;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opsreadmax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of read operations per second issued to the disk;
+ * provide the minimum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opsreadmin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of write operations per second issued to the disk;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opswriteavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of write operations per second issued to the disk;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opswritelast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of write operations per second issued to the disk;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opswritemax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set number of write operations per second issued to the disk;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_opswritemin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set queue size of pending I/O operations per second;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_pendingopsavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set queue size of pending I/O operations per second;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_pendingopslast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set queue size of pending I/O operations per second;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_pendingopsmax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set queue size of pending I/O operations per second;
+ * provide the minimum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_pendingopsmin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a read operation took to complete;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timereadavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a read operation took to complete;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timereadlast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a read operation took to complete;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timereadmax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a read operation took to complete;
+ * provide the minimum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timereadmin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a write operation took to complete;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timewriteavg_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a write operation took to complete;
+ * provide the last measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timewritelast_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+/**************************************************************************//**
+ * Set milliseconds a write operation took to complete;
+ * provide the maximum measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timewritemax_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set milliseconds a write operation took to complete;
+ * provide the average measurement within the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_timewritemin_set(MEASUREMENT_DISK_USE * const disk_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set Number of bus resets over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskBusResets_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Number of disk commands aborted over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskCommandsAborted_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Nanoseconds spent on disk cache reads/writes within the measurement
+ * interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskTime_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Total flush requests of the disk cache over the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskFlushRequests_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Milliseconds spent on disk cache flushing over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskFlushTime_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Average number of commands per second over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskCommandsAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Average number of read commands issued per second to the disk over the
+ * measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskReadCommandsAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Average number of write commands issued per second to the disk over the
+ * measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskWriteCommandsAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Average read time from the perspective of a Guest OS: sum of the Kernel
+ * Read Latency and Physical Device Read Latency in milliseconds over the
+ * measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskTotalReadLatencyAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Average write time from the perspective of a Guest OS: sum of the
+ * Kernel Write Latency and Physical Device Write Latency in milliseconds over
+ * the measurement interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskTotalWriteLatencyAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Measure in ms over 1 sec of both I/O completion time and the backlog
+ * that may be accumulating. Value is the average within the collection
+ * interval.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskWeightedIoTimeAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Measure in ms over 1 sec of both I/O completion time and the backlog
+ * that may be accumulating. Value is the last within the collection interval.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskWeightedIoTimeLast_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Measure in ms over 1 sec of both I/O completion time and the backlog
+ * that may be accumulating. Value is the maximum within the collection
+ * interval.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskWeightedIoTimeMax_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
+
+/**************************************************************************//**
+ * Set Measure in ms over 1 sec of both I/O completion time and the backlog
+ * that may be accumulating. Value is the minimum within the collection
+ * interval.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param disk_use     Pointer to the Disk Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_disk_use_diskWeightedIoTimeMin_set(
+                                   MEASUREMENT_DISK_USE * const disk_use,
+                                   const double val);
 
 /**************************************************************************//**
  * Filesystem Usage.
@@ -802,15 +2106,27 @@ typedef struct measurement_fsys_use {
  * JSON equivalent field: memoryUsage
  *****************************************************************************/
 typedef struct measurement_mem_use {
-  char * id;
   char * vmid;
-  double membuffsz;
+  double memused;
+  double memfree;
+  EVEL_OPTION_DOUBLE membuffsz;
   EVEL_OPTION_DOUBLE memcache;
   EVEL_OPTION_DOUBLE memconfig;
-  EVEL_OPTION_DOUBLE memfree;
   EVEL_OPTION_DOUBLE slabrecl;
   EVEL_OPTION_DOUBLE slabunrecl;
-  EVEL_OPTION_DOUBLE memused;
+  /*
+  * VES6.0 Added fields 14/07/2018
+  */
+  EVEL_OPTION_DOUBLE memoryDemand;
+  EVEL_OPTION_DOUBLE memoryLatencyAvg;
+  EVEL_OPTION_DOUBLE memorySharedAvg;
+  EVEL_OPTION_DOUBLE memorySwapInAvg;
+  EVEL_OPTION_DOUBLE memorySwapInRateAvg;
+  EVEL_OPTION_DOUBLE memorySwapOutAvg;
+  EVEL_OPTION_DOUBLE memorySwapOutRateAvg;
+  EVEL_OPTION_DOUBLE memorySwapUsedAvg;
+  EVEL_OPTION_DOUBLE percentMemoryUsage;
+
 } MEASUREMENT_MEM_USE;
 
 /**************************************************************************//**
@@ -821,14 +2137,17 @@ typedef struct measurement_mem_use {
  * returns.
  *
  * @param measurement   Pointer to the measurement.
- * @param id            ASCIIZ string with the Memory identifier.
  * @param vmidentifier  ASCIIZ string with the VM's identifier.
- * @param membuffsz     Memory Size.
+ * @param memfree       Memory Free Size.
+ * @param memused       Memory Used
  *
  * @return  Returns pointer to memory use structure in measurements
  *****************************************************************************/
-MEASUREMENT_MEM_USE * evel_measurement_new_mem_use_add(EVENT_MEASUREMENT * measurement,
-                                 char * id,  char *vmidentifier,  double membuffsz);
+MEASUREMENT_MEM_USE * evel_measurement_new_mem_use_add(
+                                 EVENT_MEASUREMENT * measurement,
+                                 char *vmidentifier,  
+                                 double memfree,
+                                 double memused);
 
 /**************************************************************************//**
  * Set kilobytes of memory used for cache
@@ -843,7 +2162,21 @@ MEASUREMENT_MEM_USE * evel_measurement_new_mem_use_add(EVENT_MEASUREMENT * measu
 void evel_measurement_mem_use_memcache_set(MEASUREMENT_MEM_USE * const mem_use,
                                     const double val);
 /**************************************************************************//**
- * Set kilobytes of memory configured in the virtual machine on which the VNFC reporting
+ * Set kilobytes of memory Buffered
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_mem_buffered_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set kilobytes of memory configured in the virtual machine on which the VNFC
+ * reporting
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
@@ -854,20 +2187,10 @@ void evel_measurement_mem_use_memcache_set(MEASUREMENT_MEM_USE * const mem_use,
  *****************************************************************************/
 void evel_measurement_mem_use_memconfig_set(MEASUREMENT_MEM_USE * const mem_use,
                                     const double val);
+
 /**************************************************************************//**
- * Set kilobytes of physical RAM left unused by the system
- *
- * @note  The property is treated as immutable: it is only valid to call
- *        the setter once.  However, we don't assert if the caller tries to
- *        overwrite, just ignoring the update instead.
- *
- * @param mem_use      Pointer to the Memory Use.
- * @param val          double
- *****************************************************************************/
-void evel_measurement_mem_use_memfree_set(MEASUREMENT_MEM_USE * const mem_use,
-                                    const double val);
-/**************************************************************************//**
- * Set the part of the slab that can be reclaimed such as caches measured in kilobytes
+ * Set the part of the slab that can be reclaimed such as caches measured in
+ * kilobytes
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
@@ -878,8 +2201,10 @@ void evel_measurement_mem_use_memfree_set(MEASUREMENT_MEM_USE * const mem_use,
  *****************************************************************************/
 void evel_measurement_mem_use_slab_reclaimed_set(MEASUREMENT_MEM_USE * const mem_use,
                                     const double val);
+
 /**************************************************************************//**
- * Set the part of the slab that cannot be reclaimed such as caches measured in kilobytes
+ * Set the part of the slab that cannot be reclaimed such as caches measured
+ * in kilobytes
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
@@ -890,8 +2215,9 @@ void evel_measurement_mem_use_slab_reclaimed_set(MEASUREMENT_MEM_USE * const mem
  *****************************************************************************/
 void evel_measurement_mem_use_slab_unreclaimable_set(MEASUREMENT_MEM_USE * const mem_use,
                                     const double val);
+
 /**************************************************************************//**
- * Set the total memory minus the sum of free, buffered, cached and slab memory in kilobytes
+ * Set the Host demand in kibibytes
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
@@ -900,8 +2226,117 @@ void evel_measurement_mem_use_slab_unreclaimable_set(MEASUREMENT_MEM_USE * const
  * @param mem_use      Pointer to the Memory Use.
  * @param val          double
  *****************************************************************************/
-void evel_measurement_mem_use_usedup_set(MEASUREMENT_MEM_USE * const mem_use,
+void evel_measurement_mem_use_memoryDemand_set(MEASUREMENT_MEM_USE * const mem_use, const double val);
+
+/**************************************************************************//**
+ * Set the memory latency average in Percentage of time the VM is 
+ * waiting to access swapped or compressed memory
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memoryLatencyAvg_set(MEASUREMENT_MEM_USE * const mem_use,
                                     const double val);
+
+/**************************************************************************//**
+ ** Set the shared memory in kilobytes 
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memorySharedAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ ** Set the Amount of memory swapped-in from host cache in kibibytes 
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memorySwapInAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ ** Set the Rate at which memory is swapped from disk into active memory 
+ *  during the interval in kilobytes per second
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memorySwapInRateAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ ** Set the Amount of memory swapped-out to host cache in kibibytes
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memorySwapOutAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ ** Set the Rate at which memory is being swapped from active memory to disk
+ * during the current interval in kilobytes per second
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memorySwapOutRateAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ ** Set the Space used for caching swapped pages in the host cache in kibibytes
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_memorySwapUsedAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
+/**************************************************************************//**
+ ** Set the Percentage of memory usage; value = 
+ * (memoryUsed / (memoryUsed + memoryFree) x 100 if denomintor is nonzero, 
+ *  or 0, if otherwise.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_percentMemoryUsage_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val);
+
 /**************************************************************************//**
  * Latency Bucket.
  * JSON equivalent field: latencyBucketMeasure
@@ -918,13 +2353,29 @@ typedef struct measurement_latency_bucket {
 } MEASUREMENT_LATENCY_BUCKET;
 
 /**************************************************************************//**
- * Virtual NIC usage.
- * JSON equivalent field: vNicUsage
+ * Virtual NIC performance.
+ * JSON equivalent field: NicPerformance
  *****************************************************************************/
-typedef struct measurement_vnic_performance {
+typedef struct measurement_nic_performance {
+
+  /* Indicates whether NicPerformance values are likely inaccurate
+           due to counter overflow or other condtions*/
+  char * nic_id;
+  char * valuesaresuspect;
+
   /***************************************************************************/
   /* Optional fields                                                         */
   /***************************************************************************/
+  EVEL_OPTION_OP_STATE administrativeState;
+  EVEL_OPTION_OP_STATE operationalState;
+  EVEL_OPTION_DOUBLE receivedPercentDiscard;
+  EVEL_OPTION_DOUBLE receivedPercentError;
+  EVEL_OPTION_DOUBLE receivedUtilization;
+  EVEL_OPTION_DOUBLE speed;
+  EVEL_OPTION_DOUBLE transmittedPercentDiscard;
+  EVEL_OPTION_DOUBLE transmittedPercentError;
+  EVEL_OPTION_DOUBLE transmittedUtilization;
+
   /*Cumulative count of broadcast packets received as read at the end of
    the measurement interval*/
   EVEL_OPTION_DOUBLE recvd_bcast_packets_acc;
@@ -995,12 +2446,8 @@ typedef struct measurement_vnic_performance {
   EVEL_OPTION_DOUBLE tx_ucast_packets_acc;
   /*Count of transmit unicast packets within the measurement interval*/
   EVEL_OPTION_DOUBLE tx_ucast_packets_delta;
-  /* Indicates whether vNicPerformance values are likely inaccurate
-           due to counter overflow or other condtions*/
-  char *valuesaresuspect;
-  char *vnic_id;
 
-} MEASUREMENT_VNIC_PERFORMANCE;
+} MEASUREMENT_NIC_PERFORMANCE;
 
 /**************************************************************************//**
  * Codec Usage.
@@ -1029,6 +2476,101 @@ typedef struct measurement_group {
   DLIST measurements;
 } MEASUREMENT_GROUP;
 
+/*
+* VES6.0 added fields 14July
+*/
+
+/**************************************************************************//**
+* IPMI.
+* JSON equivalent field: Ipmi
+*****************************************************************************/
+typedef struct measurement_ipmi {
+  EVEL_OPTION_DOUBLE exitAirTemperature;
+  EVEL_OPTION_DOUBLE frontPanelTemperature;
+  EVEL_OPTION_DOUBLE ioModuleTemperature;
+  EVEL_OPTION_DOUBLE systemAirflow;
+  DLIST ipmi_base_board_temparature;
+  DLIST ipmi_base_board_voltage;
+  DLIST ipmi_battery;
+  DLIST ipmi_fan;
+  DLIST ipmi_hsbp;
+  DLIST ipmi_global_agg_temp_margin;
+  DLIST ipmi_nic;
+  DLIST ipmi_power;
+  DLIST ipmi_processor;
+
+} MEASUREMENT_IPMI;
+
+/**************************************************************************//**
+* IPMI base board temperature
+* JSON equivalent field: PercentUsage
+*****************************************************************************/
+typedef struct measurement_ipmi_bb_temperature {
+  char * BBTemperatureID;
+  EVEL_OPTION_DOUBLE BBTemperature;
+
+  } MEASUREMENT_IPMI_BB_TEMPERATURE;
+
+typedef struct measurement_ipmi_bb_voltage {
+  char * BBVoltageRegID;
+  EVEL_OPTION_DOUBLE  voltageRegTemperature;
+
+  } MEASUREMENT_IPMI_BB_VOLTAGE;
+
+typedef struct measurement_ipmi_battery {
+  char * batteryIdentifier;
+  EVEL_OPTION_STRING batteryType;
+  EVEL_OPTION_DOUBLE batteryVoltageLevel;
+
+  } MEASUREMENT_IPMI_BATTERY;
+
+
+typedef struct measurement_ipmi_fan {
+  char * fanIdentifier;
+  EVEL_OPTION_DOUBLE fanSpeed;
+
+  } MEASUREMENT_IPMI_FAN;
+
+typedef struct measurement_ipmi_hsbp {
+  char * hsbpIdentifier;
+  EVEL_OPTION_DOUBLE hsbpTemperature;
+
+  } MEASUREMENT_IPMI_HSBP;
+
+typedef struct measurement_ipmi_global_agg_temp_margin {
+  char * globalAggTempID;
+  EVEL_OPTION_DOUBLE globalAggTempMargin;
+
+  } MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN;
+
+typedef struct measurement_ipmi_nic {
+  char * nicIdentifier;
+  EVEL_OPTION_DOUBLE nicTemperature;
+
+  } MEASUREMENT_IPMI_NIC;
+
+typedef struct measurement_ipmi_power_supply {
+  char * powerSupplyIdentifier;
+  EVEL_OPTION_DOUBLE powerSupplyInputPower;
+  EVEL_OPTION_DOUBLE powerSupplyCurrentOutput;
+  EVEL_OPTION_DOUBLE powerSupplyTemperature;
+
+  } MEASUREMENT_IPMI_POWER_SUPPLY;
+
+typedef struct measurement_ipmi_processor {
+  char * processorIdentifier;
+  EVEL_OPTION_DOUBLE pprocessorThermalControl;
+  EVEL_OPTION_DOUBLE processorDtsThermalMargin;
+  DLIST processorDimmAggregateThermalMargin;
+
+  } MEASUREMENT_IPMI_PROCESSOR;
+
+typedef struct measurement_ipmi_processor_dimmAgg_therm {
+  char * MarginIdentifier;
+  double thermalMargin;
+
+  } MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM;
+
 /**************************************************************************//**
  * Custom Defined Measurement.
  * JSON equivalent field: measurements
@@ -1042,7 +2584,7 @@ typedef struct custom_measurement {
 /* Supported Report version.                                                 */
 /*****************************************************************************/
 #define EVEL_REPORT_MAJOR_VERSION 1
-#define EVEL_REPORT_MINOR_VERSION 1
+#define EVEL_REPORT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Report.
@@ -1128,13 +2670,16 @@ typedef struct mobile_gtp_per_flow_metrics {
   EVEL_OPTION_INT num_gtp_echo_failures;
   EVEL_OPTION_INT num_gtp_tunnel_errors;
   EVEL_OPTION_INT num_http_errors;
+  HASHTABLE_T *ip_tos_count_list;
+  HASHTABLE_T *mobile_qci_cos_count_list;
+  HASHTABLE_T *tcp_flag_count_list;
 
 } MOBILE_GTP_PER_FLOW_METRICS;
 
 /*****************************************************************************/
 /* Supported Mobile Flow version.                                            */
 /*****************************************************************************/
-#define EVEL_MOBILE_FLOW_MAJOR_VERSION 2
+#define EVEL_MOBILE_FLOW_MAJOR_VERSION 4
 #define EVEL_MOBILE_FLOW_MINOR_VERSION 0
 
 /**************************************************************************//**
@@ -1160,7 +2705,7 @@ typedef struct event_mobile_flow {
   int other_endpoint_port;
   char * reporting_endpoint_ip_addr;
   int reporting_endpoint_port;
-  DLIST additional_info;                         /* JSON: additionalFields */
+  HASHTABLE_T *additional_info;                         /* JSON: additionalFields */
 
   /***************************************************************************/
   /* Optional fields                                                         */
@@ -1194,8 +2739,8 @@ typedef struct event_mobile_flow {
 /*****************************************************************************/
 /* Supported Other field version.                                            */
 /*****************************************************************************/
-#define EVEL_OTHER_EVENT_MAJOR_VERSION 1
-#define EVEL_OTHER_EVENT_MINOR_VERSION 1
+#define EVEL_OTHER_EVENT_MAJOR_VERSION 3
+#define EVEL_OTHER_EVENT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Other.
@@ -1206,9 +2751,14 @@ typedef struct event_other {
   int major_version;
   int minor_version;
 
-  HASHTABLE_T *namedarrays; /* HASHTABLE_T */
+  DLIST arrayOfNamedHashMap;
+  HASHTABLE_T *hashMap;
   DLIST jsonobjects; /* DLIST of EVEL_JSON_OBJECT */
+
+/** to delete
   DLIST namedvalues;
+  HASHTABLE_T *namedarrays;****/ /* HASHTABLE_T */
+
 } EVENT_OTHER;
 
 /**************************************************************************//**
@@ -1224,14 +2774,14 @@ typedef struct other_field {
 /*****************************************************************************/
 /* Supported Service Events version.                                         */
 /*****************************************************************************/
-#define EVEL_HEARTBEAT_FIELD_MAJOR_VERSION 1
-#define EVEL_HEARTBEAT_FIELD_MINOR_VERSION 1
+#define EVEL_HEARTBEAT_FIELD_MAJOR_VERSION 3
+#define EVEL_HEARTBEAT_FIELD_MINOR_VERSION 0
 
 
 /*****************************************************************************/
 /* Supported Signaling version.                                              */
 /*****************************************************************************/
-#define EVEL_SIGNALING_MAJOR_VERSION 1
+#define EVEL_SIGNALING_MAJOR_VERSION 3
 #define EVEL_SIGNALING_MINOR_VERSION 0
 
 /**************************************************************************//**
@@ -1271,24 +2821,15 @@ typedef struct event_signaling {
   /***************************************************************************/
   EVEL_OPTION_STRING compressed_sip;                  /* JSON: compressedSip */
   EVEL_OPTION_STRING summary_sip;                        /* JSON: summarySip */
-  DLIST additional_info;
+  HASHTABLE_T *additional_info;
 
 } EVENT_SIGNALING;
-
-/**************************************************************************//**
- * Sgnaling Additional Field.
- * JSON equivalent field: additionalFields
- *****************************************************************************/
-typedef struct signaling_additional_field {
-  char * name;
-  char * value;
-} SIGNALING_ADDL_FIELD;
 
 /*****************************************************************************/
 /* Supported State Change version.                                           */
 /*****************************************************************************/
-#define EVEL_STATE_CHANGE_MAJOR_VERSION 1
-#define EVEL_STATE_CHANGE_MINOR_VERSION 2
+#define EVEL_STATE_CHANGE_MAJOR_VERSION 4
+#define EVEL_STATE_CHANGE_MINOR_VERSION 0
 
 /**************************************************************************//**
  * State Change.
@@ -1313,23 +2854,51 @@ typedef struct event_state_change {
   /***************************************************************************/
   /* Optional fields                                                         */
   /***************************************************************************/
-  DLIST additional_fields;
+  HASHTABLE_T *additional_fields;
 
 } EVENT_STATE_CHANGE;
 
+/*****************************************************************************/
+/* Supported Notification version.                                           */
+/*****************************************************************************/
+#define EVEL_NOTIFICATION_MAJOR_VERSION 2
+#define EVEL_NOTIFICATION_MINOR_VERSION 0
+
 /**************************************************************************//**
- * State Change Additional Field.
- * JSON equivalent field: additionalFields
+ * Notification.
+ * JSON equivalent field: notificationFields
  *****************************************************************************/
-typedef struct state_change_additional_field {
-  char * name;
-  char * value;
-} STATE_CHANGE_ADDL_FIELD;
+typedef struct event_notification {
+  /***************************************************************************/
+  /* Header and version                                                      */
+  /***************************************************************************/
+  EVENT_HEADER header;
+  int major_version;
+  int minor_version;
+
+  /***************************************************************************/
+  /* Mandatory fields                                                        */
+  /***************************************************************************/
+  double version;
+  char * changeIdentifier;
+  char * changeType;
+
+  /***************************************************************************/
+  /* Optional fields                                                         */
+  /***************************************************************************/
+  HASHTABLE_T *additional_fields;
+  DLIST arrayOfNamedHashMap;
+  EVEL_OPTION_STRING changeContact;
+  EVEL_OPTION_STATE new_state;
+  EVEL_OPTION_STATE old_state;
+  EVEL_OPTION_STRING state_interface;
+
+} EVENT_NOTIFICATION;
 
 /*****************************************************************************/
 /* Supported Syslog version.                                                 */
 /*****************************************************************************/
-#define EVEL_SYSLOG_MAJOR_VERSION 3
+#define EVEL_SYSLOG_MAJOR_VERSION 4
 #define EVEL_SYSLOG_MINOR_VERSION 0
 
 /**************************************************************************//**
@@ -1354,7 +2923,7 @@ typedef struct event_syslog {
   /***************************************************************************/
   /* Optional fields                                                         */
   /***************************************************************************/
-  EVEL_OPTION_STRING additional_filters;
+  HASHTABLE_T * additional_fields;
   EVEL_OPTION_STRING event_source_host;
   EVEL_OPTION_INT syslog_facility;
   EVEL_OPTION_INT syslog_priority;
@@ -1365,6 +2934,8 @@ typedef struct event_syslog {
   EVEL_OPTION_STRING syslog_severity;
   double syslog_fver;
   EVEL_OPTION_INT syslog_ver;
+  EVEL_OPTION_STRING syslog_timeStamp;
+  EVEL_OPTION_STRING syslog_msgHost;
 
 } EVENT_SYSLOG;
 
@@ -1396,12 +2967,15 @@ typedef struct copyright {
  *
  * @sa  Matching Term function.
  *
- * @param   fqdn    The API's FQDN or IP address.
+* @param   fqdn    The API's FQDN or IP address.
  * @param   port    The API's port.
+ * @param   bakup_fqdn    The API's FQDN or IP address.
+ * @param   bakup_port    The API's port.
  * @param   path    The optional path (may be NULL).
  * @param   topic   The optional topic part of the URL (may be NULL).
  * @param   ring_buf_size   Ring buffer size (>=100) ~ Avg Messages in 1hr
  * @param   secure  Whether to use HTTPS (0=HTTP, 1=HTTPS).
+ * @param   activmode  Whether to use ActiveActive or ActiveStandby collector mode
  * @param   cert_file_path     Path to client certificate file
  * @param   key_file_path      Path to client key file
  * @param   ca_info            Path to CA info
@@ -1410,7 +2984,10 @@ typedef struct copyright {
  * @param   verify_host        SSL verification of host 0 or 1
  * @param   username  Username for Basic Authentication of requests.
  * @param   password  Password for Basic Authentication of requests.
- * @param   source_ip The ip of node we represent.(NULL for default ip)
+ * @param   bakup_username  Username for Basic Authentication of Bakup FQDN.
+ * @param   bakup_password  Password for Basic Authentication of Bakup FQDN.
+ * @param   source_ip       The ip of node we represent.(NULL for default ip)
+ * @param   bakup_source_ip The ip bakup fqdn interface.(NULL for default ip)
  * @param   source_type The kind of node we represent.
  * @param   role    The role this node undertakes.
  * @param   verbosity  0 for normal operation, positive values for chattier
@@ -1422,19 +2999,25 @@ typedef struct copyright {
  *****************************************************************************/
 EVEL_ERR_CODES evel_initialize(const char * const fqdn,
                                int port,
+                               const char * const bakup_fqdn,
+                               int bakup_port,
                                const char * const path,
                                const char * const topic,
                                int ring_buf_size,
                                int secure,
+                               int activmode,
                                const char * const cert_file_path,
                                const char * const key_file_path,
                                const char * const ca_info,
                                const char * const ca_file_path,
-                               long verify_peer,
+                              long verify_peer,
                                long verify_host,
                                const char * const username,
                                const char * const password,
+                               const char * const bakup_username,
+                               const char * const bakup_password,
                                const char * const source_ip,
+                               const char * const bakup_source_ip,
                                EVEL_SOURCE_TYPES source_type,
                                const char * const role,
                                int verbosity
@@ -1490,50 +3073,6 @@ int evel_json_encode_event(char * json,
 int evel_json_encode_batch_event(char * json,
                            int max_size,
                            EVENT_HEADER * event);
-/**************************************************************************//**
- * Initialize an event instance id.
- *
- * @param vfield        Pointer to the event vnfname field being initialized.
- * @param vendor_id     The vendor id to encode in the event instance id.
- * @param event_id      The event id to encode in the event instance id.
- *****************************************************************************/
-void evel_init_vendor_field(VENDOR_VNFNAME_FIELD * const vfield,
-                                 const char * const vendor_name);
-
-/**************************************************************************//**
- * Set the Vendor module property of the Vendor.
- *
- * @note  The property is treated as immutable: it is only valid to call
- *        the setter once.  However, we don't assert if the caller tries to
- *        overwrite, just ignoring the update instead.
- *
- * @param vfield        Pointer to the Vendor field.
- * @param module_name   The module name to be set. ASCIIZ string. The caller
- *                      does not need to preserve the value once the function
- *                      returns.
- *****************************************************************************/
-void evel_vendor_field_module_set(VENDOR_VNFNAME_FIELD * const vfield,
-                                    const char * const module_name);
-/**************************************************************************//**
- * Set the Vendor module property of the Vendor.
- *
- * @note  The property is treated as immutable: it is only valid to call
- *        the setter once.  However, we don't assert if the caller tries to
- *        overwrite, just ignoring the update instead.
- *
- * @param vfield        Pointer to the Vendor field.
- * @param module_name   The module name to be set. ASCIIZ string. The caller
- *                      does not need to preserve the value once the function
- *                      returns.
- *****************************************************************************/
-void evel_vendor_field_vnfname_set(VENDOR_VNFNAME_FIELD * const vfield,
-                                    const char * const vnfname);
-/**************************************************************************//**
- * Free an event instance id.
- *
- * @param vfield   Pointer to the event vnfname_field being freed.
- *****************************************************************************/
-void evel_free_event_vendor_field(VENDOR_VNFNAME_FIELD * const vfield);
 
 /**************************************************************************//**
  * Callback function to provide returned data.
@@ -1612,6 +3151,24 @@ void evel_header_type_set(EVENT_HEADER * const header,
                           const char * const type);
 
 /**************************************************************************//**
+ * Set the next event_sequence to use.
+ *
+ * @param sequence      The next sequence number to use.
+ *****************************************************************************/
+void evel_set_global_event_sequence(const int sequence);
+
+/**************************************************************************//**
+ * Set the Event Sequence property of the event header.
+ *
+ * @note This is mainly for tracking fault event sequence numbers
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param sequence_number
+ * 
+ *****************************************************************************/
+void evel_event_sequence_set(EVENT_HEADER * const header,const int sequence_number);
+
+/**************************************************************************//**
  * Set the Start Epoch property of the event header.
  *
  * @note The Start Epoch defaults to the time of event creation.
@@ -1647,6 +3204,17 @@ void evel_reporting_entity_name_set(EVENT_HEADER * const header,
                                     const char * const entity_name);
 
 /**************************************************************************//**
+ * Set the source Name property of the event header.
+ *
+ * @note The source Name defaults to the OpenStack VM Name.
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param source_name   The entity name to set.
+ *****************************************************************************/
+void evel_source_name_set(EVENT_HEADER * const header,
+                                    const char * const source_name);
+
+/**************************************************************************//**
  * Set the Reporting Entity Id property of the event header.
  *
  * @note The Reporting Entity Id defaults to the OpenStack VM UUID.
@@ -1673,6 +3241,27 @@ void evel_nfcnamingcode_set(EVENT_HEADER * const header,
  *****************************************************************************/
 void evel_nfnamingcode_set(EVENT_HEADER * const header,
                          const char * const nfnam);
+
+/**************************************************************************//**
+ * Set the NF Vendor Name
+ *
+ * @param nfVendorName      NF Vendor Name to use
+ *****************************************************************************/
+void evel_nf_vendor_name_set(EVENT_HEADER * const header, char * nfVendorName);
+
+/**************************************************************************//**
+ * Set the time zone offset
+ * 
+ * @param timeZoneOffset      Time zone offset to use.
+ *****************************************************************************/
+void evel_time_zone_offset_set(EVENT_HEADER * const header, char * timeZoneOffset);
+
+/**************************************************************************//**
+ * Set the source ID
+ *
+ * @param sourceId      source ID to use
+ *****************************************************************************/
+void evel_source_id_set(EVENT_HEADER * const header, char * sourceId);
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -1857,24 +3446,6 @@ void evel_measurement_conc_sess_set(EVENT_MEASUREMENT * measurement,
 void evel_measurement_cfg_ents_set(EVENT_MEASUREMENT * measurement,
                                    int configured_entities);
 
-/**************************************************************************//**
- * Add an additional set of Errors to the Measurement.
- *
- * @note  The property is treated as immutable: it is only valid to call
- *        the setter once.  However, we don't assert if the caller tries to
- *        overwrite, just ignoring the update instead.
- *
- * @param measurement       Pointer to the measurement.
- * @param receive_discards  The number of receive discards.
- * @param receive_errors    The number of receive errors.
- * @param transmit_discards The number of transmit discards.
- * @param transmit_errors   The number of transmit errors.
- *****************************************************************************/
-void evel_measurement_errors_set(EVENT_MEASUREMENT * measurement,
-                                 int receive_discards,
-                                 int receive_errors,
-                                 int transmit_discards,
-                                 int transmit_errors);
 
 /**************************************************************************//**
  * Set the Mean Request Latency property of the Measurement.
@@ -1900,7 +3471,7 @@ void evel_measurement_mean_req_lat_set(EVENT_MEASUREMENT * measurement,
  * @param request_rate The Request Rate to be set.
  *****************************************************************************/
 void evel_measurement_request_rate_set(EVENT_MEASUREMENT * measurement,
-                                       int request_rate);
+                                       double request_rate);
 
 /**************************************************************************//**
  * Add an additional CPU usage value name/value pair to the Measurement.
@@ -2017,6 +3588,102 @@ void evel_measurement_cpu_use_wait_set(MEASUREMENT_CPU_USE * const cpu_use,
                                     const double val);
 
 /**************************************************************************//**
+ * Set the The amount of time the CPU cannot run due to contention, in
+ * milliseconds over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuCapacityContention_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the total CPU time that the NF/NFC/VM could use if there was no
+ * contention, in milliseconds over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuDemandAvg_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the CPU demand in MHz
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuDemandMhz_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the CPU demand as a percentage of the provisioned capacity
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuDemandPct_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the Percentage of time the VM is unable to run because it is 
+ * contending for access to the physical CPUs
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuLatencyAvg_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the overhead demand above available allocations and reservations, 
+ * in milliseconds over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuOverheadAvg_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the swap wait time, in milliseconds over the measurement Interval
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param cpu_use      Pointer to the CPU Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_cpu_use_cpuSwapWaitTime_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val);
+
+
+/**************************************************************************//**
  * Add an additional File System usage value name/value pair to the
  * Measurement.
  *
@@ -2055,24 +3722,37 @@ void evel_measurement_fsys_use_add(EVENT_MEASUREMENT * measurement,
  *****************************************************************************/
 void evel_measurement_feature_use_add(EVENT_MEASUREMENT * measurement,
                                       char * feature,
-                                      int utilization);
+                                      char * utilization);
 
 /**************************************************************************//**
- * Add a Additional Measurement value name/value pair to the Measurement.
+ * Add a new Additional Measurement hashmap to the Measurement.
  *
  * The name is null delimited ASCII string.  The library takes
  * a copy so the caller does not have to preserve values after the function
  * returns.
  *
  * @param measurement   Pointer to the Measurement.
- * @param group    ASCIIZ string with the measurement group's name.
- * @param name     ASCIIZ string containing the measurement's name.
- * @param name     ASCIIZ string containing the measurement's value.
+ * @param name     ASCIIZ string containing the hashmap name
  *****************************************************************************/
-void evel_measurement_custom_measurement_add(EVENT_MEASUREMENT * measurement,
-                                             const char * const group,
-                                             const char * const name,
-                                             const char * const value);
+HASHTABLE_T * evel_measurement_new_addl_measurement(
+                                             EVENT_MEASUREMENT * measurement,
+                                             const char * const name);
+
+/**************************************************************************//**
+ * Add a new Additional Measurement hashmap to the Measurement.
+ *
+ * The name is null delimited ASCII string.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param ht       Pointer hashmap.
+ * @param name     ASCIIZ string containing the measurement's name.
+ * @param Value    ASCIIZ string containing the measurement's value.
+ *****************************************************************************/
+void evel_measurement_addl_measurement_set (
+                                      HASHTABLE_T * const ht,
+                                      const char * const name,
+                                      const char * const value);
 
 /**************************************************************************//**
  * Add a Codec usage value name/value pair to the Measurement.
@@ -2184,411 +3864,529 @@ void evel_measurement_latency_add(EVENT_MEASUREMENT * const measurement,
                                   const int count);
 
 /**************************************************************************//**
- * Create a new vNIC Use to be added to a Measurement event.
+ * Create a new NIC Use to be added to a Measurement event.
  *
- * @note    The mandatory fields on the ::MEASUREMENT_VNIC_PERFORMANCE must be supplied
+ * @note    The mandatory fields on the ::MEASUREMENT_NIC_PERFORMANCE must be supplied
  *          to this factory function and are immutable once set. Optional
  *          fields have explicit setter functions, but again values may only be
- *          set once so that the ::MEASUREMENT_VNIC_PERFORMANCE has immutable
+ *          set once so that the ::MEASUREMENT_NIC_PERFORMANCE has immutable
  *          properties.
  *
- * @param vnic_id               ASCIIZ string with the vNIC's ID.
+ * @param nic_id               ASCIIZ string with the NIC's ID.
  * @param val_suspect           True or false confidence in data.
  *
- * @returns pointer to the newly manufactured ::MEASUREMENT_VNIC_PERFORMANCE.
+ * @returns pointer to the newly manufactured ::MEASUREMENT_NIC_PERFORMANCE.
  *          If the structure is not used it must be released using
- *          ::evel_measurement_free_vnic_performance.
- * @retval  NULL  Failed to create the vNIC Use.
+ *          ::evel_measurement_free_nic_performance.
+ * @retval  NULL  Failed to create the NIC Use.
  *****************************************************************************/
-MEASUREMENT_VNIC_PERFORMANCE * evel_measurement_new_vnic_performance(char * const vnic_id, char * const val_suspect);
+MEASUREMENT_NIC_PERFORMANCE * evel_measurement_new_nic_performance(char * const nic_id, char * const val_suspect);
 
 /**************************************************************************//**
- * Free a vNIC Use.
+ * Free a NIC Use.
  *
- * Free off the ::MEASUREMENT_VNIC_PERFORMANCE supplied.  Will free all the contained
+ * Free off the ::MEASUREMENT_NIC_PERFORMANCE supplied.  Will free all the contained
  * allocated memory.
  *
- * @note It does not free the vNIC Use itself, since that may be part of a
+ * @note It does not free the NIC Use itself, since that may be part of a
  * larger structure.
  *****************************************************************************/
-void evel_measurement_free_vnic_performance(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance);
+void evel_measurement_free_nic_performance(MEASUREMENT_NIC_PERFORMANCE * const nic_performance);
+
+/**************************************************************************//**
+ * Set the administrative State of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param state
+ *****************************************************************************/
+void evel_nic_performance_administrativeState_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const EVEL_OPER_STATE state);
+
+/**************************************************************************//**
+ * Set the operational state of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param state
+ *****************************************************************************/
+void evel_nic_performance_operationalState_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const EVEL_OPER_STATE state);
+
+/**************************************************************************//**
+ * Set the Percentage of discarded packets received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param receivedPercentDiscard
+ *****************************************************************************/
+void evel_nic_performance_receivedPercentDiscard_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double receivedPercentDiscard);
+
+/**************************************************************************//**
+ * Set the Percentage of error packets received of the NIC performance.
+ *
+
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param receivedPercentError
+ *****************************************************************************/
+void evel_nic_performance_receivedPercentError_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double receivedPercentError);
+
+/**************************************************************************//**
+ * Set the Percentage of utilization received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param receivedUtilization
+ *****************************************************************************/
+void evel_nic_performance_receivedUtilization_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double receivedUtilization);
+
+/**************************************************************************//**
+ * Set the Speed configured in mbps of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param Speed
+ *****************************************************************************/
+void evel_nic_performance_speed_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double speed);
+
+/**************************************************************************//**
+ * Set the Percentage of discarded packets transmitted of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param transmittedPercentDiscard
+ *****************************************************************************/
+void evel_nic_performance_transmittedPercentDiscard_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double transmittedPercentDiscard);
+
+/**************************************************************************//**
+ * Set the Percentage of error packets received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param transmittedPercentError
+ *****************************************************************************/
+void evel_nic_performance_transmittedPercentError_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double transmittedPercentError);
+
+/**************************************************************************//**
+ * Set the Percentage of utilization transmitted of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param transmittedUtilization
+ *****************************************************************************/
+void evel_nic_performance_transmittedUtilization_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double transmittedUtilization);
 
 /**************************************************************************//**
  * Set the Accumulated Broadcast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_bcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_bcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_bcast_packets_acc);
 /**************************************************************************//**
  * Set the Delta Broadcast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_bcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_bcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_bcast_packets_delta);
 /**************************************************************************//**
  * Set the Discarded Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_discard_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_discard_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_discard_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_discard_packets_acc);
 /**************************************************************************//**
  * Set the Delta Discarded Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_discard_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_discard_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_discard_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_discard_packets_delta);
 /**************************************************************************//**
  * Set the Error Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_error_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_error_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_error_packets_acc);
 /**************************************************************************//**
  * Set the Delta Error Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_error_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_error_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_error_packets_delta);
 /**************************************************************************//**
  * Set the Accumulated Multicast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_mcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_mcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_mcast_packets_acc);
 /**************************************************************************//**
  * Set the Delta Multicast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_mcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_mcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_mcast_packets_delta);
 /**************************************************************************//**
  * Set the Accumulated Octets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_octets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_octets_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_octets_acc);
 /**************************************************************************//**
  * Set the Delta Octets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_octets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_octets_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_octets_delta);
 /**************************************************************************//**
  * Set the Accumulated Total Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_total_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_total_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_total_packets_acc);
 /**************************************************************************//**
  * Set the Delta Total Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_total_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_total_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_total_packets_delta);
 /**************************************************************************//**
  * Set the Accumulated Unicast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_ucast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_ucast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_ucast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_ucast_packets_acc);
 /**************************************************************************//**
  * Set the Delta Unicast packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_ucast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_ucast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_ucast_packets_delta);
 /**************************************************************************//**
  * Set the Transmitted Broadcast Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_bcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_bcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_bcast_packets_acc);
 /**************************************************************************//**
  * Set the Delta Broadcast packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_bcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_bcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_bcast_packets_delta);
 /**************************************************************************//**
  * Set the Transmitted Discarded Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_discarded_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_discarded_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_discarded_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_discarded_packets_acc);
 /**************************************************************************//**
  * Set the Delta Discarded packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_discarded_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_discarded_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_discarded_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_discarded_packets_delta);
 /**************************************************************************//**
  * Set the Transmitted Errored Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_error_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_error_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_error_packets_acc);
 /**************************************************************************//**
  * Set the Delta Errored packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_error_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_error_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_error_packets_delta);
 /**************************************************************************//**
  * Set the Transmitted Multicast Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_mcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_mcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_mcast_packets_acc);
 /**************************************************************************//**
  * Set the Delta Multicast packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_mcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_mcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_mcast_packets_delta);
 /**************************************************************************//**
  * Set the Transmitted Octets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_octets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_octets_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_octets_acc);
 /**************************************************************************//**
  * Set the Delta Octets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_octets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_octets_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_octets_delta);
 /**************************************************************************//**
  * Set the Transmitted Total Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_total_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_total_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_total_packets_acc);
 /**************************************************************************//**
  * Set the Delta Total Packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_total_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_total_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_total_packets_delta);
 /**************************************************************************//**
  * Set the Transmitted Unicast Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_ucast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_ucast_packets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_ucast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_ucast_packets_acc);
 /**************************************************************************//**
  * Set the Delta Octets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_ucast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_ucast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_ucast_packets_delta);
 
 /**************************************************************************//**
- * Add an additional vNIC Use to the specified Measurement event.
+ * Add an additional NIC Use to the specified Measurement event.
  *
  * @param measurement   Pointer to the measurement.
- * @param vnic_performance      Pointer to the vNIC Use to add.
+ * @param nic_performance      Pointer to the NIC Use to add.
  *****************************************************************************/
-void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
-                            MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance);
+void evel_meas_nic_performance_add(EVENT_MEASUREMENT * const measurement,
+                            MEASUREMENT_NIC_PERFORMANCE * const nic_performance);
 
 /**************************************************************************//**
- * Add an additional vNIC usage record Measurement.
+ * Add an additional NIC usage record Measurement.
  *
  * This function implements the previous API, purely for convenience.
  *
@@ -2596,8 +4394,17 @@ void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
  * caller does not have to preserve values after the function returns.
  *
  * @param measurement           Pointer to the measurement.
- * @param vnic_id               ASCIIZ string with the vNIC's ID.
+ * @param nic_id               ASCIIZ string with the NIC's ID.
  * @param valset                true or false confidence level
+ * @param admin_state               Administrative state
+ * @param op_state                  Operational state
+ * @param receivedPercentDiscard    Percentage of discarded packets received;
+ * @param receivedPercentError      Percentage of error packets received
+ * @param receivedUtilization       Percentage of utilization received
+ * @param speed                     Speed configured in mbps
+ * @param transmittedPercentDiscard Percentage of discarded packets transmitted
+ * @param transmittedPercentError   Percentage of error packets received
+ * @param transmittedUtilization    Percentage of utilization transmitted
  * @param recvd_bcast_packets_acc         Recieved broadcast packets
  * @param recvd_bcast_packets_delta       Received delta broadcast packets
  * @param recvd_discarded_packets_acc     Recieved discarded packets
@@ -2627,9 +4434,18 @@ void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
  * @param tx_ucast_packets_acc            Transmitted Unicast packets
  * @param tx_ucast_packets_delta          Transmitted delta Unicast packets
  *****************************************************************************/
-void evel_measurement_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
-                               char * const vnic_id,
+void evel_measurement_nic_performance_add(EVENT_MEASUREMENT * const measurement,
+                               char * const nic_id,
                                char * valset,
+                               EVEL_OPER_STATE admin_state,
+                               EVEL_OPER_STATE op_state,
+                               double receivedPercentDiscard,
+                               double receivedPercentError,
+                               double receivedUtilization,
+                               double speed,
+                               double transmittedPercentDiscard,
+                               double transmittedPercentError,
+                               double transmittedUtilization,
                                double recvd_bcast_packets_acc,
                                double recvd_bcast_packets_delta,
                                double recvd_discarded_packets_acc,
@@ -2659,88 +4475,624 @@ void evel_measurement_vnic_performance_add(EVENT_MEASUREMENT * const measurement
                                double tx_ucast_packets_acc,
                                double tx_ucast_packets_delta);
 
-/*****************************************************************************/
-/*****************************************************************************/
-/*                                                                           */
-/*   REPORT                                                                  */
-/*                                                                           */
-/*****************************************************************************/
-/*****************************************************************************/
+MEASUREMENT_IPMI * evel_measurement_new_ipmi_add(
+                                  EVENT_MEASUREMENT * measurement);
 
 /**************************************************************************//**
- * Create a new Report event.
- *
- * @note    The mandatory fields on the Report must be supplied to this
- *          factory function and are immutable once set.  Optional fields have
- *          explicit setter functions, but again values may only be set once so
- *          that the Report has immutable properties.
- *
- * @param   measurement_interval
- * @param event_name    Unique Event Name
- * @param event_id    A universal identifier of the event for analysis etc
- *
- * @returns pointer to the newly manufactured ::EVENT_REPORT.  If the event is
- *          not used (i.e. posted) it must be released using
- *          ::evel_free_report.
- * @retval  NULL  Failed to create the event.
- *****************************************************************************/
-EVENT_REPORT * evel_new_report(double measurement_interval,const char* ev_name, const char *ev_id);
-
-/**************************************************************************//**
- * Free a Report.
- *
- * Free off the Report supplied.  Will free all the contained allocated memory.
- *
- * @note It does not free the Report itself, since that may be part of a
- * larger structure.
- *****************************************************************************/
-void evel_free_report(EVENT_REPORT * event);
-
-/**************************************************************************//**
- * Set the Event Type property of the Report.
+ * Set the System fan exit air flow temperature in Celsius of IPMI
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param report Pointer to the Report.
- * @param type        The Event Type to be set. ASCIIZ string. The caller
- *                    does not need to preserve the value once the function
- *                    returns.
+ * @param ipmi      Pointer to the IPMI
+ * @param double
  *****************************************************************************/
-void evel_report_type_set(EVENT_REPORT * report, const char * const type);
+void evel_measurement_ipmi_exitAirTemperature_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val);
 
 /**************************************************************************//**
- * Add a Feature usage value name/value pair to the Report.
+ * Set the Front panel temp in Celsius of IPMI
  *
- * The name is null delimited ASCII string.  The library takes
- * a copy so the caller does not have to preserve values after the function
- * returns.
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
  *
- * @param report          Pointer to the report.
- * @param feature         ASCIIZ string with the feature's name.
- * @param utilization     Utilization of the feature.
+ * @param ipmi      Pointer to the IPMI
+ * @param double
  *****************************************************************************/
-void evel_report_feature_use_add(EVENT_REPORT * report,
-                                 char * feature,
-                                 int utilization);
+void evel_measurement_ipmi_frontPanelTemperature_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val);
 
 /**************************************************************************//**
- * Add a Additional Measurement value name/value pair to the Report.
+ * Set the Io module temp in Celsius of IPMI
  *
- * The name is null delimited ASCII string.  The library takes
- * a copy so the caller does not have to preserve values after the function
- * returns.
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
  *
- * @param report   Pointer to the report.
- * @param group    ASCIIZ string with the measurement group's name.
- * @param name     ASCIIZ string containing the measurement's name.
- * @param value    ASCIIZ string containing the measurement's value.
+ * @param ipmi      Pointer to the IPMI 
+ * @param double
  *****************************************************************************/
-void evel_report_custom_measurement_add(EVENT_REPORT * report,
-                                        const char * const group,
-                                        const char * const name,
-                                        const char * const value);
+void evel_measurement_ipmi_ioModuleTemperature_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the Airflow in cubic feet per minute (cfm) of IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param double
+ *****************************************************************************/
+void evel_measurement_ipmi_systemAirflow_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val);
+
+/**************************************************************************//**
+ * Add a new Baseboard Temperature Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_BB_TEMPERATURE *evel_measurement_new_base_board_temp_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the Baseboard temperature in celsius
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI 
+ * @param bb_temp   Pointer to base board tempeature
+ * @param id        Indentifier
+ *****************************************************************************/
+void evel_measurement_ipmi_bb_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BB_TEMPERATURE * bb_temp,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new Baseboard Voltage Regulator Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI 
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_BB_VOLTAGE *evel_measurement_new_base_board_volt_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 const char const * id);
+
+/**************************************************************************//**
+ * Set the Voltage regulator temperature in celsius
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI  
+ * @param bb_volt   Pointer to base board Voltage regulator
+ * @param val       value
+ *****************************************************************************/
+void evel_measurement_ipmi_bb_volt_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BB_VOLTAGE * bb_volt,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI Battery Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI 
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_BATTERY *evel_measurement_new_ipmi_battery_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the battery type in IPMI Battery
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi         Pointer to the IPMI 
+ * @param ipmiBattery  Pointer to IPMI Battery
+ * @param batteryType  Batterry Type
+ *****************************************************************************/
+void evel_measurement_ipmi_battery_type_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BATTERY * ipmiBattery,
+                                    const char * const batteryType);
+
+/**************************************************************************//**
+ * Set the Battery voltage level in IPMI Battery
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi         Pointer to the IPMI 
+ * @param ipmiBattery  Pointer to IPMI Battery
+ * @param val          Battery voltage level
+ *****************************************************************************/
+void evel_measurement_ipmi_battery_voltage_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BATTERY * ipmiBattery,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI Fan Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_FAN *evel_measurement_new_ipmi_fan_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the Fan Identifier in IPMI FAN
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi         Pointer to the IPMI  
+ * @param ipmiFan      Pointer to IPMI FAN
+ * @param val          Fan Identifier
+ *****************************************************************************/
+void evel_measurement_ipmi_fan_speed_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_FAN * ipmiFan,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI HSBP Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_HSBP *evel_measurement_new_ipmi_hsbp_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the Hot swap backplane power temperature in celsius in IPMI HSBP
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI
+ * @param ipmiHsbp  Pointer to ipmi Hsbp
+ * @param val       value
+ *****************************************************************************/
+void evel_measurement_ipmi_hsbp_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_HSBP * ipmiHsbp,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI Global Aggregate Temperature Margin Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI.
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN *evel_measurement_new_ipmi_global_temp_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 const char * const id);
+
+/**************************************************************************//**
+ * Set the IPMI Global Aggregate Temperature Margin
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi       Pointer to the IPMI.
+ * @param ipmig_temp Pointer to IPMI Global Aggregate Temperature Margin
+ * @param val        value
+ *****************************************************************************/
+void evel_measurement_ipmi_global_temp_margin_set(MEASUREMENT_IPMI *ipmi,
+                      MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN * ipmig_temp,
+                      const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI NIC Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_NIC *evel_measurement_new_ipmi_nic_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the NIC temperature in IPMI NIC
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param ipminic   Pointer to IPMI NIC
+ * @param val       value
+ *****************************************************************************/
+void evel_measurement_ipmi_nic_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_NIC * ipminic,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI Power Supply Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_POWER_SUPPLY *evel_measurement_new_ipmi_power_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the Power Supply input power in watts
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param ipmipwr   Pointer to IPMI Power Supply
+ * @param val       Value
+ *****************************************************************************/
+void evel_measurement_ipmi_power_inputpwr_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_POWER_SUPPLY * ipmipwr,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the Current output voltage as a percentage of the design specified level
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param ipmipwr   Pointer to IPMI Power Supply
+ * @param val       Value
+ *****************************************************************************/
+void evel_measurement_ipmi_power_current_op_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_POWER_SUPPLY * ipmipwr,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the Power supply temperature in Celsius
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param ipmipwr   Pointer to IPMI Power Supply
+ * @param val       Value
+ *****************************************************************************/
+void evel_measurement_ipmi_power_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_POWER_SUPPLY * ipmipwr,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new IPMI Processor Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_PROCESSOR *evel_measurement_new_ipmi_processor_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id);
+
+/**************************************************************************//**
+ * Set the processor thermal control percent
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi             Pointer to the IPMI Use.
+ * @param ipmi_processor   Pointer to IPMI processor
+ * @param val              Value
+ *****************************************************************************/
+void evel_measurement_ipmi_processor_theralCtrl_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_PROCESSOR * ipmi_processor,
+                                    const double val);
+
+/**************************************************************************//**
+ * Set the processor DTS thermal margin(Front panel temperature in celsius)
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi             Pointer to the IPMI Use.
+ * @param ipmi_processor   Pointer to IPMI processor
+ * @param val              Value
+ *****************************************************************************/
+void evel_measurement_ipmi_processor_theralMargin_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_PROCESSOR * ipmi_processor,
+                                    const double val);
+
+/**************************************************************************//**
+ * Add a new Array element to Processor
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi           Pointer to the IPMI Use.
+ * @param ipmi_processor Pointer to IPMI Processor
+ * @param therm_margin   Thermal margin
+ *****************************************************************************/
+MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM * evel_measurement_ipmi_processor_new_dimmAggThermalMargin_add(
+                                  MEASUREMENT_IPMI * ipmi,
+                                  MEASUREMENT_IPMI_PROCESSOR *ipmi_processor,
+                                  const char * const id, double therm_margin);
+
+/**************************************************************************//**
+ * Add a new Array element to loads
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param measurement     Pointer to measurement.
+ *****************************************************************************/
+MEASUREMENT_LOAD * evel_measurement_new_loads_add(
+                                  EVENT_MEASUREMENT * measurement);
+
+/**************************************************************************//**
+ * Set the short term value in load
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param load     Pointer to load.
+ * @param val      value
+ *****************************************************************************/
+void evel_measurement_load_shortTerm_set(MEASUREMENT_LOAD *load,
+                                const double val);
+
+/**************************************************************************//**
+ * Set the MID term value in load
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param load     Pointer to load.
+ * @param val      value
+ *****************************************************************************/
+void evel_measurement_load_midTerm_set(MEASUREMENT_LOAD *load,
+                                const double val);
+
+/**************************************************************************//**
+ * Set the Long term value in load
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param load     Pointer to load.
+ * @param val      value
+ *****************************************************************************/
+void evel_measurement_load_longTerm_set(MEASUREMENT_LOAD *load,
+                                const double val);
+
+/**************************************************************************//**
+ * Add a new Array element to Process Stats of measurement
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param measurement       Pointer to measurement.
+ * @param processIdentifier process Identifier
+ *****************************************************************************/
+MEASUREMENT_PROCESS_STATS * evel_measurement_new_process_stats_add(
+                                  EVENT_MEASUREMENT * measurement,
+                                  const char * const processIdentifier );
+
+/**************************************************************************//**
+ * Set the fork rate (The number of threads created since the last reboot) in
+ * Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_forkRate_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the The number of processes in a blocked state in Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_psStateBlocked_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the The number of processes in a paging state in Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_psStatePaging_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the The number of processes in a running state in Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_psStateRunning_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the The number of processes in a sleeping state in Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_psStateSleeping_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the The number of processes in a stopped state in Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_psStateStopped_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the The number of processes in a zombie state in Process Stats
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param process_stat       Pointer to process stat.
+ * @param val                value
+ *****************************************************************************/
+void evel_measurement_process_stat_psStateZombie_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val);
+
+/**************************************************************************//**
+ * Add a new Machine check exception array element to measurement
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param measurement       Pointer to measurement.
+ * @param process_id        process Identifier
+ *****************************************************************************/
+MACHINE_CHECK_EXCEPTION * evel_measurement_new_machine_check_exception_add(
+                                  EVENT_MEASUREMENT * measurement,
+                                  const char * const process_id );
+
+/**************************************************************************//**
+ * Set the Total hardware errors that were corrected by the hardware
+ * in Machine check exception
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param machine_check  Pointer to Machine check exception.
+ * @param val            value
+ *****************************************************************************/
+void evel_measurement_machine_check_cor_mem_err_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the Total hardware errors that were corrected over last one hour
+ * in Machine check exception
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param machine_check  Pointer to Machine check exception.
+ * @param val            value
+ *****************************************************************************/
+void evel_measurement_machine_check_cor_mem_err_1hr_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the Total hardware errors that were uncorrected by the hardware
+ * in Machine check exception
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param machine_check  Pointer to Machine check exception.
+ * @param val            value
+ *****************************************************************************/
+void evel_measurement_machine_check_uncor_mem_err_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val);
+
+/**************************************************************************//**
+ * Set the Total hardware errors that were uncorrected over last one hour
+ * in Machine check exception
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param machine_check  Pointer to Machine check exception.
+ * @param val            value
+ *****************************************************************************/
+void evel_measurement_machine_check_uncor_mem_err_1hr_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val);
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -2784,7 +5136,22 @@ EVENT_MOBILE_FLOW * evel_new_mobile_flow(
                       int other_endpoint_port,
                       const char * const reporting_endpoint_ip_addr,
                       int reporting_endpoint_port);
-
+/**************************************************************************//**
+ * Add an additional value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile flow.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_flow_addl_field_add(EVENT_MOBILE_FLOW * const event, char * name, char * value);
 /**************************************************************************//**
  * Free a Mobile Flow.
  *
@@ -3337,16 +5704,6 @@ void evel_mobile_gtp_metrics_tun_status_set(
                                          MOBILE_GTP_PER_FLOW_METRICS * metrics,
                                          const char * const status);
 
-/**************************************************************************//**
- * Set an IP Type-of-Service count property of the Mobile GTP Per Flow metrics.
- *
- * @param metrics     Pointer to the Mobile GTP Per Flow Metrics.
- * @param index       The index of the IP Type-of-Service.
- * @param count       The count.
- *****************************************************************************/
-void evel_mobile_gtp_metrics_iptos_set(MOBILE_GTP_PER_FLOW_METRICS * metrics,
-                                       int index,
-                                       int count);
 
 /**************************************************************************//**
  * Set the Large Packet Round-Trip Time property of the Mobile GTP Per Flow
@@ -3406,6 +5763,66 @@ void evel_mobile_gtp_metrics_max_trx_bit_rate_set(
                                          int rate);
 
 /**************************************************************************//**
+ * Add an IP Tos count list value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_gtp_metrics_ip_tos_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const char * const name,
+                                      const char * const value);
+
+/**************************************************************************//**
+ * Add an QCI Cos count list value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_gtp_metrics_qci_cos_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const EVEL_QCI_COS_TYPES qci_cos,
+                                      const char * const value);
+
+/**************************************************************************//**
+ * Add an TCP Flag count list value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_gtp_metrics_tcp_flag_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const EVEL_TCP_FLAGS tcp_flag,
+                                      const char * const value);
+
+/**************************************************************************//**
  * Set the Number of GTP Echo Failures property of the Mobile GTP Per Flow
  * Metrics.
  *
@@ -3450,36 +5867,52 @@ void evel_mobile_gtp_metrics_num_http_errors_set(
                                          int num);
 
 /**************************************************************************//**
- * Add a TCP flag count to the metrics.
+ * Add a IP Tos count list to the metrics.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
  * @param metrics       Pointer to the Mobile GTP Per Flow Metrics.
- * @param tcp_flag      The TCP flag count to be updated.
- * @param count         The associated flag count.
+ * @param name          Key of the hashmap
+ * @param value         Value of the hashmap.
  *****************************************************************************/
-void evel_mobile_gtp_metrics_tcp_flag_count_add(
-                                         MOBILE_GTP_PER_FLOW_METRICS * metrics,
-                                         const EVEL_TCP_FLAGS tcp_flag,
-                                         const int count);
+void evel_mobile_ip_tos_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const char * const name,
+                                      const char * const value);
 
 /**************************************************************************//**
- * Add a QCI COS count to the metrics.
+ * Add TCP Flag count list to the metrics.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
  * @param metrics       Pointer to the Mobile GTP Per Flow Metrics.
- * @param qci_cos       The QCI COS count to be updated.
- * @param count         The associated QCI COS count.
+ * @param name          Key of the hashmap
+ * @param value         Value of the hashmap.
  *****************************************************************************/
-void evel_mobile_gtp_metrics_qci_cos_count_add(
-                                         MOBILE_GTP_PER_FLOW_METRICS * metrics,
-                                         const EVEL_QCI_COS_TYPES qci_cos,
-                                         const int count);
+void evel_mobile_tcp_flag_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const char * const name,
+                                      const char * const value);
+
+/**************************************************************************//**
+ * Add a QCI cos count list to the metrics.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param metrics       Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name          Key of the hashmap
+ * @param value         Value of the hashmap.
+ *****************************************************************************/
+void evel_mobile_qci_cos_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const char * const name,
+                                      const char * const value);
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -3769,6 +6202,171 @@ void evel_state_change_type_set(EVENT_STATE_CHANGE * const state_change,
 void evel_state_change_addl_field_add(EVENT_STATE_CHANGE * const state_change,
                                       const char * const name,
                                       const char * const value);
+/*****************************************************************************/
+/*****************************************************************************/
+/*                                                                           */
+/*   Notification                                                            */
+/*                                                                           */
+/*****************************************************************************/
+/*****************************************************************************/
+
+/**************************************************************************//**
+ * Create a new Notification event.
+ *
+ * @note    The mandatory fields on the Syslog must be supplied to this factory
+ *          function and are immutable once set.  Optional fields have explicit
+ *          setter functions, but again values may only be set once so that the
+ *          Syslog has immutable properties.
+ *
+ * @param event_name    Unique Event Name
+ * @param event_id    A universal identifier of the event for analysis etc
+ * @param new_state     The new state of the reporting entity.
+ * @param old_state     The old state of the reporting entity.
+ * @param interface     The card or port name of the reporting entity.
+ *
+ * @returns pointer to the newly manufactured ::EVENT_NOTIFICATION.  If the
+ *          event is not used it must be released using
+ *          ::evel_free_notification
+ * @retval  NULL  Failed to create the event.
+ *****************************************************************************/
+EVENT_NOTIFICATION * evel_new_notification(
+                                     const char* ev_name, const char *ev_id,
+                                     const char * const changeIdentifier,
+                                     const char * const changeType);
+/**************************************************************************//**
+ * Free a Notification.
+ *
+ *
+ * Free off the Notification supplied.  Will free all the contained allocated
+ * memory.
+ *
+ * @note It does not free the Notification itself, since that may be part of a
+ * larger structure.
+ *****************************************************************************/
+void evel_free_notification(EVENT_NOTIFICATION * const notification);
+
+/**************************************************************************//**
+ * Set the Event Type property of the Notification.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION.
+ * @param type          The Event Type to be set. ASCIIZ string. The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ *****************************************************************************/
+void evel_notification_type_set(EVENT_NOTIFICATION * const notification,
+                                const char * const type);
+
+/**************************************************************************//**
+ * Add an additional field name/value pair to the Notification.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION.
+ * @param name          ASCIIZ string with the attribute's name.  The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ * @param value         ASCIIZ string with the attribute's value.  The caller
+ *                      does not need to preserve the value once the function
+ *                      returns.
+ *****************************************************************************/
+void evel_notification_addl_field_add(EVENT_NOTIFICATION * const notification,
+                                      const char * const name,
+                                      const char * const value);
+
+/**************************************************************************//**
+ * Convert a ::EVEL_OPTION_STATE to it's string form for JSON encoding.
+ *
+ * @param state         The entity state to encode.
+ *
+ * @returns the corresponding string
+ *****************************************************************************/
+char * evel_entity_opt_state (EVEL_OPTION_STATE * const state);
+
+/**************************************************************************//**
+ * Initialize an ::EVEL_OPTION_STATE to a not-set state.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_INT.
+ *****************************************************************************/
+void evel_init_option_state(EVEL_OPTION_STATE * const option);
+
+/**************************************************************************//**
+ * Set the value of an ::EVEL_OPTION_STATE.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_STATE.
+ * @param value         The value to set.
+ * @param description   Description to be used in logging.
+ *****************************************************************************/
+void evel_set_option_state(EVEL_OPTION_STATE * const option,
+                         const int value,
+                         const char * const description);
+
+/**************************************************************************//**
+ * Set the Identifier for a contact related to the change of notification event
+ *
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION.
+ * @param changeContact ASCIIZ string with the attribute's value
+ *****************************************************************************/
+void evel_notification_changeContact_set(
+                               EVENT_NOTIFICATION * const notification,
+                               const char * const changeContact);
+
+/**************************************************************************//**
+ * Set the Card or port name of the entity that changed state of notification
+ *
+ * @param notification    Pointer to the ::EVENT_NOTIFICATION.
+ * @param state_interface ASCIIZ string with the attribute's value
+ *****************************************************************************/
+void evel_notification_state_interface_set(
+                               EVENT_NOTIFICATION * const notification,
+                               const char * const state_interface);
+
+/**************************************************************************//**
+ * Set the New state of the entity of notification event
+ *
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION.
+ * @param state         Enter value of EVEL_ENTITY_STATE  
+ *****************************************************************************/
+void evel_notification_new_state_set(
+                               EVENT_NOTIFICATION * const notification,
+                               const EVEL_ENTITY_STATE state);
+
+/**************************************************************************//**
+ * Set the Old state of entity of notification event
+ *
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION.
+ * @param state         Enter value of EVEL_ENTITY_STATE
+ *****************************************************************************/
+void evel_notification_old_state_set(
+                               EVENT_NOTIFICATION * const notification,
+                               const EVEL_ENTITY_STATE state);
+
+/**************************************************************************//**
+ * Add a new named hashmap to notification event
+ *
+ * @param notification  Pointer to the ::EVENT_NOTIFICATION.
+ * @param name          Name of the hashmap
+ *****************************************************************************/
+HASHTABLE_T * evel_notification_add_new_named_hashmap(
+                                      EVENT_NOTIFICATION * const notification,
+                                      const char * const name);
+
+/**************************************************************************//**
+ * Set the name and value for the named hashmap of notification event
+ *
+ * @param ht    Pointer to named hashmap
+ * @param name  Key name          
+ * @param value value corresponding to key
+ *****************************************************************************/
+void evel_notification_named_hashmap_set(
+                                      HASHTABLE_T * const ht,
+                                      const char * const name,
+                                      const char * const value);
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -3818,6 +6416,25 @@ void evel_syslog_type_set(EVENT_SYSLOG * syslog,
                           const char * const type);
 
 /**************************************************************************//**
+ * Add an additional value name/value pair to the Syslog.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param syslog    Pointer to the syslog.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_syslog_addl_fields_set(EVENT_SYSLOG * syslog,
+                                 const char * const name,
+                                 const char * const value);
+
+/**************************************************************************//**
  * Free a Syslog.
  *
  * Free off the Syslog supplied.  Will free all the contained allocated memory.
@@ -3843,8 +6460,8 @@ void evel_free_syslog(EVENT_SYSLOG * event);
  *                  returns.
  *****************************************************************************/
 void evel_syslog_addl_field_add(EVENT_SYSLOG * syslog,
-                                char * name,
-                                char * value);
+                                const char * name,
+                                const char * value);
 
 /**************************************************************************//**
  * Set the Event Source Host property of the Syslog.
@@ -3875,6 +6492,20 @@ void evel_syslog_event_source_host_set(EVENT_SYSLOG * syslog,
  *****************************************************************************/
 void evel_syslog_facility_set(EVENT_SYSLOG * syslog,
                               EVEL_SYSLOG_FACILITIES facility);
+/**************************************************************************//**
+ * Set the priority of the Syslog.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param syslog      Pointer to the Syslog.
+ * @param priority    The Syslog priority to be set.  ASCIIZ string. The caller
+ *                    does not need to preserve the value once the function
+ *                    returns.
+ *****************************************************************************/
+void evel_syslog_priority_set(EVENT_SYSLOG * syslog,
+                              const int priority);
 
 /**************************************************************************//**
  * Set the Process property of the Syslog.
@@ -3888,6 +6519,32 @@ void evel_syslog_facility_set(EVENT_SYSLOG * syslog,
  *                    not need to preserve the value once the function returns.
  *****************************************************************************/
 void evel_syslog_proc_set(EVENT_SYSLOG * syslog, const char * const proc);
+
+/**************************************************************************//**
+ * Set the timestamp parsed from non-VES syslog message
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param syslog     Pointer to the Syslog.
+ * @param time_stamp The timestamp to be set. ASCIIZ string. The caller does
+ *                   not need to preserve the value once the function returns.
+ *****************************************************************************/
+void evel_syslog_timeStamp_set(EVENT_SYSLOG * syslog, const char * const time_stamp);
+
+/**************************************************************************//**
+ * Set the hostname parsed from non-VES syslog message
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param syslog     Pointer to the Syslog.
+ * @param msg_host   The hostname to be set. ASCIIZ string. The caller does
+ *                   not need to preserve the value once the function returns.
+ *****************************************************************************/
+void evel_syslog_MsgHost_set(EVENT_SYSLOG * syslog, const char * const msg_host);
 
 /**************************************************************************//**
  * Set the Process ID property of the Syslog.
@@ -4012,9 +6669,32 @@ void evel_other_type_set(EVENT_OTHER * other,
  * @param name      ASCIIZ string with the attribute's name.
  * @param value     ASCIIZ string with the attribute's value.
  *****************************************************************************/
-void evel_other_field_add(EVENT_OTHER * other,
-                          char * name,
-                          char * value);
+void evel_other_field_add_hashmap(EVENT_OTHER * other, char * name, char *value);
+
+/**************************************************************************//**
+ * Add a new named hashmap to other event
+ *
+ * @param notification  Pointer to other
+ * @param name          Name of the hashmap
+ *****************************************************************************/
+HASHTABLE_T * evel_other_add_new_hashmap_to_hmarray(EVENT_OTHER * const other,
+                                          const char * const name);
+
+/**************************************************************************//**
+ * Add a value name/value pair to named hashmap of Other.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param other     Pointer to the Other.
+ * @param name      ASCIIZ string with the attribute's name.
+ * @param value     ASCIIZ string with the attribute's value.
+ *****************************************************************************/
+void evel_other_set_hashmap_in_hmarray(
+                                      HASHTABLE_T * const ht,
+                                      const char * const name,
+                                      const char * const value);
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -4036,8 +6716,8 @@ int evel_get_measurement_interval();
 /*****************************************************************************/
 /* Supported Report version.                                                 */
 /*****************************************************************************/
-#define EVEL_VOICEQ_MAJOR_VERSION 1
-#define EVEL_VOICEQ_MINOR_VERSION 1
+#define EVEL_VOICEQ_MAJOR_VERSION 4
+#define EVEL_VOICEQ_MINOR_VERSION 0
 
 /**************************************************************************//**
  * End of Call Voice Quality Metrices
@@ -4053,14 +6733,14 @@ typedef struct end_of_call_vqm_summaries {
 	/***************************************************************************/
 	/* Optional fields                                                         */
 	/***************************************************************************/
-	EVEL_OPTION_INT endpointJitter;
+	EVEL_OPTION_INT localRtpOctetsLost;
 	EVEL_OPTION_INT endpointRtpOctetsDiscarded;
 	EVEL_OPTION_INT endpointRtpOctetsReceived;
 	EVEL_OPTION_INT endpointRtpOctetsSent;
 	EVEL_OPTION_INT endpointRtpPacketsDiscarded;
 	EVEL_OPTION_INT endpointRtpPacketsReceived;
 	EVEL_OPTION_INT endpointRtpPacketsSent;
-	EVEL_OPTION_INT localJitter;
+	EVEL_OPTION_INT localMaxJitterBufferDelay;
 	EVEL_OPTION_INT localRtpOctetsDiscarded;
 	EVEL_OPTION_INT localRtpOctetsReceived;
 	EVEL_OPTION_INT localRtpOctetsSent;
@@ -4068,10 +6748,18 @@ typedef struct end_of_call_vqm_summaries {
 	EVEL_OPTION_INT localRtpPacketsReceived;
 	EVEL_OPTION_INT localRtpPacketsSent;
 	EVEL_OPTION_INT mosCqe;
-	EVEL_OPTION_INT packetsLost;
+	EVEL_OPTION_INT localRtpPacketsLost;
 	EVEL_OPTION_INT packetLossPercent;
 	EVEL_OPTION_INT rFactor;
 	EVEL_OPTION_INT roundTripDelay;
+	EVEL_OPTION_INT endpointAverageJitter;
+	EVEL_OPTION_INT endpointMaxJitter;
+	EVEL_OPTION_INT endpointRtpOctetsLost;
+	EVEL_OPTION_INT endpointRtpPacketsLost;
+	EVEL_OPTION_INT localAverageJitter;
+	EVEL_OPTION_INT localAverageJitterBufferDelay;
+	EVEL_OPTION_INT localMaxJitter;
+	EVEL_OPTION_INT oneWayDelay;
 
 } END_OF_CALL_VOICE_QUALITY_METRICS;
 
@@ -4103,17 +6791,9 @@ typedef struct event_voiceQuality {
 	/* Optional fields                                                         */
 	/***************************************************************************/
 	EVEL_OPTION_STRING phoneNumber;
-	DLIST additionalInformation;
+	HASHTABLE_T * additionalInformation;
 
 } EVENT_VOICE_QUALITY;
-/**************************************************************************//**
- * Voice Quality Additional Info.
- * JSON equivalent field: additionalInformation
- *****************************************************************************/
-typedef struct voice_quality_additional_info {
-  char * name;
-  char * value;
-} VOICE_QUALITY_ADDL_INFO;
 
 /**************************************************************************//**
  * Create a new voice quality event.
@@ -4211,14 +6891,45 @@ void evel_voice_quality_rtcp_data_set(EVENT_VOICE_QUALITY * voiceQuality,
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param voiceQuality				Pointer to the Voice Quality Event.
- * @param nameFields		        The Vendor, VNF and VfModule names to be set.   
- *									ASCIIZ string. The caller does not need to 
- *									preserve the value once the function
- *									returns.
+ * @param voiceQuality              Pointer to the Voice Quality Event.
+ * @param modulename                The Vendor, VNF and VfModule names to be set.
+ *                                  ASCIIZ string. The caller does not need to
+ *                                  preserve the value once the function
+ *                                  returns.
  *****************************************************************************/
-void evel_voice_quality_name_fields_set(EVENT_VOICE_QUALITY * voiceQuality,
-									const char * const nameFields);
+void evel_voice_quality_vnfmodule_name_set(EVENT_VOICE_QUALITY * voiceQuality,
+    const char * const module_name);
+/**************************************************************************//**
+ * Set the Vendor VNF Name fields for domain Voice Quality
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param voiceQuality              Pointer to the Voice Quality Event.
+ * @param modulename                The Vendor, VNF and VfModule names to be set.
+ *                                  ASCIIZ string. The caller does not need to
+ *                                  preserve the value once the function
+ *                                  returns.
+ *****************************************************************************/
+void evel_voice_quality_vnfname_set(EVENT_VOICE_QUALITY * voiceQuality,
+    const char * const vnfname);
+
+/**************************************************************************//**
+ * Set the Phone Number associated with the Correlator for domain Voice Quality
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param voiceQuality              Pointer to the Voice Quality Event.
+ * @param calleeCodecForCall        The Phone Number to be set.  ASCIIZ
+ *                                  string. The caller does not need to
+ *                                  preserve the value once the function
+ *                                  returns.
+ *****************************************************************************/
+void evel_voice_quality_phone_number_set(EVENT_VOICE_QUALITY * voiceQuality,
+    const char * const phoneNumber);
 
 /**************************************************************************//**
  * Add an End of Call Voice Quality Metrices
@@ -4228,39 +6939,39 @@ void evel_voice_quality_name_fields_set(EVENT_VOICE_QUALITY * voiceQuality,
  * after the function returns.
  *
  * @param voiceQuality     Pointer to the measurement.
- * @param adjacencyName						Adjacency name
- * @param endpointDescription				Enumeration: ‘Caller’, ‘Callee’.
- * @param endpointJitter					Endpoint jitter
- * @param endpointRtpOctetsDiscarded        Endpoint RTP octets discarded.
- * @param endpointRtpOctetsReceived			Endpoint RTP octets received.
- * @param endpointRtpOctetsSent				Endpoint RTP octets sent
- * @param endpointRtpPacketsDiscarded		Endpoint RTP packets discarded.
- * @param endpointRtpPacketsReceived		Endpoint RTP packets received.
- * @param endpointRtpPacketsSent			Endpoint RTP packets sent.
- * @param localJitter						Local jitter.
- * @param localRtpOctetsDiscarded			Local RTP octets discarded.
- * @param localRtpOctetsReceived			Local RTP octets received.
- * @param localRtpOctetsSent				Local RTP octets sent.
- * @param localRtpPacketsDiscarded			Local RTP packets discarded.
- * @param localRtpPacketsReceived			Local RTP packets received.
- * @param localRtpPacketsSent				Local RTP packets sent.
- * @param mosCqe							Decimal range from 1 to 5
- *											(1 decimal place)
- * @param packetsLost						No	Packets lost
- * @param packetLossPercent					Calculated percentage packet loss 
- * @param rFactor							rFactor from 0 to 100
- * @param roundTripDelay					Round trip delay in milliseconds
+ * @param adjacencyName			Adjacency name
+ * @param endpointDescription		Enumeration: ‘Caller’, ‘Callee’.
+ * @param localRtpOctetsLost		localRtpOctetsLost	
+ * @param endpointRtpOctetsDiscarded    Endpoint RTP octets discarded.
+ * @param endpointRtpOctetsReceived	Endpoint RTP octets received.
+ * @param endpointRtpOctetsSent		Endpoint RTP octets sent
+ * @param endpointRtpPacketsDiscarded	Endpoint RTP packets discarded.
+ * @param endpointRtpPacketsReceived	Endpoint RTP packets received.
+ * @param endpointRtpPacketsSent	Endpoint RTP packets sent.
+ * @param localMaxJitterBufferDelay     Local max jitter buffer Delay.
+ * @param localRtpOctetsDiscarded	Local RTP octets discarded.
+ * @param localRtpOctetsReceived	Local RTP octets received.
+ * @param localRtpOctetsSent		Local RTP octets sent.
+ * @param localRtpPacketsDiscarded	Local RTP packets discarded.
+ * @param localRtpPacketsReceived	Local RTP packets received.
+ * @param localRtpPacketsSent		Local RTP packets sent.
+ * @param mosCqe			Decimal range from 1 to 5
+ *					(1 decimal place)
+ * @param localRtpPacketsLost           Local RTP Packets lost
+ * @param packetLossPercent		Calculated percentage packet loss 
+ * @param rFactor			rFactor from 0 to 100
+ * @param roundTripDelay		Round trip delay in milliseconds
  *****************************************************************************/
 void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
 	const char * adjacencyName, EVEL_SERVICE_ENDPOINT_DESC endpointDescription,
-	int endpointJitter,
+	int localRtpOctetsLost,
 	int endpointRtpOctetsDiscarded,
 	int endpointRtpOctetsReceived,
 	int endpointRtpOctetsSent,
 	int endpointRtpPacketsDiscarded,
 	int endpointRtpPacketsReceived,
 	int endpointRtpPacketsSent,
-	int localJitter,
+	int localMaxJitterBufferDelay,
 	int localRtpOctetsDiscarded,
 	int localRtpOctetsReceived,
 	int localRtpOctetsSent,
@@ -4268,10 +6979,18 @@ void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
 	int localRtpPacketsReceived,
 	int localRtpPacketsSent,
 	int mosCqe,
-	int packetsLost,
+	int localRtpPacketsLost,
 	int packetLossPercent,
 	int rFactor,
-	int roundTripDelay);
+	int roundTripDelay,
+        int endpointAverageJitter,
+        int endpointMaxJitter,
+        int endpointRtpOctetsLost,
+        int endpointRtpPacketsLost,
+        int localAverageJitter,
+        int localAverageJitterBufferDelay,
+        int localMaxJitter,
+        int oneWayDelay);
 
 /**************************************************************************//**
  * Free a Voice Quality.
@@ -4311,9 +7030,9 @@ void evel_voice_quality_addl_info_add(EVENT_VOICE_QUALITY * voiceQuality, char *
 /*****************************************************************************/
 
 typedef enum evel_event_action {
-	  EVEL_EVENT_ACTION_CLEAR,
-	  EVEL_EVENT_ACTION_CONTINUE,
 	  EVEL_EVENT_ACTION_SET,
+	  EVEL_EVENT_ACTION_CONTINUE,
+	  EVEL_EVENT_ACTION_CLEAR,
 	  EVEL_MAX_EVENT_ACTION
 }EVEL_EVENT_ACTION;
 	
@@ -4328,16 +7047,15 @@ typedef enum evel_alert_type {
 
 typedef struct perf_counter {
 	char * criticality;
-	char * name;
 	char * thresholdCrossed;
-	char * value;
+        HASHTABLE_T *hashmap;
 }PERF_COUNTER;
 
 
 /*****************************************************************************/
 /* Supported Threshold Crossing version.                                     */
 /*****************************************************************************/
-#define EVEL_THRESHOLD_CROSS_MAJOR_VERSION 2
+#define EVEL_THRESHOLD_CROSS_MAJOR_VERSION 4
 #define EVEL_THRESHOLD_CROSS_MINOR_VERSION 0
 
 /**************************************************************************//**
@@ -4355,18 +7073,18 @@ typedef struct event_threshold_cross {
   /***************************************************************************/
   /* Mandatory fields                                                        */
   /***************************************************************************/
-  PERF_COUNTER additionalParameters;
+  DLIST additionalParameters;
   EVEL_EVENT_ACTION  alertAction;
   char *             alertDescription; 
   EVEL_ALERT_TYPE    alertType;
-  unsigned long long collectionTimestamp; 
+  char *             collectionTimestamp; 
   EVEL_SEVERITIES    eventSeverity;
-  unsigned long long eventStartTimestamp;
+  char *             eventStartTimestamp;
 
   /***************************************************************************/
   /* Optional fields                                                         */
   /***************************************************************************/
-  DLIST additional_info;
+  HASHTABLE_T *additional_info;
   EVEL_OPTION_STRING    alertValue;
   DLIST     alertidList;
   EVEL_OPTION_STRING    dataCollector;
@@ -4388,16 +7106,12 @@ typedef struct event_threshold_cross {
  *
  * @param event_name    Unique Event Name
  * @param event_id    A universal identifier of the event for analysis etc
- * @param char* tcriticality   Performance Counter Criticality MAJ MIN,
- * @param char* tname          Performance Counter Threshold name
- * @param char* tthresholdCrossed  Counter Threshold crossed value
- * @param char* tvalue             Counter actual value
  * @param EVEL_EVENT_ACTION talertAction   Alert set continue or clear
  * @param char*  talertDescription
  * @param EVEL_ALERT_TYPE     talertType    Kind of anamoly
- * @param unsigned long long  tcollectionTimestamp time at which alert was collected
+ * @param char * tcollectionTimestamp time at which alert was collected
  * @param EVEL_SEVERITIES     teventSeverity  Severity of Alert
- * @param unsigned long long  teventStartTimestamp Time when this alert started
+ * @param char * teventStartTimestamp Time when this alert started
  *
  * @returns pointer to the newly manufactured ::EVENT_THRESHOLD_CROSS.  If the
  *          event is not used it must be released using
@@ -4406,16 +7120,36 @@ typedef struct event_threshold_cross {
  *****************************************************************************/
 EVENT_THRESHOLD_CROSS * evel_new_threshold_cross(
 				const char* ev_name, const char *ev_id,
-                               char * tcriticality,
-	                       char * tname,
-	                       char * tthresholdCrossed,
-	                       char * tvalue,
-                               EVEL_EVENT_ACTION  talertAction,
+                               EVEL_ALERT_ACTIONS talertAction,
                                char *             talertDescription, 
                                EVEL_ALERT_TYPE    talertType,
-                               unsigned long long tcollectionTimestamp, 
+                               char * tcollectionTimestamp, 
                                EVEL_SEVERITIES    teventSeverity,
-                               unsigned long long teventStartTimestamp);
+                               char *  teventStartTimestamp);
+
+/**************************************************************************//**
+ * Add the TCA additional performance counter
+ *
+ * @param tcp                     Pointer to the ::EVENT_THRESHOLD_CROSS.
+ * @param char* tcriticality      Performance Counter criticality
+ * @param char* tthresholdCrossed Performance Counter Threshold name 
+ *****************************************************************************/
+PERF_COUNTER * evel_threshold_cross_add_addl_parameters(
+                                  EVENT_THRESHOLD_CROSS * const event,
+                                  char *  tcriticality,
+                                  char *  tthresholdCrossed);
+
+/**************************************************************************//**
+ * Set the TCA name / Value for additional performance counter
+ *
+ * @param PERF_COUNTER perf_ctr Pointer to additional Parameter array element
+ * @param char* name          Performance Counter Threshold name
+ * @param char* value         Performance Counter actual value
+ *****************************************************************************/
+void evel_threshold_cross_addl_parameters_hashmap_set(
+                                  PERF_COUNTER * perf_ctr,
+                                  char *  name,
+                                  char *  value);
 
 /**************************************************************************//**
  * Free a Threshold cross event.
@@ -4517,6 +7251,7 @@ void evel_threshold_cross_addl_info_add(EVENT_THRESHOLD_CROSS * const tcp,
 /* Debug macros.                                                             */
 /*****************************************************************************/
 #define EVEL_DEBUG(FMT, ...)   log_debug(EVEL_LOG_DEBUG, (FMT), ##__VA_ARGS__)
+#define EVEL_WARN(FMT, ...)    log_debug(EVEL_LOG_WARN, (FMT), ##__VA_ARGS__)
 #define EVEL_INFO(FMT, ...)    log_debug(EVEL_LOG_INFO, (FMT), ##__VA_ARGS__)
 #define EVEL_SPAMMY(FMT, ...)  log_debug(EVEL_LOG_SPAMMY, (FMT), ##__VA_ARGS__)
 #define EVEL_ERROR(FMT, ...)   log_debug(EVEL_LOG_ERROR, "ERROR: " FMT, \

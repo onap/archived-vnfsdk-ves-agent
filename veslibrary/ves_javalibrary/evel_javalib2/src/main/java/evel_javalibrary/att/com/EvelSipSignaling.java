@@ -471,8 +471,8 @@ public class EvelSipSignaling extends EvelHeader {
 	  JsonObjectBuilder evelSipSignalingObject()
 	  {
 
-	    double version = major_version+(double)minor_version/10;
-
+	   // double version = major_version+(double)minor_version/10;
+          String version  = "3.0";
 	    EVEL_ENTER();
 
 	    /***************************************************************************/
@@ -486,8 +486,8 @@ public class EvelSipSignaling extends EvelHeader {
 	    
         JsonObjectBuilder vnfnamedobj =  Json.createObjectBuilder()
                 .add( "vendorName",vnfname_field.vendorname);
-            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"vfModuleName");
-            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"vnfName");
+            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"nfModuleName");
+            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"nfName");
 	    
 	    JsonObjectBuilder evelsip = Json.createObjectBuilder()
 	   	                          .add("correlator", correlator)
@@ -495,8 +495,8 @@ public class EvelSipSignaling extends EvelHeader {
 	   	                          .add("localPort", local_port)
                                   .add("remoteIpAddress", remote_ip_address)
                                   .add("remotePort", remote_port)
-                                  .add("vendorVnfNamedFields", vnfnamedobj);
-               	    	     
+                                  .add("vendorNfNameFields", vnfnamedobj);
+	                              
 	    
 	    /***************************************************************************/
 	    /* Optional fields.                                                        */
@@ -508,15 +508,16 @@ public class EvelSipSignaling extends EvelHeader {
 	    // additional fields
 		  if( additional_info != null )
 		  {
-		    JsonArrayBuilder builder = Json.createArrayBuilder();
+			JsonObjectBuilder builder = Json.createObjectBuilder();  
+		    //JsonArrayBuilder builder = Json.createArrayBuilder();
 		    for(int i=0;i<additional_info.size();i++) {
 			  String[] addl_info = additional_info.get(i);
-			  JsonObject obj = Json.createObjectBuilder()
-			    	     .add("name", addl_info[0])
-			    	     .add("value", addl_info[1]).build();
-			  builder.add(obj);
+//			  JsonObject obj = Json.createObjectBuilder()
+//			    	     .add("name", addl_info[0])
+//			    	     .add("value", addl_info[1]).build();
+			  builder.add(addl_info[0], addl_info[1]);
 		    }
-			evelsip.add("additionalFields", builder);
+			evelsip.add("additionalInformation", builder);
 		  }
 	    
 
@@ -524,7 +525,7 @@ public class EvelSipSignaling extends EvelHeader {
 	    /* Although optional, we always generate the version.  Note that this      */
 	    /* closes the object, too.                                                 */
 	    /***************************************************************************/
-	    evelsip.add("signalingFieldsVersion", version);
+	    evelsip.add("sipSignalingFieldsVersion", version);
 
 	    EVEL_EXIT();
 	    
@@ -545,7 +546,7 @@ public class EvelSipSignaling extends EvelHeader {
 	    JsonObject obj = Json.createObjectBuilder()
 	    	     .add("event", Json.createObjectBuilder()
 		    	         .add( "commonEventHeader",eventHeaderObject() )
-		    	         .add( "signalingFields",evelSipSignalingObject() )
+		    	         .add( "sipSignalingFields",evelSipSignalingObject() )
 		    	         ).build();
 
 	    EVEL_EXIT();

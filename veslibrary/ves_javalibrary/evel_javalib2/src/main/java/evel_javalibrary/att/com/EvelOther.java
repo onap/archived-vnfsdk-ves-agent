@@ -51,6 +51,9 @@ public class EvelOther extends EvelHeader {
 	  /* Optional fields                                                         */
 	  /***************************************************************************/
 	  Map<String,String> additional_info;
+	  
+	  
+	  
 	  Map<String,Map<String,String>> evelmap;
 	  
 
@@ -228,7 +231,7 @@ public class EvelOther extends EvelHeader {
 	    LOGGER.debug("Adding name="+name+" value="+value);
 	    
 	    if(additional_info == null)
-	    	additional_info = new HashMap<String,String>();
+	    	additional_info = new HashMap<String, String>();
 	    
 	    if(additional_info.containsKey(name))
 	    	LOGGER.error("Already exists Unable to add map : name="+name+"value= "+value);
@@ -247,8 +250,8 @@ public class EvelOther extends EvelHeader {
 	  JsonObjectBuilder evelOtherObject()
 	  {
 
-	    double version = major_version+(double)minor_version/10;
-
+	    //double version = major_version+(double)minor_version/10;
+          String version = "3.0";
 	    EVEL_ENTER();
 
 	    /***************************************************************************/
@@ -272,15 +275,17 @@ public class EvelOther extends EvelHeader {
 	    // additional fields
 		  if( additional_info != null )
 		  {
-		    JsonArrayBuilder builder = Json.createArrayBuilder();
+	//	    JsonArrayBuilder builder = Json.createArrayBuilder();
+			  JsonObjectBuilder builder = Json.createObjectBuilder();
             for(Map.Entry<String, String> entry : additional_info.entrySet()){
               LOGGER.debug(MessageFormat.format("Key : {0} and Value: {1}", entry.getKey(), entry.getValue()));
-			  JsonObject obj = Json.createObjectBuilder()
-			    	     .add("name", entry.getKey())
-			    	     .add("value",entry.getValue()).build();
-			  builder.add(obj);
+//			  JsonObject obj = Json.createObjectBuilder()
+//			    	     .add("name", entry.getKey())
+//			    	     .add("value",entry.getValue()).build();
+			  builder.add(entry.getKey(), entry.getValue());
 		    }
-			eveloth.add("nameValuePairs", builder);
+			//eveloth.add("nameValuePairs", builder);
+            eveloth.add("hashMap", builder);
 		  }
 	    		
         if( additional_objects != null && additional_objects.size() > 0 )
@@ -302,19 +307,20 @@ public class EvelOther extends EvelHeader {
 		              
 					  JsonObjectBuilder obj = Json.createObjectBuilder()
 		                      .add( "name", entry.getKey());
-		              JsonArrayBuilder builder2 = Json.createArrayBuilder();              
+		           //   JsonArrayBuilder builder2 = Json.createArrayBuilder();  
+					  JsonObjectBuilder builder2 = Json.createObjectBuilder();
 		              for(Map.Entry<String, String> entry2 : item.entrySet()){
 		                  LOGGER.debug(MessageFormat.format("Key : {0} and Value: {1}", entry2.getKey(), entry2.getValue()));
-		    			  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-		    			    	     .add("name", entry2.getKey())
-		    			    	     .add("value",entry2.getValue());
-		    			  builder2.add(obj2.build());
+//		    			  JsonObjectBuilder obj2 = Json.createObjectBuilder()
+//		    			    	     .add("name", entry2.getKey())
+//		    			    	     .add("value",entry2.getValue());
+		    			  builder2.add(entry2.getKey(), entry2.getValue());
 		    		   }
 		              
-					  obj.add("arrayOfFields", builder2);
+					  obj.add("hashMap", builder2);
 					  builder.add(obj.build());
 				}
-				eveloth.add("hashOfNameValuePairArrays", builder);
+				eveloth.add("arrayOfNamedHashMap", builder);
 		   }
 
 		  

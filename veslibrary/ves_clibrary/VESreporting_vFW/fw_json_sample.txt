@@ -1,0 +1,228 @@
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "heartbeat",
+            "eventId": "heartbeat000000001",
+            "eventName": "Heartbeat_vFirewall-AT&T_heartbeat",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1536687218863295,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Normal",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1536687218238271,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.1",
+            "vesEventListenerVersion": "7.0.1"
+        },
+        "heartbeatField": {
+            "heartbeatFieldsVersion": "3.0",
+            "heartbeatInterval": 20
+        }
+    }
+}
+===============
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "heartbeat",
+            "eventId": "heartbeat000000002",
+            "eventName": "Heartbeat_vFirewall-AT&T_heartbeat",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1536687238893809,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Normal",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1536687218863295,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.1",
+            "vesEventListenerVersion": "7.0.1"
+        },
+        "heartbeatField": {
+            "heartbeatFieldsVersion": "3.0",
+            "heartbeatInterval": 20
+        }
+    }
+}
+=======================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "measurementsForVfScaling",
+            "eventId": "mvfs000000001",
+            "eventName": "Measurement_vFirewall-AT&T_nicPerformance",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1536687244014982,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Normal",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1536687238893809,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.1",
+            "vesEventListenerVersion": "7.0.1"
+        },
+        "measurementFields": {
+            "cpuUsageArray": [
+                {
+                    "cpuIdentifier": "cpu1",
+                    "cpuIdle": 25.0,
+                    "cpuUsageSystem": 25.0,
+                    "cpuUsageUser": 0.0,
+                    "percentUsage": 0.0
+                }
+            ],
+            "measurementFieldsVersion": "4.0",
+            "measurementInterval": 25,
+            "nicPerformanceArray": [
+                {
+                    "nicIdentifier": "docker0",
+                    "receivedOctetsDelta": 0.0,
+                    "receivedTotalPacketsDelta": 0.0,
+                    "transmittedOctetsDelta": 0.0,
+                    "transmittedTotalPacketsDelta": 0.0,
+                    "valuesAreSuspect": "true"
+                },
+                {
+                    "nicIdentifier": "enp0s3",
+                    "receivedOctetsDelta": 4.0,
+                    "receivedTotalPacketsDelta": 0.0,
+                    "transmittedOctetsDelta": 4.0,
+                    "transmittedTotalPacketsDelta": 0.0,
+                    "valuesAreSuspect": "true"
+                },
+                {
+                    "nicIdentifier": "lo",
+                    "receivedOctetsDelta": 4512.0,
+                    "receivedTotalPacketsDelta": 42.0,
+                    "transmittedOctetsDelta": 4512.0,
+                    "transmittedTotalPacketsDelta": 42.0,
+                    "valuesAreSuspect": "true"
+                }
+            ],
+            "requestRate": 9383.0
+        }
+    }
+}
+=============================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000001",
+            "eventName": "Fault_vFirewall-AT&T_linkDownError",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1536687250053691,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Medium",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 1,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1536687250053691,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.1",
+            "vesEventListenerVersion": "7.0.1"
+        },
+        "faultFields": {
+            "alarmCondition": "linkDown",
+            "alarmInterfaceA": "docker0",
+            "eventCategory": "link",
+            "eventSeverity": "MAJOR",
+            "eventSourceType": "host",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "Transmit-Receive issue",
+            "vfStatus": "Idle"
+        }
+    }
+}
+===================================================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000002",
+            "eventName": "Fault_vFirewall-AT&T_linkDownError",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1536687250156578,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Medium",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 1,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1536687250156578,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.1",
+            "vesEventListenerVersion": "7.0.1"
+        },
+        "faultFields": {
+            "alarmCondition": "linkDown",
+            "alarmInterfaceA": "enp0s3",
+            "eventCategory": "link",
+            "eventSeverity": "MAJOR",
+            "eventSourceType": "host",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "Transmit-Receive issue",
+            "vfStatus": "Idle"
+        }
+    }
+}
+===============================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000003",
+            "eventName": "Fault_vFirewall-AT&T_linkDownError",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1536687250158256,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Medium",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 1,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1536687250158256,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.1",
+            "vesEventListenerVersion": "7.0.1"
+        },
+        "faultFields": {
+            "alarmCondition": "linkDown",
+            "alarmInterfaceA": "lo",
+            "eventCategory": "link",
+            "eventSeverity": "MAJOR",
+            "eventSourceType": "host",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "Transmit-Receive issue",
+            "vfStatus": "Idle"
+        }
+    }
+}
+

@@ -28,6 +28,7 @@
 
 #include "evel.h"
 #include "evel_internal.h"
+#include "evel_throttle.h"
 
 /*****************************************************************************/
 /* Array of strings to use when encoding TCP flags.                          */
@@ -172,7 +173,7 @@ EVENT_MOBILE_FLOW * evel_new_mobile_flow(const char* ev_name, const char *ev_id,
   evel_init_option_string(&mobile_flow->tac);
   evel_init_option_string(&mobile_flow->tunnel_id);
   evel_init_option_string(&mobile_flow->vlan_id);
-  dlist_initialize(&mobile_flow->additional_info);
+  mobile_flow->additional_info = ht_create();
 
 exit_label:
   EVEL_EXIT();
@@ -196,7 +197,8 @@ exit_label:
  *****************************************************************************/
 void evel_mobile_flow_addl_field_add(EVENT_MOBILE_FLOW * const event, char * name, char * value)
 {
-  OTHER_FIELD * nv_pair = NULL;
+  char *nam=NULL;
+  char *val=NULL;
 
   EVEL_ENTER();
 
@@ -209,14 +211,11 @@ void evel_mobile_flow_addl_field_add(EVENT_MOBILE_FLOW * const event, char * nam
   assert(value != NULL);
 
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  nv_pair = malloc(sizeof(OTHER_FIELD));
-  assert(nv_pair != NULL);
-  nv_pair->name = strdup(name);
-  nv_pair->value = strdup(value);
-  assert(nv_pair->name != NULL);
-  assert(nv_pair->value != NULL);
 
-  dlist_push_last(&event->additional_info, nv_pair);
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(event->additional_info, nam, val);
 
   EVEL_EXIT();
 }
@@ -933,8 +932,8 @@ void evel_mobile_flow_vlan_id_set(EVENT_MOBILE_FLOW * mobile_flow,
 void evel_json_encode_mobile_flow(EVEL_JSON_BUFFER * jbuf,
                                   EVENT_MOBILE_FLOW * event)
 {
-  OTHER_FIELD * nv_pair = NULL;
-  DLIST_ITEM * dlist_item = NULL;
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
 
   EVEL_ENTER();
 
@@ -952,29 +951,43 @@ void evel_json_encode_mobile_flow(EVEL_JSON_BUFFER * jbuf,
   /* Checkpoint, so that we can wind back if all fields are suppressed.      */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalFields"))
+
+  ht = event->additional_info;
+  if( ht != NULL )
   {
     bool added = false;
-
-    dlist_item = dlist_get_first(&event->additional_info);
-    while (dlist_item != NULL)
+    if( ht->size > 0)
     {
-      nv_pair = (OTHER_FIELD *) dlist_item->item;
-      assert(nv_pair != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalFields",
-                                          nv_pair->name))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", nv_pair->name);
-        evel_enc_kv_string(jbuf, "value", nv_pair->value);
-        evel_json_close_object(jbuf);
-        added = true;
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalFields",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      dlist_item = dlist_get_next(dlist_item);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
 
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
@@ -1051,8 +1064,7 @@ void evel_json_encode_mobile_flow(EVEL_JSON_BUFFER * jbuf,
  *****************************************************************************/
 void evel_free_mobile_flow(EVENT_MOBILE_FLOW * event)
 {
-  OTHER_FIELD * nv_pair = NULL;
-
+  HASHTABLE_T *ht;
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -1099,14 +1111,10 @@ void evel_free_mobile_flow(EVENT_MOBILE_FLOW * event)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  nv_pair = dlist_pop_last(&event->additional_info);
-  while (nv_pair != NULL)
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Other Field (%s, %s)", nv_pair->name, nv_pair->value);
-    free(nv_pair->name);
-    free(nv_pair->value);
-    free(nv_pair);
-    nv_pair = dlist_pop_last(&event->additional_info);
+     ht_destroy(ht);
   }
 
   evel_free_header(&event->header);
@@ -1312,6 +1320,10 @@ MOBILE_GTP_PER_FLOW_METRICS * evel_new_mobile_gtp_flow_metrics(
   evel_init_option_int(&metrics->num_gtp_echo_failures);
   evel_init_option_int(&metrics->num_gtp_tunnel_errors);
   evel_init_option_int(&metrics->num_http_errors);
+
+  metrics->ip_tos_count_list = ht_create();
+  metrics->mobile_qci_cos_count_list = ht_create();
+  metrics->tcp_flag_count_list = ht_create();
 
 exit_label:
   EVEL_EXIT();
@@ -1668,6 +1680,135 @@ void evel_mobile_gtp_metrics_max_trx_bit_rate_set(
 }
 
 /**************************************************************************//**
+ * Add an IP Tos count list value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_gtp_metrics_ip_tos_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const char * const name,
+                                      const char * const value)
+{
+  char *nam=NULL;
+  char *val=NULL;
+
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(metrics != NULL);
+  assert(name != NULL);
+  assert(value != NULL);
+
+  EVEL_DEBUG("Adding name=%s value=%s", name, value);
+
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(metrics->ip_tos_count_list, nam, val);
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Add an QCI Cos count list value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_gtp_metrics_qci_cos_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const EVEL_QCI_COS_TYPES qci_cos,
+                                      const char * const value)
+
+{
+  char *nam=NULL;
+  char *val=NULL;
+
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(metrics != NULL);
+  assert(qci_cos >= 0);
+  assert(qci_cos < EVEL_MAX_QCI_COS_TYPES);
+  assert(value != NULL);
+
+  EVEL_DEBUG("Adding name=%s value=%s", evel_qci_cos_strings[qci_cos], value);
+
+  nam = strdup(evel_qci_cos_strings[qci_cos]);
+  val = strdup(value);
+
+  ht_insert(metrics->mobile_qci_cos_count_list, nam, val);
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Add an TCP Flag count list value name/value pair to the Mobile flow.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param fault     Pointer to the Mobile GTP Per Flow Metrics.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_mobile_gtp_metrics_tcp_flag_count_list_add(
+                                      MOBILE_GTP_PER_FLOW_METRICS * metrics,
+                                      const EVEL_TCP_FLAGS tcp_flag,
+                                      const char * const value)
+{
+  char *nam=NULL;
+  char *val=NULL;
+
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(metrics != NULL);
+  assert(tcp_flag >= 0);
+  assert(tcp_flag < EVEL_MAX_TCP_FLAGS);
+  assert(value != NULL);
+
+  EVEL_DEBUG("Adding name=%s value=%s", evel_tcp_flag_strings[tcp_flag], value);
+
+  nam = strdup(evel_tcp_flag_strings[tcp_flag]);
+  val = strdup(value);
+
+  ht_insert(metrics->tcp_flag_count_list, nam, val);
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
  * Set the Number of GTP Echo Failures property of the Mobile GTP Per Flow
  * Metrics.
  *
@@ -1830,6 +1971,9 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
                                         EVEL_JSON_BUFFER * jbuf,
                                         MOBILE_GTP_PER_FLOW_METRICS * metrics)
 {
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
+
   int index;
   bool found_ip_tos;
   bool found_tcp_flag;
@@ -1913,18 +2057,18 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
 
   if (found_ip_tos)
   {
-    evel_json_open_named_list(jbuf, "ipTosCountList");
+    evel_json_open_named_object(jbuf, "ipTosCountList");
     for (index = 0; index < EVEL_TOS_SUPPORTED; index++)
     {
       if (metrics->ip_tos_counts[index].is_set)
       {
         evel_enc_list_item(jbuf,
-                           "[\"%d\", %d]",
+                           "\"%d\": \"%d\"",
                            index,
                            metrics->ip_tos_counts[index].value);
       }
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
   }
 
   if (found_ip_tos)
@@ -1982,18 +2126,18 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
 
   if (found_tcp_flag)
   {
-    evel_json_open_named_list(jbuf, "tcpFlagCountList");
+    evel_json_open_named_object(jbuf, "tcpFlagCountList");
     for (index = 0; index < EVEL_MAX_TCP_FLAGS; index++)
     {
       if (metrics->tcp_flag_counts[index].is_set)
       {
         evel_enc_list_item(jbuf,
-                           "[\"%s\", %d]",
+                           "\"%s\": \"%d\"",
                            evel_tcp_flag_strings[index],
                            metrics->tcp_flag_counts[index].value);
       }
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
   }
 
   /***************************************************************************/
@@ -2032,7 +2176,7 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
 
   if (found_qci_cos)
   {
-    evel_json_open_named_list(jbuf, "mobileQciCosList");
+    evel_json_open_named_object(jbuf, "mobileQciCosList");
     for (index = 0; index < EVEL_MAX_QCI_COS_TYPES; index++)
     {
       if (metrics->qci_cos_counts[index].is_set)
@@ -2042,23 +2186,23 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
                            evel_qci_cos_strings[index]);
       }
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
   }
 
   if (found_qci_cos)
   {
-    evel_json_open_named_list(jbuf, "mobileQciCosCountList");
+    evel_json_open_named_object(jbuf, "mobileQciCosCountList");
     for (index = 0; index < EVEL_MAX_QCI_COS_TYPES; index++)
     {
       if (metrics->qci_cos_counts[index].is_set)
       {
         evel_enc_list_item(jbuf,
-                           "[\"%s\", %d]",
+                           "\"%s\": \"%d\"",
                            evel_qci_cos_strings[index],
                            metrics->qci_cos_counts[index].value);
       }
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
   }
 
   evel_enc_kv_opt_int(
@@ -2086,6 +2230,279 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
     jbuf, "numGtpTunnelErrors", &metrics->num_gtp_tunnel_errors);
   evel_enc_kv_opt_int(jbuf, "numHttpErrors", &metrics->num_http_errors);
 
+  evel_json_checkpoint(jbuf);
+  ht = metrics->ip_tos_count_list;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "ipTosCountList"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "ipTosCountList",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_object(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  evel_json_checkpoint(jbuf);
+  ht = metrics->ip_tos_count_list;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_list(jbuf, "ipTosList"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding MobileFlowFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "ipTosList",
+                                              entry->key))
+            {
+              evel_enc_list_item(jbuf, "\"%s\"", entry->key);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  evel_json_checkpoint(jbuf);
+  ht = metrics->mobile_qci_cos_count_list;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "mobileQciCosCountList"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "mobileQciCosCountList",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_object(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  evel_json_checkpoint(jbuf);
+  ht = metrics->mobile_qci_cos_count_list;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_list(jbuf, "mobileQciCosList"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding MobileFlowFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "mobileQciCosList",
+                                              entry->key))
+            {
+              evel_enc_list_item(jbuf, "\"%s\"", entry->key);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  evel_json_checkpoint(jbuf);
+  ht = metrics->tcp_flag_count_list;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "tcpFlagCountList"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "tcpFlagCountList",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_object(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  evel_json_checkpoint(jbuf);
+  ht = metrics->tcp_flag_count_list;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_list(jbuf, "tcpFlagList"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding MobileFlowFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "tcpFlagList",
+                                              entry->key))
+            {
+
+              evel_enc_list_item(jbuf, "\"%s\"", entry->key);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
   evel_json_close_object(jbuf);
 
   EVEL_EXIT();
@@ -2102,6 +2519,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
  *****************************************************************************/
 void evel_free_mobile_gtp_flow_metrics(MOBILE_GTP_PER_FLOW_METRICS * metrics)
 {
+  HASHTABLE_T *ht;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -2118,6 +2537,24 @@ void evel_free_mobile_gtp_flow_metrics(MOBILE_GTP_PER_FLOW_METRICS * metrics)
   evel_free_option_string(&metrics->flow_deactivated_by);
   evel_free_option_string(&metrics->gtp_connection_status);
   evel_free_option_string(&metrics->gtp_tunnel_status);
+
+  ht = metrics->ip_tos_count_list;
+  if( ht != NULL )
+  {
+     ht_destroy(ht);
+  }
+
+  ht = metrics->mobile_qci_cos_count_list;
+  if( ht != NULL )
+  {
+     ht_destroy(ht);
+  }
+
+  ht = metrics->tcp_flag_count_list;
+  if( ht != NULL )
+  {
+     ht_destroy(ht);
+  }
 
   EVEL_EXIT();
 }

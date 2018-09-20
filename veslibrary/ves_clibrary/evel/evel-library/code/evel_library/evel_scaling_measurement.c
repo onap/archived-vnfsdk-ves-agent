@@ -75,7 +75,8 @@ EVENT_MEASUREMENT * evel_new_measurement(double measurement_interval, const char
   evel_init_header_nameid(&measurement->header,ev_name,ev_id);
   measurement->header.event_domain = EVEL_DOMAIN_MEASUREMENT;
   measurement->measurement_interval = measurement_interval;
-  dlist_initialize(&measurement->additional_info);
+  measurement->additional_info = ht_create();
+  measurement->feature_usage = ht_create();
   dlist_initialize(&measurement->additional_measurements);
   dlist_initialize(&measurement->additional_objects);
   dlist_initialize(&measurement->cpu_usage);
@@ -83,15 +84,20 @@ EVENT_MEASUREMENT * evel_new_measurement(double measurement_interval, const char
   dlist_initialize(&measurement->mem_usage);
   dlist_initialize(&measurement->filesystem_usage);
   dlist_initialize(&measurement->latency_distribution);
-  dlist_initialize(&measurement->vnic_usage);
+  dlist_initialize(&measurement->nic_performance);
   dlist_initialize(&measurement->codec_usage);
-  dlist_initialize(&measurement->feature_usage);
+  dlist_initialize(&measurement->huge_pages);
+  dlist_initialize(&measurement->ipmis);
+  dlist_initialize(&measurement->loads);
+  dlist_initialize(&measurement->machine_check_exception);
+  dlist_initialize(&measurement->process_stats);
+
   evel_init_option_double(&measurement->mean_request_latency);
   evel_init_option_int(&measurement->vnfc_scaling_metric);
   evel_init_option_int(&measurement->concurrent_sessions);
   evel_init_option_int(&measurement->configured_entities);
   evel_init_option_int(&measurement->media_ports_in_use);
-  evel_init_option_int(&measurement->request_rate);
+  evel_init_option_double(&measurement->request_rate);
   measurement->major_version = EVEL_MEASUREMENT_MAJOR_VERSION;
   measurement->minor_version = EVEL_MEASUREMENT_MINOR_VERSION;
 
@@ -144,7 +150,9 @@ void evel_measurement_type_set(EVENT_MEASUREMENT * measurement,
  *****************************************************************************/
 void evel_measurement_addl_info_add(EVENT_MEASUREMENT * measurement, char * name, char * value)
 {
-  OTHER_FIELD * addl_info = NULL;
+  char *nam=NULL;
+  char *val=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -156,18 +164,43 @@ void evel_measurement_addl_info_add(EVENT_MEASUREMENT * measurement, char * name
   assert(value != NULL);
   
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  addl_info = malloc(sizeof(OTHER_FIELD));
-  assert(addl_info != NULL);
-  memset(addl_info, 0, sizeof(OTHER_FIELD));
-  addl_info->name = strdup(name);
-  addl_info->value = strdup(value);
-  assert(addl_info->name != NULL);
-  assert(addl_info->value != NULL);
 
-  dlist_push_last(&measurement->additional_info, addl_info);
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(measurement->additional_info, nam, val);
 
   EVEL_EXIT();
 }
+
+/**************************************************************************//**
+ * Add a json object to jsonObject list.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param measurement     Pointer to the ScalingMeasurement
+ * @param jsonobj   Pointer to json object
+ *****************************************************************************/
+void evel_measurement_addl_object_add(EVENT_MEASUREMENT * measurement, EVEL_JSON_OBJECT *jsonobj)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(measurement != NULL);
+  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+  assert(jsonobj != NULL);
+
+  EVEL_DEBUG("Adding jsonObject %p",jsonobj);
+
+  dlist_push_last(&measurement->additional_objects, jsonobj);
+
+  EVEL_EXIT();
+}
+
 
 /**************************************************************************//**
  * Set the Concurrent Sessions property of the Measurement.
@@ -226,72 +259,6 @@ void evel_measurement_cfg_ents_set(EVENT_MEASUREMENT * measurement,
 }
 
 /**************************************************************************//**
- * Add an additional set of Errors to the Measurement.
- *
- * @note  The property is treated as immutable: it is only valid to call
- *        the setter once.  However, we don't assert if the caller tries to
- *        overwrite, just ignoring the update instead.
- *
- * @param measurement       Pointer to the measurement.
- * @param receive_discards  The number of receive discards.
- * @param receive_errors    The number of receive errors.
- * @param transmit_discards The number of transmit discards.
- * @param transmit_errors   The number of transmit errors.
- *****************************************************************************/
-void evel_measurement_errors_set(EVENT_MEASUREMENT * measurement,
-                                 int receive_discards,
-                                 int receive_errors,
-                                 int transmit_discards,
-                                 int transmit_errors)
-{
-  MEASUREMENT_ERRORS * errors = NULL;
-  EVEL_ENTER();
-
-  /***************************************************************************/
-  /* Check preconditions.                                                      */
-  /***************************************************************************/
-  assert(measurement != NULL);
-  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
-  assert(receive_discards >= 0);
-  assert(receive_errors >= 0);
-  assert(transmit_discards >= 0);
-  assert(transmit_errors >= 0);
-
-  if (measurement->errors == NULL)
-  {
-    EVEL_DEBUG("Adding Errors: %d, %d; %d, %d",
-               receive_discards,
-               receive_errors,
-               transmit_discards,
-               transmit_errors);
-    errors = malloc(sizeof(MEASUREMENT_ERRORS));
-    assert(errors != NULL);
-    memset(errors, 0, sizeof(MEASUREMENT_ERRORS));
-    errors->receive_discards = receive_discards;
-    errors->receive_errors = receive_errors;
-    errors->transmit_discards = transmit_discards;
-    errors->transmit_errors = transmit_errors;
-    measurement->errors = errors;
-  }
-  else
-  {
-    errors = measurement->errors;
-    EVEL_DEBUG("Ignoring attempt to add Errors: %d, %d; %d, %d\n"
-               "Errors already set: %d, %d; %d, %d",
-               receive_discards,
-               receive_errors,
-               transmit_discards,
-               transmit_errors,
-               errors->receive_discards,
-               errors->receive_errors,
-               errors->transmit_discards,
-               errors->transmit_errors);
-  }
-
-  EVEL_EXIT();
-}
-
-/**************************************************************************//**
  * Set the Mean Request Latency property of the Measurement.
  *
  * @note  The property is treated as immutable: it is only valid to call
@@ -331,7 +298,7 @@ void evel_measurement_mean_req_lat_set(EVENT_MEASUREMENT * measurement,
  * @param request_rate The Request Rate to be set.
  *****************************************************************************/
 void evel_measurement_request_rate_set(EVENT_MEASUREMENT * measurement,
-                                       int request_rate)
+                                       double request_rate)
 {
   EVEL_ENTER();
 
@@ -342,7 +309,7 @@ void evel_measurement_request_rate_set(EVENT_MEASUREMENT * measurement,
   assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
   assert(request_rate >= 0);
 
-  evel_set_option_int(&measurement->request_rate,
+  evel_set_option_double(&measurement->request_rate,
                       request_rate,
                       "Request Rate");
   EVEL_EXIT();
@@ -390,6 +357,13 @@ MEASUREMENT_CPU_USE *evel_measurement_new_cpu_use_add(EVENT_MEASUREMENT * measur
   evel_init_option_double(&cpu_use->sys);
   evel_init_option_double(&cpu_use->user);
   evel_init_option_double(&cpu_use->wait);
+  evel_init_option_double(&cpu_use->cpuCapacityContention);
+  evel_init_option_double(&cpu_use->cpuDemandAvg);
+  evel_init_option_double(&cpu_use->cpuDemandMhz);
+  evel_init_option_double(&cpu_use->cpuDemandPct);
+  evel_init_option_double(&cpu_use->cpuLatencyAvg);
+  evel_init_option_double(&cpu_use->cpuOverheadAvg);
+  evel_init_option_double(&cpu_use->cpuSwapWaitTime);
 
   dlist_push_last(&measurement->cpu_usage, cpu_use);
 
@@ -545,6 +519,61 @@ void evel_measurement_cpu_use_wait_set(MEASUREMENT_CPU_USE * const cpu_use,
   EVEL_EXIT();
 }
 
+void evel_measurement_cpu_use_cpuCapacityContention_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuCapacityContention, val, "time the CPU cannot run due to contention");
+  EVEL_EXIT();
+}
+
+void evel_measurement_cpu_use_cpuDemandAvg_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuDemandAvg, val, "The total CPU time that the NF NFC VM could use");
+  EVEL_EXIT();
+}
+
+void evel_measurement_cpu_use_cpuDemandMhz_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuDemandMhz, val, "CPU demand in MHz");
+  EVEL_EXIT();
+}
+
+void evel_measurement_cpu_use_cpuDemandPct_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuDemandPct, val, "CPU demand PCT");
+  EVEL_EXIT();
+}
+
+void evel_measurement_cpu_use_cpuLatencyAvg_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuLatencyAvg, val, "time the VM is unable to run");
+  EVEL_EXIT();
+}
+
+void evel_measurement_cpu_use_cpuOverheadAvg_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuOverheadAvg, val, "The overhead demand");
+  EVEL_EXIT();
+}
+
+void evel_measurement_cpu_use_cpuSwapWaitTime_set(MEASUREMENT_CPU_USE * const cpu_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&cpu_use->cpuSwapWaitTime, val, "Swap wait time");
+  EVEL_EXIT();
+}
 
 /**************************************************************************//**
  * Add an additional Memory usage value name/value pair to the Measurement.
@@ -554,14 +583,17 @@ void evel_measurement_cpu_use_wait_set(MEASUREMENT_CPU_USE * const cpu_use,
  * returns.
  *
  * @param measurement   Pointer to the measurement.
- * @param id            ASCIIZ string with the Memory identifier.
  * @param vmidentifier  ASCIIZ string with the VM's identifier.
- * @param membuffsz     Memory Size.
+ * @param memfree       Memory Free
+ * @param memused       Memory Used
  *
  * @return  Returns pointer to memory use structure in measurements
  *****************************************************************************/
-MEASUREMENT_MEM_USE * evel_measurement_new_mem_use_add(EVENT_MEASUREMENT * measurement,
-                                 char * id,  char *vmidentifier,  double membuffsz)
+MEASUREMENT_MEM_USE * evel_measurement_new_mem_use_add(
+                                 EVENT_MEASUREMENT * measurement, 
+                                 char *vmidentifier,  
+                                 double memfree,
+                                 double memused)
 {
   MEASUREMENT_MEM_USE * mem_use = NULL;
   EVEL_ENTER();
@@ -571,27 +603,34 @@ MEASUREMENT_MEM_USE * evel_measurement_new_mem_use_add(EVENT_MEASUREMENT * measu
   /***************************************************************************/
   assert(measurement != NULL);
   assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
-  assert(id != NULL);
-  assert(membuffsz >= 0.0);
+  assert(vmidentifier != NULL);
 
   /***************************************************************************/
   /* Allocate a container for the value and push onto the list.              */
   /***************************************************************************/
-  EVEL_DEBUG("Adding id=%s buffer size=%lf", id, membuffsz);
+  EVEL_DEBUG("Adding vmid=%s", vmidentifier);
   mem_use = malloc(sizeof(MEASUREMENT_MEM_USE));
   assert(mem_use != NULL);
   memset(mem_use, 0, sizeof(MEASUREMENT_MEM_USE));
-  mem_use->id    = strdup(id);
   mem_use->vmid  = strdup(vmidentifier);
-  mem_use->membuffsz = membuffsz;
+  mem_use->memfree = memfree;
+  mem_use->memused = memused;
+  evel_init_option_double(&mem_use->membuffsz);
   evel_init_option_double(&mem_use->memcache);
   evel_init_option_double(&mem_use->memconfig);
-  evel_init_option_double(&mem_use->memfree);
   evel_init_option_double(&mem_use->slabrecl);
   evel_init_option_double(&mem_use->slabunrecl);
-  evel_init_option_double(&mem_use->memused);
+  evel_init_option_double(&mem_use->memoryDemand);
+  evel_init_option_double(&mem_use->memoryLatencyAvg);
+  evel_init_option_double(&mem_use->memorySharedAvg);
+  evel_init_option_double(&mem_use->memorySwapInAvg);
+  evel_init_option_double(&mem_use->memorySwapInRateAvg);
+  evel_init_option_double(&mem_use->memorySwapOutAvg);
+  evel_init_option_double(&mem_use->memorySwapOutRateAvg);
+  evel_init_option_double(&mem_use->memorySwapUsedAvg);
+  evel_init_option_double(&mem_use->percentMemoryUsage);
 
-  assert(mem_use->id != NULL);
+  assert(mem_use->vmid != NULL);
 
   dlist_push_last(&measurement->mem_usage, mem_use);
 
@@ -618,6 +657,24 @@ void evel_measurement_mem_use_memcache_set(MEASUREMENT_MEM_USE * const mem_use,
 }
 
 /**************************************************************************//**
+ * Set kilobytes of memory Buffered
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param mem_use      Pointer to the Memory Use.
+ * @param val          double
+ *****************************************************************************/
+void evel_measurement_mem_use_mem_buffered_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->membuffsz, val, "Memory Buffered value");
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
  * Set kilobytes of memory configured in the virtual machine on which the VNFC reporting
  *
  * @note  The property is treated as immutable: it is only valid to call
@@ -632,24 +689,6 @@ void evel_measurement_mem_use_memconfig_set(MEASUREMENT_MEM_USE * const mem_use,
 {
   EVEL_ENTER();
   evel_set_option_double(&mem_use->memconfig, val, "Memory configured value");
-  EVEL_EXIT();
-}
-
-/**************************************************************************//**
- * Set kilobytes of physical RAM left unused by the system
- *
- * @note  The property is treated as immutable: it is only valid to call
- *        the setter once.  However, we don't assert if the caller tries to
- *        overwrite, just ignoring the update instead.
- *
- * @param mem_use      Pointer to the Memory Use.
- * @param val          double
- *****************************************************************************/
-void evel_measurement_mem_use_memfree_set(MEASUREMENT_MEM_USE * const mem_use,
-                                    const double val)
-{
-  EVEL_ENTER();
-  evel_set_option_double(&mem_use->memfree, val, "Memory freely available value");
   EVEL_EXIT();
 }
 
@@ -690,7 +729,7 @@ void evel_measurement_mem_use_slab_unreclaimable_set(MEASUREMENT_MEM_USE * const
 }
 
 /**************************************************************************//**
- * Set the total memory minus the sum of free, buffered, cached and slab memory in kilobytes
+ * Set the Host demand in kibibytes 
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
@@ -699,11 +738,75 @@ void evel_measurement_mem_use_slab_unreclaimable_set(MEASUREMENT_MEM_USE * const
  * @param mem_use      Pointer to the Memory Use.
  * @param val          double
  *****************************************************************************/
-void evel_measurement_mem_use_usedup_set(MEASUREMENT_MEM_USE * const mem_use,
+void evel_measurement_mem_use_memoryDemand_set(MEASUREMENT_MEM_USE * const mem_use,
                                     const double val)
 {
   EVEL_ENTER();
-  evel_set_option_double(&mem_use->memused, val, "Memory usedup total set");
+  evel_set_option_double(&mem_use->memoryDemand, val, "Host demand in kibibytes");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memoryLatencyAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memoryLatencyAvg, val, "Percentage of time the VM is waiting");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memorySharedAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memorySharedAvg, val, "Shared memory in kilobytes");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memorySwapInAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memorySwapInAvg, val, "Amount of memory swapped-in");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memorySwapInRateAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memorySwapInRateAvg, val, "Rate at which memory is swapped");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memorySwapOutAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memorySwapOutAvg, val, "Amount of memory swapped-out");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memorySwapOutRateAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memorySwapOutRateAvg, val, "Rate at which memory is being swapped out");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_memorySwapUsedAvg_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->memorySwapUsedAvg, val, "Space used for caching swapped pages");
+  EVEL_EXIT();
+}
+
+void evel_measurement_mem_use_percentMemoryUsage_set(MEASUREMENT_MEM_USE * const mem_use,
+                                    const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&mem_use->percentMemoryUsage, val, "Percentage of memory usage");
   EVEL_EXIT();
 }
 
@@ -781,6 +884,20 @@ MEASUREMENT_DISK_USE * evel_measurement_new_disk_use_add(EVENT_MEASUREMENT * mea
   evel_init_option_double(&disk_use->timewritelast );
   evel_init_option_double(&disk_use->timewritemax );
   evel_init_option_double(&disk_use->timewritemin );
+  evel_init_option_double(&disk_use->diskBusResets );
+  evel_init_option_double(&disk_use->diskCommandsAborted );
+  evel_init_option_double(&disk_use->diskTime );
+  evel_init_option_double(&disk_use->diskFlushRequests );
+  evel_init_option_double(&disk_use->diskFlushTime );
+  evel_init_option_double(&disk_use->diskCommandsAvg );
+  evel_init_option_double(&disk_use->diskReadCommandsAvg );
+  evel_init_option_double(&disk_use->diskWriteCommandsAvg );
+  evel_init_option_double(&disk_use->diskTotalReadLatencyAvg );
+  evel_init_option_double(&disk_use->diskTotalWriteLatencyAvg );
+  evel_init_option_double(&disk_use->diskWeightedIoTimeAvg );
+  evel_init_option_double(&disk_use->diskWeightedIoTimeLast );
+  evel_init_option_double(&disk_use->diskWeightedIoTimeMax );
+  evel_init_option_double(&disk_use->diskWeightedIoTimeMin );
 
   EVEL_EXIT();
   return disk_use;
@@ -1532,6 +1649,132 @@ void evel_measurement_disk_use_timewritemin_set(MEASUREMENT_DISK_USE * const dis
   EVEL_EXIT();
 }
 
+void evel_measurement_disk_use_diskBusResets_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskBusResets, val, "diskBusResets");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskCommandsAborted_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskCommandsAborted, val, "diskCommandsAborted");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskTime_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskTime, val, "diskTime");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskFlushRequests_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskFlushRequests, val, "diskFlushRequests");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskFlushTime_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskFlushTime, val, "diskFlushTime");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskCommandsAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskCommandsAvg, val, "diskCommandsAvg");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskReadCommandsAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskReadCommandsAvg, val, "diskReadCommandsAvg");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskWriteCommandsAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskWriteCommandsAvg, val, "diskWriteCommandsAvg");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskTotalReadLatencyAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskTotalReadLatencyAvg, val, "diskTotalReadLatencyAvg");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskTotalWriteLatencyAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskTotalWriteLatencyAvg, val, "diskTotalWriteLatencyAvg");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskWeightedIoTimeAvg_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskWeightedIoTimeAvg, val, "diskWeightedIoTimeAvg");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskWeightedIoTimeLast_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskWeightedIoTimeLast, val, "diskWeightedIoTimeLast");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskWeightedIoTimeMax_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskWeightedIoTimeMax, val, "diskWeightedIoTimeMax");
+  EVEL_EXIT();
+}
+
+void evel_measurement_disk_use_diskWeightedIoTimeMin_set(
+                                   MEASUREMENT_DISK_USE * const disk_use, 
+                                   const double val)
+{
+  EVEL_ENTER();
+  evel_set_option_double(&disk_use->diskWeightedIoTimeMin, val, "diskWeightedIoTimeMin");
+  EVEL_EXIT();
+}
+
 /**************************************************************************//**
  * Add an additional File System usage value name/value pair to the
  * Measurement.
@@ -1607,9 +1850,11 @@ void evel_measurement_fsys_use_add(EVENT_MEASUREMENT * measurement,
  *****************************************************************************/
 void evel_measurement_feature_use_add(EVENT_MEASUREMENT * measurement,
                                       char * feature,
-                                      int utilization)
+                                      char * utilization)
 {
-  MEASUREMENT_FEATURE_USE * feature_use = NULL;
+  char *nam=NULL;
+  char *val=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -1618,105 +1863,95 @@ void evel_measurement_feature_use_add(EVENT_MEASUREMENT * measurement,
   assert(measurement != NULL);
   assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
   assert(feature != NULL);
-  assert(utilization >= 0);
+  assert(utilization != 0);
 
   /***************************************************************************/
   /* Allocate a container for the value and push onto the list.              */
   /***************************************************************************/
-  EVEL_DEBUG("Adding Feature=%s Use=%d", feature, utilization);
-  feature_use = malloc(sizeof(MEASUREMENT_FEATURE_USE));
-  assert(feature_use != NULL);
-  memset(feature_use, 0, sizeof(MEASUREMENT_FEATURE_USE));
-  feature_use->feature_id = strdup(feature);
-  assert(feature_use->feature_id != NULL);
-  feature_use->feature_utilization = utilization;
+  EVEL_DEBUG("Adding Feature=%s Use=%s", feature, utilization);
+  nam = strdup(feature);
+  val = strdup(utilization);
 
-  dlist_push_last(&measurement->feature_usage, feature_use);
+  ht_insert(measurement->feature_usage, nam, val);
 
   EVEL_EXIT();
 }
-
 /**************************************************************************//**
- * Add a Additional Measurement value name/value pair to the Report.
+ * Add a new Additional Measurement hashmap to the Measurement.
  *
  * The name is null delimited ASCII string.  The library takes
  * a copy so the caller does not have to preserve values after the function
  * returns.
  *
- * @param measurement   Pointer to the Measaurement.
- * @param group    ASCIIZ string with the measurement group's name.
- * @param name     ASCIIZ string containing the measurement's name.
- * @param value    ASCIIZ string containing the measurement's value.
+ * @param measurement   Pointer to the Measurement.
+ * @param name     ASCIIZ string containing the hashmap name
  *****************************************************************************/
-void evel_measurement_custom_measurement_add(EVENT_MEASUREMENT * measurement,
-                                             const char * const group,
-                                             const char * const name,
-                                             const char * const value)
+HASHTABLE_T * evel_measurement_new_addl_measurement(
+                                             EVENT_MEASUREMENT * measurement,
+                                             const char * const name)
 {
-  MEASUREMENT_GROUP * measurement_group = NULL;
-  CUSTOM_MEASUREMENT * custom_measurement = NULL;
-  DLIST_ITEM * item = NULL;
+  HASHTABLE_T *ht;
+  char *nam=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
-  /* Check assumptions.                                                      */
+  /* Check preconditions.                                                    */
   /***************************************************************************/
   assert(measurement != NULL);
   assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
-  assert(group != NULL);
+  assert(name != NULL);
+
+  EVEL_DEBUG("Adding HashMapName to additional_measurements = %s", name);
+
+  nam = strdup(name);
+
+  ht = nht_create( nam );
+
+  if (ht != NULL)
+  {
+    dlist_push_last(&measurement->additional_measurements, ht);
+  }
+
+  EVEL_EXIT();
+
+  return ht;
+}
+
+/**************************************************************************//**
+ * Add a new Additional Measurement hashmap to the Measurement.
+ *
+ * The name is null delimited ASCII string.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param ht       Pointer hashmap.
+ * @param name     ASCIIZ string containing the measurement's name.
+ * @param Value    ASCIIZ string containing the measurement's value.
+ *****************************************************************************/
+void evel_measurement_addl_measurement_set (
+                                      HASHTABLE_T * const ht,
+                                      const char * const name,
+                                      const char * const value)
+{
+  char *nam=NULL;
+  char *val=NULL;
+
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(ht != NULL);
   assert(name != NULL);
   assert(value != NULL);
 
-  /***************************************************************************/
-  /* Allocate a container for the name/value pair.                           */
-  /***************************************************************************/
-  EVEL_DEBUG("Adding Measurement Group=%s Name=%s Value=%s",
-              group, name, value);
-  custom_measurement = malloc(sizeof(CUSTOM_MEASUREMENT));
-  assert(custom_measurement != NULL);
-  memset(custom_measurement, 0, sizeof(CUSTOM_MEASUREMENT));
-  custom_measurement->name = strdup(name);
-  assert(custom_measurement->name != NULL);
-  custom_measurement->value = strdup(value);
-  assert(custom_measurement->value != NULL);
+  EVEL_DEBUG("Adding name=%s value=%s", name, value);
 
-  /***************************************************************************/
-  /* See if we have that group already.                                      */
-  /***************************************************************************/
-  item = dlist_get_first(&measurement->additional_measurements);
-  while (item != NULL)
-  {
-    measurement_group = (MEASUREMENT_GROUP *) item->item;
-    assert(measurement_group != NULL);
+  nam = strdup(name);
+  val = strdup(value);
 
-    EVEL_DEBUG("Got measurement group %s", measurement_group->name);
-    if (strcmp(group, measurement_group->name) == 0)
-    {
-      EVEL_DEBUG("Found existing Measurement Group");
-      break;
-    }
-    item = dlist_get_next(item);
-  }
-
-  /***************************************************************************/
-  /* If we didn't have the group already, create it.                         */
-  /***************************************************************************/
-  if (item == NULL)
-  {
-    EVEL_DEBUG("Creating new Measurement Group");
-    measurement_group = malloc(sizeof(MEASUREMENT_GROUP));
-    assert(measurement_group != NULL);
-    memset(measurement_group, 0, sizeof(MEASUREMENT_GROUP));
-    measurement_group->name = strdup(group);
-    assert(measurement_group->name != NULL);
-    dlist_initialize(&measurement_group->measurements);
-    dlist_push_last(&measurement->additional_measurements, measurement_group);
-  }
-
-  /***************************************************************************/
-  /* If we didn't have the group already, create it.                         */
-  /***************************************************************************/
-  dlist_push_last(&measurement_group->measurements, custom_measurement);
+  ht_insert(ht, nam, val);
 
   EVEL_EXIT();
 }
@@ -1971,123 +2206,372 @@ void evel_measurement_latency_add(EVENT_MEASUREMENT * const measurement,
 }
 
 /**************************************************************************//**
- * Create a new vNIC Use to be added to a Measurement event.
+ * Create a new NIC Use to be added to a Measurement event.
  *
- * @note    The mandatory fields on the ::MEASUREMENT_VNIC_PERFORMANCE must be supplied
+ * @note    The mandatory fields on the ::MEASUREMENT_NIC_PERFORMANCE must be supplied
  *          to this factory function and are immutable once set. Optional
  *          fields have explicit setter functions, but again values may only be
- *          set once so that the ::MEASUREMENT_VNIC_PERFORMANCE has immutable
+ *          set once so that the ::MEASUREMENT_NIC_PERFORMANCE has immutable
  *          properties.
  *
- * @param vnic_id               ASCIIZ string with the vNIC's ID.
+ * @param nic_id               ASCIIZ string with the NIC's ID.
  * @param val_suspect           True or false confidence in data.
  *
- * @returns pointer to the newly manufactured ::MEASUREMENT_VNIC_PERFORMANCE.
+ * @returns pointer to the newly manufactured ::MEASUREMENT_NIC_PERFORMANCE.
  *          If the structure is not used it must be released using
- *          ::evel_measurement_free_vnic_performance.
- * @retval  NULL  Failed to create the vNIC Use.
+ *          ::evel_measurement_free_nic_performance.
+ * @retval  NULL  Failed to create the NIC Use.
  *****************************************************************************/
-MEASUREMENT_VNIC_PERFORMANCE * evel_measurement_new_vnic_performance(char * const vnic_id,
+MEASUREMENT_NIC_PERFORMANCE * evel_measurement_new_nic_performance(char * const nic_id,
                                                      char * const val_suspect)
 {
-  MEASUREMENT_VNIC_PERFORMANCE * vnic_performance;
+  MEASUREMENT_NIC_PERFORMANCE * nic_performance;
 
   EVEL_ENTER();
 
   /***************************************************************************/
   /* Check preconditions.                                                    */
   /***************************************************************************/
-  assert(vnic_id != NULL);
+  assert(nic_id != NULL);
   assert(!strcmp(val_suspect,"true") || !strcmp(val_suspect,"false"));
 
   /***************************************************************************/
   /* Allocate, then set Mandatory Parameters.                                */
   /***************************************************************************/
-  EVEL_DEBUG("Adding VNIC ID=%s", vnic_id);
-  vnic_performance = malloc(sizeof(MEASUREMENT_VNIC_PERFORMANCE));
-  assert(vnic_performance != NULL);
-  vnic_performance->vnic_id = strdup(vnic_id);
-  vnic_performance->valuesaresuspect = strdup(val_suspect);
+  EVEL_DEBUG("Adding NIC ID=%s", nic_id);
+  nic_performance = malloc(sizeof(MEASUREMENT_NIC_PERFORMANCE));
+  assert(nic_performance != NULL);
+  nic_performance->nic_id = strdup(nic_id);
+  nic_performance->valuesaresuspect = strdup(val_suspect);
 
   /***************************************************************************/
   /* Initialize Optional Parameters.                                         */
   /***************************************************************************/
-  evel_init_option_double(&vnic_performance-> recvd_bcast_packets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_bcast_packets_delta);
-  evel_init_option_double(&vnic_performance-> recvd_discarded_packets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_discarded_packets_delta);
-  evel_init_option_double(&vnic_performance-> recvd_error_packets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_error_packets_delta);
-  evel_init_option_double(&vnic_performance-> recvd_mcast_packets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_mcast_packets_delta);
-  evel_init_option_double(&vnic_performance-> recvd_octets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_octets_delta);
-  evel_init_option_double(&vnic_performance-> recvd_total_packets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_total_packets_delta);
-  evel_init_option_double(&vnic_performance-> recvd_ucast_packets_acc);
-  evel_init_option_double(&vnic_performance-> recvd_ucast_packets_delta);
-  evel_init_option_double(&vnic_performance-> tx_bcast_packets_acc);
-  evel_init_option_double(&vnic_performance-> tx_bcast_packets_delta);
-  evel_init_option_double(&vnic_performance-> tx_discarded_packets_acc);
-  evel_init_option_double(&vnic_performance-> tx_discarded_packets_delta);
-  evel_init_option_double(&vnic_performance-> tx_error_packets_acc);
-  evel_init_option_double(&vnic_performance-> tx_error_packets_delta);
-  evel_init_option_double(&vnic_performance-> tx_mcast_packets_acc);
-  evel_init_option_double(&vnic_performance-> tx_mcast_packets_delta);
-  evel_init_option_double(&vnic_performance-> tx_octets_acc);
-  evel_init_option_double(&vnic_performance-> tx_octets_delta);
-  evel_init_option_double(&vnic_performance-> tx_total_packets_acc);
-  evel_init_option_double(&vnic_performance-> tx_total_packets_delta);
-  evel_init_option_double(&vnic_performance-> tx_ucast_packets_acc);
-  evel_init_option_double(&vnic_performance-> tx_ucast_packets_delta);
+  evel_init_option_op_state(&nic_performance-> administrativeState);
+  evel_init_option_op_state(&nic_performance-> operationalState);
+  evel_init_option_double(&nic_performance-> receivedPercentDiscard);
+  evel_init_option_double(&nic_performance-> receivedPercentError);
+  evel_init_option_double(&nic_performance-> receivedUtilization);
+  evel_init_option_double(&nic_performance-> speed);
+  evel_init_option_double(&nic_performance-> transmittedPercentDiscard);
+  evel_init_option_double(&nic_performance-> transmittedPercentError);
+  evel_init_option_double(&nic_performance-> transmittedUtilization);
+  evel_init_option_double(&nic_performance-> recvd_bcast_packets_acc);
+  evel_init_option_double(&nic_performance-> recvd_bcast_packets_delta);
+  evel_init_option_double(&nic_performance-> recvd_discarded_packets_acc);
+  evel_init_option_double(&nic_performance-> recvd_discarded_packets_delta);
+  evel_init_option_double(&nic_performance-> recvd_error_packets_acc);
+  evel_init_option_double(&nic_performance-> recvd_error_packets_delta);
+  evel_init_option_double(&nic_performance-> recvd_mcast_packets_acc);
+  evel_init_option_double(&nic_performance-> recvd_mcast_packets_delta);
+  evel_init_option_double(&nic_performance-> recvd_octets_acc);
+  evel_init_option_double(&nic_performance-> recvd_octets_delta);
+  evel_init_option_double(&nic_performance-> recvd_total_packets_acc);
+  evel_init_option_double(&nic_performance-> recvd_total_packets_delta);
+  evel_init_option_double(&nic_performance-> recvd_ucast_packets_acc);
+  evel_init_option_double(&nic_performance-> recvd_ucast_packets_delta);
+  evel_init_option_double(&nic_performance-> tx_bcast_packets_acc);
+  evel_init_option_double(&nic_performance-> tx_bcast_packets_delta);
+  evel_init_option_double(&nic_performance-> tx_discarded_packets_acc);
+  evel_init_option_double(&nic_performance-> tx_discarded_packets_delta);
+  evel_init_option_double(&nic_performance-> tx_error_packets_acc);
+  evel_init_option_double(&nic_performance-> tx_error_packets_delta);
+  evel_init_option_double(&nic_performance-> tx_mcast_packets_acc);
+  evel_init_option_double(&nic_performance-> tx_mcast_packets_delta);
+  evel_init_option_double(&nic_performance-> tx_octets_acc);
+  evel_init_option_double(&nic_performance-> tx_octets_delta);
+  evel_init_option_double(&nic_performance-> tx_total_packets_acc);
+  evel_init_option_double(&nic_performance-> tx_total_packets_delta);
+  evel_init_option_double(&nic_performance-> tx_ucast_packets_acc);
+  evel_init_option_double(&nic_performance-> tx_ucast_packets_delta);
 
   EVEL_EXIT();
 
-  return vnic_performance;
+  return nic_performance;
 }
 
 /**************************************************************************//**
- * Free a vNIC Use.
+ * Free a NIC Use.
  *
- * Free off the ::MEASUREMENT_VNIC_PERFORMANCE supplied.  Will free all the contained
+ * Free off the ::MEASUREMENT_NIC_PERFORMANCE supplied.  Will free all the contained
  * allocated memory.
  *
- * @note It does not free the vNIC Use itself, since that may be part of a
+ * @note It does not free the NIC Use itself, since that may be part of a
  * larger structure.
  *****************************************************************************/
-void evel_measurement_free_vnic_performance(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance)
+void evel_measurement_free_nic_performance(MEASUREMENT_NIC_PERFORMANCE * const nic_performance)
 {
   EVEL_ENTER();
 
   /***************************************************************************/
   /* Check preconditions.                                                    */
   /***************************************************************************/
-  assert(vnic_performance != NULL);
-  assert(vnic_performance->vnic_id != NULL);
-  assert(vnic_performance->valuesaresuspect != NULL);
+  assert(nic_performance != NULL);
+  assert(nic_performance->nic_id != NULL);
+  assert(nic_performance->valuesaresuspect != NULL);
 
   /***************************************************************************/
   /* Free the duplicated string.                                             */
   /***************************************************************************/
-  free(vnic_performance->vnic_id);
-  free(vnic_performance->valuesaresuspect);
-  vnic_performance->vnic_id = NULL;
+  free(nic_performance->nic_id);
+  free(nic_performance->valuesaresuspect);
+  nic_performance->nic_id = NULL;
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the administrative State of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param state
+ *****************************************************************************/
+void evel_nic_performance_administrativeState_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const EVEL_OPER_STATE state) 
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(nic_performance != NULL);
+  assert(state < EVEL_MAX_OPER_STATES);
+
+  evel_set_option_op_state(&nic_performance->administrativeState, state, "Administrative State");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the operational state of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param state
+ *****************************************************************************/
+void evel_nic_performance_operationalState_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const EVEL_OPER_STATE state) 
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(nic_performance != NULL);
+  assert(state < EVEL_MAX_OPER_STATES);
+
+  evel_set_option_op_state(&nic_performance->operationalState, state, "Operational State");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Percentage of discarded packets received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param receivedPercentDiscard
+ *****************************************************************************/
+void evel_nic_performance_receivedPercentDiscard_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double receivedPercentDiscard)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(receivedPercentDiscard >= 0.0);
+
+  evel_set_option_double(&nic_performance->receivedPercentDiscard,
+                      receivedPercentDiscard,
+                      "Percentage of discarded packets received");
+
+  EVEL_EXIT();
+}
+/**************************************************************************//**
+ * Set the Percentage of error packets received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param receivedPercentError
+ *****************************************************************************/
+void evel_nic_performance_receivedPercentError_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double receivedPercentError)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(receivedPercentError >= 0.0);
+
+  evel_set_option_double(&nic_performance->receivedPercentError,
+                      receivedPercentError,
+                      "Percentage of error packets received");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Percentage of utilization received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param receivedUtilization
+ *****************************************************************************/
+void evel_nic_performance_receivedUtilization_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double receivedUtilization)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(receivedUtilization >= 0.0);
+
+  evel_set_option_double(&nic_performance->receivedUtilization,
+                      receivedUtilization,
+                      "Percentage of utilization received");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Speed configured in mbps of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param Speed
+ *****************************************************************************/
+void evel_nic_performance_speed_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double speed)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(speed >= 0.0);
+
+  evel_set_option_double(&nic_performance->speed,
+                      speed,
+                      "Speed configured in mbps");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Percentage of discarded packets transmitted of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param transmittedPercentDiscard
+ *****************************************************************************/
+void evel_nic_performance_transmittedPercentDiscard_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double transmittedPercentDiscard)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(transmittedPercentDiscard >= 0.0);
+
+  evel_set_option_double(&nic_performance->transmittedPercentDiscard,
+                      transmittedPercentDiscard,
+                      "Percentage of discarded packets transmitted");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Percentage of error packets received of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param transmittedPercentError
+ *****************************************************************************/
+void evel_nic_performance_transmittedPercentError_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double transmittedPercentError)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(transmittedPercentError >= 0.0);
+
+  evel_set_option_double(&nic_performance->transmittedPercentError,
+                      transmittedPercentError,
+                      "Percentage of error packets received");
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Percentage of utilization transmitted of the NIC performance.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param nic_performance      Pointer to the NIC Use.
+ * @param transmittedUtilization
+ *****************************************************************************/
+void evel_nic_performance_transmittedUtilization_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double transmittedUtilization)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(transmittedUtilization >= 0.0);
+
+  evel_set_option_double(&nic_performance->transmittedUtilization,
+                      transmittedUtilization,
+                      "Percentage of utilization transmitted");
 
   EVEL_EXIT();
 }
 
 /**************************************************************************//**
  * Set the Accumulated Broadcast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_bcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_bcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_bcast_packets_acc)
 {
   EVEL_ENTER();
@@ -2097,7 +2581,7 @@ void evel_vnic_performance_rx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(recvd_bcast_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_bcast_packets_acc,
+  evel_set_option_double(&nic_performance->recvd_bcast_packets_acc,
                       recvd_bcast_packets_acc,
                       "Broadcast Packets accumulated");
 
@@ -2106,16 +2590,16 @@ void evel_vnic_performance_rx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Broadcast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_bcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_bcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_bcast_packets_delta)
 {
   EVEL_ENTER();
@@ -2125,7 +2609,7 @@ void evel_vnic_performance_rx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(recvd_bcast_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_bcast_packets_delta,
+  evel_set_option_double(&nic_performance->recvd_bcast_packets_delta,
                       recvd_bcast_packets_delta,
                       "Delta Broadcast Packets recieved");
 
@@ -2135,16 +2619,16 @@ void evel_vnic_performance_rx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Discarded Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_discard_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_discard_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_discard_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_discard_packets_acc)
 {
   EVEL_ENTER();
@@ -2154,7 +2638,7 @@ void evel_vnic_performance_rx_discard_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(recvd_discard_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_discarded_packets_acc,
+  evel_set_option_double(&nic_performance->recvd_discarded_packets_acc,
                       recvd_discard_packets_acc,
                       "Discarded Packets accumulated");
 
@@ -2163,16 +2647,16 @@ void evel_vnic_performance_rx_discard_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Delta Discarded Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_discard_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_discard_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_discard_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_discard_packets_delta)
 {
   EVEL_ENTER();
@@ -2182,7 +2666,7 @@ void evel_vnic_performance_rx_discard_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE
   /***************************************************************************/
   assert(recvd_discard_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_discarded_packets_delta,
+  evel_set_option_double(&nic_performance->recvd_discarded_packets_delta,
                       recvd_discard_packets_delta,
                       "Delta Discarded Packets recieved");
 
@@ -2192,16 +2676,16 @@ void evel_vnic_performance_rx_discard_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE
 
 /**************************************************************************//**
  * Set the Error Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_error_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_error_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_error_packets_acc)
 {
   EVEL_ENTER();
@@ -2211,7 +2695,7 @@ void evel_vnic_performance_rx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(recvd_error_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_error_packets_acc,
+  evel_set_option_double(&nic_performance->recvd_error_packets_acc,
                       recvd_error_packets_acc,
                       "Error Packets received accumulated");
 
@@ -2220,16 +2704,16 @@ void evel_vnic_performance_rx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Error Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_error_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_error_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_error_packets_delta)
 {
   EVEL_ENTER();
@@ -2239,7 +2723,7 @@ void evel_vnic_performance_rx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(recvd_error_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_error_packets_delta,
+  evel_set_option_double(&nic_performance->recvd_error_packets_delta,
                       recvd_error_packets_delta,
                       "Delta Error Packets recieved");
 
@@ -2248,16 +2732,16 @@ void evel_vnic_performance_rx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Accumulated Multicast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_mcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_mcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_mcast_packets_acc)
 {
   EVEL_ENTER();
@@ -2267,7 +2751,7 @@ void evel_vnic_performance_rx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(recvd_mcast_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_mcast_packets_acc,
+  evel_set_option_double(&nic_performance->recvd_mcast_packets_acc,
                       recvd_mcast_packets_acc,
                       "Multicast Packets accumulated");
 
@@ -2276,16 +2760,16 @@ void evel_vnic_performance_rx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Multicast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_mcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_mcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_mcast_packets_delta)
 {
   EVEL_ENTER();
@@ -2295,7 +2779,7 @@ void evel_vnic_performance_rx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(recvd_mcast_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_mcast_packets_delta,
+  evel_set_option_double(&nic_performance->recvd_mcast_packets_delta,
                       recvd_mcast_packets_delta,
                       "Delta Multicast Packets recieved");
 
@@ -2304,16 +2788,16 @@ void evel_vnic_performance_rx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Accumulated Octets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_octets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_octets_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_octets_acc)
 {
   EVEL_ENTER();
@@ -2323,7 +2807,7 @@ void evel_vnic_performance_rx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * cons
   /***************************************************************************/
   assert(recvd_octets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_octets_acc,
+  evel_set_option_double(&nic_performance->recvd_octets_acc,
                       recvd_octets_acc,
                       "Octets received accumulated");
 
@@ -2332,16 +2816,16 @@ void evel_vnic_performance_rx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * cons
 
 /**************************************************************************//**
  * Set the Delta Octets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_octets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_octets_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_octets_delta)
 {
   EVEL_ENTER();
@@ -2351,7 +2835,7 @@ void evel_vnic_performance_rx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * co
   /***************************************************************************/
   assert(recvd_octets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_octets_delta,
+  evel_set_option_double(&nic_performance->recvd_octets_delta,
                       recvd_octets_delta,
                       "Delta Octets recieved");
 
@@ -2360,16 +2844,16 @@ void evel_vnic_performance_rx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * co
 
 /**************************************************************************//**
  * Set the Accumulated Total Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_total_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_total_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_total_packets_acc)
 {
   EVEL_ENTER();
@@ -2379,7 +2863,7 @@ void evel_vnic_performance_rx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(recvd_total_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_total_packets_acc,
+  evel_set_option_double(&nic_performance->recvd_total_packets_acc,
                       recvd_total_packets_acc,
                       "Total Packets accumulated");
 
@@ -2388,16 +2872,16 @@ void evel_vnic_performance_rx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Total Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_total_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_total_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_total_packets_delta)
 {
   EVEL_ENTER();
@@ -2407,7 +2891,7 @@ void evel_vnic_performance_rx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(recvd_total_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_total_packets_delta,
+  evel_set_option_double(&nic_performance->recvd_total_packets_delta,
                       recvd_total_packets_delta,
                       "Delta Total Packets recieved");
 
@@ -2416,16 +2900,16 @@ void evel_vnic_performance_rx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Accumulated Unicast Packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_ucast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_rx_ucast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_ucast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_ucast_packets_acc)
 {
   EVEL_ENTER();
@@ -2435,7 +2919,7 @@ void evel_vnic_performance_rx_ucast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(recvd_ucast_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_ucast_packets_acc,
+  evel_set_option_double(&nic_performance->recvd_ucast_packets_acc,
                       recvd_ucast_packets_acc,
                       "Unicast Packets received accumulated");
 
@@ -2444,16 +2928,16 @@ void evel_vnic_performance_rx_ucast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Unicast packets Received in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param recvd_ucast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_rx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_rx_ucast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double recvd_ucast_packets_delta)
 {
   EVEL_ENTER();
@@ -2463,7 +2947,7 @@ void evel_vnic_performance_rx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(recvd_ucast_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->recvd_ucast_packets_delta,
+  evel_set_option_double(&nic_performance->recvd_ucast_packets_delta,
                       recvd_ucast_packets_delta,
                       "Delta Unicast packets recieved");
 
@@ -2472,16 +2956,16 @@ void evel_vnic_performance_rx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Transmitted Broadcast Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_bcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_bcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_bcast_packets_acc)
 {
   EVEL_ENTER();
@@ -2491,7 +2975,7 @@ void evel_vnic_performance_tx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(tx_bcast_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_bcast_packets_acc,
+  evel_set_option_double(&nic_performance->tx_bcast_packets_acc,
                       tx_bcast_packets_acc,
                       "Transmitted Broadcast Packets accumulated");
 
@@ -2500,16 +2984,16 @@ void evel_vnic_performance_tx_bcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Broadcast packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_bcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_bcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_bcast_packets_delta)
 {
   EVEL_ENTER();
@@ -2519,7 +3003,7 @@ void evel_vnic_performance_tx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(tx_bcast_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_bcast_packets_delta,
+  evel_set_option_double(&nic_performance->tx_bcast_packets_delta,
                       tx_bcast_packets_delta,
                       "Delta Transmitted Broadcast packets ");
 
@@ -2528,16 +3012,16 @@ void evel_vnic_performance_tx_bcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Transmitted Discarded Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_discarded_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_discarded_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_discarded_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_discarded_packets_acc)
 {
   EVEL_ENTER();
@@ -2547,7 +3031,7 @@ void evel_vnic_performance_tx_discarded_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE
   /***************************************************************************/
   assert(tx_discarded_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_discarded_packets_acc,
+  evel_set_option_double(&nic_performance->tx_discarded_packets_acc,
                       tx_discarded_packets_acc,
                       "Transmitted Discarded Packets accumulated");
 
@@ -2556,16 +3040,16 @@ void evel_vnic_performance_tx_discarded_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE
 
 /**************************************************************************//**
  * Set the Delta Discarded packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_discarded_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_discarded_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_discarded_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_discarded_packets_delta)
 {
   EVEL_ENTER();
@@ -2575,7 +3059,7 @@ void evel_vnic_performance_tx_discarded_pkt_delta_set(MEASUREMENT_VNIC_PERFORMAN
   /***************************************************************************/
   assert(tx_discarded_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_discarded_packets_delta,
+  evel_set_option_double(&nic_performance->tx_discarded_packets_delta,
                       tx_discarded_packets_delta,
                       "Delta Transmitted Discarded packets ");
 
@@ -2584,16 +3068,16 @@ void evel_vnic_performance_tx_discarded_pkt_delta_set(MEASUREMENT_VNIC_PERFORMAN
 
 /**************************************************************************//**
  * Set the Transmitted Errored Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_error_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_error_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_error_packets_acc)
 {
   EVEL_ENTER();
@@ -2603,7 +3087,7 @@ void evel_vnic_performance_tx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(tx_error_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_error_packets_acc,
+  evel_set_option_double(&nic_performance->tx_error_packets_acc,
                       tx_error_packets_acc,
                       "Transmitted Error Packets accumulated");
 
@@ -2612,16 +3096,16 @@ void evel_vnic_performance_tx_error_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Errored packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_error_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_error_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_error_packets_delta)
 {
   EVEL_ENTER();
@@ -2631,7 +3115,7 @@ void evel_vnic_performance_tx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(tx_error_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_error_packets_delta,
+  evel_set_option_double(&nic_performance->tx_error_packets_delta,
                       tx_error_packets_delta,
                       "Delta Transmitted Error packets ");
 
@@ -2640,16 +3124,16 @@ void evel_vnic_performance_tx_error_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Transmitted Multicast Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_mcast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_mcast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_mcast_packets_acc)
 {
   EVEL_ENTER();
@@ -2659,7 +3143,7 @@ void evel_vnic_performance_tx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(tx_mcast_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_mcast_packets_acc,
+  evel_set_option_double(&nic_performance->tx_mcast_packets_acc,
                       tx_mcast_packets_acc,
                       "Transmitted Multicast Packets accumulated");
 
@@ -2668,16 +3152,16 @@ void evel_vnic_performance_tx_mcast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Multicast packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_mcast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_mcast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_mcast_packets_delta)
 {
   EVEL_ENTER();
@@ -2687,7 +3171,7 @@ void evel_vnic_performance_tx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(tx_mcast_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_mcast_packets_delta,
+  evel_set_option_double(&nic_performance->tx_mcast_packets_delta,
                       tx_mcast_packets_delta,
                       "Delta Transmitted Multicast packets ");
 
@@ -2696,16 +3180,16 @@ void evel_vnic_performance_tx_mcast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Transmitted Octets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_octets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_octets_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_octets_acc)
 {
   EVEL_ENTER();
@@ -2715,7 +3199,7 @@ void evel_vnic_performance_tx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * cons
   /***************************************************************************/
   assert(tx_octets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_octets_acc,
+  evel_set_option_double(&nic_performance->tx_octets_acc,
                       tx_octets_acc,
                       "Transmitted Octets accumulated");
 
@@ -2724,16 +3208,16 @@ void evel_vnic_performance_tx_octets_acc_set(MEASUREMENT_VNIC_PERFORMANCE * cons
 
 /**************************************************************************//**
  * Set the Delta Octets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_octets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_octets_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_octets_delta)
 {
   EVEL_ENTER();
@@ -2743,7 +3227,7 @@ void evel_vnic_performance_tx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * co
   /***************************************************************************/
   assert(tx_octets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_octets_delta,
+  evel_set_option_double(&nic_performance->tx_octets_delta,
                       tx_octets_delta,
                       "Delta Transmitted Octets ");
 
@@ -2753,16 +3237,16 @@ void evel_vnic_performance_tx_octets_delta_set(MEASUREMENT_VNIC_PERFORMANCE * co
 
 /**************************************************************************//**
  * Set the Transmitted Total Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_total_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_total_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_total_packets_acc)
 {
   EVEL_ENTER();
@@ -2772,7 +3256,7 @@ void evel_vnic_performance_tx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
   /***************************************************************************/
   assert(tx_total_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_total_packets_acc,
+  evel_set_option_double(&nic_performance->tx_total_packets_acc,
                       tx_total_packets_acc,
                       "Transmitted Total Packets accumulated");
 
@@ -2781,16 +3265,16 @@ void evel_vnic_performance_tx_total_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Total Packets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_total_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_total_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_total_packets_delta)
 {
   EVEL_ENTER();
@@ -2800,7 +3284,7 @@ void evel_vnic_performance_tx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(tx_total_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_total_packets_delta,
+  evel_set_option_double(&nic_performance->tx_total_packets_delta,
                       tx_total_packets_delta,
                       "Delta Transmitted Total Packets ");
 
@@ -2810,27 +3294,27 @@ void evel_vnic_performance_tx_total_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 /**************************************************************************//**
  * Set the Transmitted Unicast Packets in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_ucast_packets_acc
  *****************************************************************************/
-void evel_vnic_performance_tx_ucast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
-                                    const double tx_ucast_packets_acc)
+void evel_nic_performance_tx_ucast_pkt_acc_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
+                                    const double mtx_ucast_packets_acc)
 {
   EVEL_ENTER();
 
   /***************************************************************************/
   /* Check preconditions.                                                    */
   /***************************************************************************/
-  assert(tx_ucast_packets_acc >= 0.0);
+  assert(mtx_ucast_packets_acc >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_ucast_packets_acc,
-                      tx_ucast_packets_acc,
+  evel_set_option_double(&nic_performance->tx_ucast_packets_acc,
+                      mtx_ucast_packets_acc,
                       "Transmitted Unicast Packets accumulated");
 
   EVEL_EXIT();
@@ -2838,16 +3322,16 @@ void evel_vnic_performance_tx_ucast_pkt_acc_set(MEASUREMENT_VNIC_PERFORMANCE * c
 
 /**************************************************************************//**
  * Set the Delta Octets Transmitted in measurement interval
- * property of the vNIC performance.
+ * property of the NIC performance.
  *
  * @note  The property is treated as immutable: it is only valid to call
  *        the setter once.  However, we don't assert if the caller tries to
  *        overwrite, just ignoring the update instead.
  *
- * @param vnic_performance      Pointer to the vNIC Use.
+ * @param nic_performance      Pointer to the NIC Use.
  * @param tx_ucast_packets_delta
  *****************************************************************************/
-void evel_vnic_performance_tx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance,
+void evel_nic_performance_tx_ucast_pkt_delta_set(MEASUREMENT_NIC_PERFORMANCE * const nic_performance,
                                     const double tx_ucast_packets_delta)
 {
   EVEL_ENTER();
@@ -2857,7 +3341,7 @@ void evel_vnic_performance_tx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
   /***************************************************************************/
   assert(tx_ucast_packets_delta >= 0.0);
 
-  evel_set_option_double(&vnic_performance->tx_ucast_packets_delta,
+  evel_set_option_double(&nic_performance->tx_ucast_packets_delta,
                       tx_ucast_packets_delta,
                       "Delta Transmitted Unicast Packets ");
 
@@ -2866,13 +3350,13 @@ void evel_vnic_performance_tx_ucast_pkt_delta_set(MEASUREMENT_VNIC_PERFORMANCE *
 
 
 /**************************************************************************//**
- * Add an additional vNIC Use to the specified Measurement event.
+ * Add an additional NIC Use to the specified Measurement event.
  *
  * @param measurement   Pointer to the measurement.
- * @param vnic_performance      Pointer to the vNIC Use to add.
+ * @param nic_performance      Pointer to the NIC Use to add.
  *****************************************************************************/
-void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
-                            MEASUREMENT_VNIC_PERFORMANCE * const vnic_performance)
+void evel_meas_nic_performance_add(EVENT_MEASUREMENT * const measurement,
+                            MEASUREMENT_NIC_PERFORMANCE * const nic_performance)
 {
   EVEL_ENTER();
 
@@ -2881,15 +3365,15 @@ void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
   /***************************************************************************/
   assert(measurement != NULL);
   assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
-  assert(vnic_performance != NULL);
+  assert(nic_performance != NULL);
 
-  dlist_push_last(&measurement->vnic_usage, vnic_performance);
+  dlist_push_last(&measurement->nic_performance, nic_performance);
 
   EVEL_EXIT();
 }
 
 /**************************************************************************//**
- * Add an additional vNIC usage record Measurement.
+ * Add an additional NIC usage record Measurement.
  *
  * This function implements the previous API, purely for convenience.
  *
@@ -2897,8 +3381,17 @@ void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
  * caller does not have to preserve values after the function returns.
  *
  * @param measurement           Pointer to the measurement.
- * @param vnic_id               ASCIIZ string with the vNIC's ID.
+ * @param nic_id               ASCIIZ string with the NIC's ID.
  * @param valset                true or false confidence level
+ * @param admin_state               Administrative state
+ * @param op_state                  Operational state
+ * @param receivedPercentDiscard    Percentage of discarded packets received;
+ * @param receivedPercentError      Percentage of error packets received
+ * @param receivedUtilization       Percentage of utilization received
+ * @param speed                     Speed configured in mbps
+ * @param transmittedPercentDiscard Percentage of discarded packets transmitted
+ * @param transmittedPercentError   Percentage of error packets received
+ * @param transmittedUtilization    Percentage of utilization transmitted
  * @param recvd_bcast_packets_acc         Recieved broadcast packets
  * @param recvd_bcast_packets_delta       Received delta broadcast packets
  * @param recvd_discarded_packets_acc     Recieved discarded packets
@@ -2928,9 +3421,18 @@ void evel_meas_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
  * @param tx_ucast_packets_acc            Transmitted Unicast packets
  * @param tx_ucast_packets_delta          Transmitted delta Unicast packets
  *****************************************************************************/
-void evel_measurement_vnic_performance_add(EVENT_MEASUREMENT * const measurement,
-                               char * const vnic_id,
+void evel_measurement_nic_performance_add(EVENT_MEASUREMENT * const measurement,
+                               char * const nic_id,
                                char * valset,
+                               EVEL_OPER_STATE admin_state,
+                               EVEL_OPER_STATE op_state,
+                               double receivedPercentDiscard,
+                               double receivedPercentError,
+                               double receivedUtilization,
+                               double speed,
+                               double transmittedPercentDiscard,
+                               double transmittedPercentError,
+                               double transmittedUtilization,
                                double recvd_bcast_packets_acc,
                                double recvd_bcast_packets_delta,
                                double recvd_discarded_packets_acc,
@@ -2960,112 +3462,1028 @@ void evel_measurement_vnic_performance_add(EVENT_MEASUREMENT * const measurement
                                double tx_ucast_packets_acc,
                                double tx_ucast_packets_delta)
 {
-  MEASUREMENT_VNIC_PERFORMANCE * vnic_performance = NULL;
+  MEASUREMENT_NIC_PERFORMANCE * nic_performance = NULL;
   EVEL_ENTER();
 
   /***************************************************************************/
   /* Trust the assertions in the underlying methods.                         */
   /***************************************************************************/
-  vnic_performance = evel_measurement_new_vnic_performance(vnic_id, valset);
+  nic_performance = evel_measurement_new_nic_performance(nic_id, valset);
                                            
-  evel_vnic_performance_rx_bcast_pkt_acc_set(vnic_performance, recvd_bcast_packets_acc);
-  evel_vnic_performance_rx_bcast_pkt_delta_set(vnic_performance, recvd_bcast_packets_delta);
-  evel_vnic_performance_rx_discard_pkt_acc_set(vnic_performance, recvd_discarded_packets_acc);
-  evel_vnic_performance_rx_discard_pkt_delta_set(vnic_performance, recvd_discarded_packets_delta);
-  evel_vnic_performance_rx_error_pkt_acc_set(vnic_performance, recvd_error_packets_acc);
-  evel_vnic_performance_rx_error_pkt_delta_set(vnic_performance, recvd_error_packets_delta);
-  evel_vnic_performance_rx_mcast_pkt_acc_set(vnic_performance, recvd_mcast_packets_acc);
-  evel_vnic_performance_rx_mcast_pkt_delta_set(vnic_performance, recvd_mcast_packets_delta);
-  evel_vnic_performance_rx_octets_acc_set(vnic_performance, recvd_octets_acc);
-  evel_vnic_performance_rx_octets_delta_set(vnic_performance, recvd_octets_delta);
-  evel_vnic_performance_rx_total_pkt_acc_set(vnic_performance, recvd_total_packets_acc);
-  evel_vnic_performance_rx_total_pkt_delta_set(vnic_performance, recvd_total_packets_delta);
-  evel_vnic_performance_rx_ucast_pkt_acc_set(vnic_performance, recvd_ucast_packets_acc);
-  evel_vnic_performance_rx_ucast_pkt_delta_set(vnic_performance, recvd_ucast_packets_delta);
-  evel_vnic_performance_tx_bcast_pkt_acc_set(vnic_performance, tx_bcast_packets_acc);
-  evel_vnic_performance_tx_bcast_pkt_delta_set(vnic_performance, tx_bcast_packets_delta);
-  evel_vnic_performance_tx_discarded_pkt_acc_set(vnic_performance, tx_discarded_packets_acc);
-  evel_vnic_performance_tx_discarded_pkt_delta_set(vnic_performance, tx_discarded_packets_delta);
-  evel_vnic_performance_tx_error_pkt_acc_set(vnic_performance, tx_error_packets_acc);
-  evel_vnic_performance_tx_error_pkt_delta_set(vnic_performance, tx_error_packets_delta);
-  evel_vnic_performance_tx_mcast_pkt_acc_set(vnic_performance, tx_mcast_packets_acc);
-  evel_vnic_performance_tx_mcast_pkt_delta_set(vnic_performance, tx_mcast_packets_delta);
-  evel_vnic_performance_tx_octets_acc_set(vnic_performance, tx_octets_acc);
-  evel_vnic_performance_tx_octets_delta_set(vnic_performance, tx_octets_delta);
-  evel_vnic_performance_tx_total_pkt_acc_set(vnic_performance, tx_total_packets_acc);
-  evel_vnic_performance_tx_total_pkt_delta_set(vnic_performance, tx_total_packets_delta);
-  evel_vnic_performance_tx_ucast_pkt_acc_set(vnic_performance, tx_ucast_packets_acc);
-  evel_vnic_performance_tx_ucast_pkt_delta_set(vnic_performance, tx_ucast_packets_delta);
-  evel_meas_vnic_performance_add(measurement, vnic_performance);
+  evel_nic_performance_administrativeState_set(nic_performance, admin_state);
+  evel_nic_performance_operationalState_set(nic_performance, op_state);
+  evel_nic_performance_receivedPercentDiscard_set(nic_performance, receivedPercentDiscard);
+  evel_nic_performance_receivedPercentError_set(nic_performance, receivedPercentError);
+  evel_nic_performance_receivedUtilization_set(nic_performance, receivedUtilization);
+  evel_nic_performance_speed_set(nic_performance, speed);
+  evel_nic_performance_transmittedPercentDiscard_set(nic_performance, transmittedPercentDiscard);
+  evel_nic_performance_transmittedPercentError_set(nic_performance, transmittedPercentError);
+  evel_nic_performance_transmittedUtilization_set(nic_performance, transmittedUtilization);
+  evel_nic_performance_rx_bcast_pkt_acc_set(nic_performance, recvd_bcast_packets_acc);
+  evel_nic_performance_rx_bcast_pkt_delta_set(nic_performance, recvd_bcast_packets_delta);
+  evel_nic_performance_rx_discard_pkt_acc_set(nic_performance, recvd_discarded_packets_acc);
+  evel_nic_performance_rx_discard_pkt_delta_set(nic_performance, recvd_discarded_packets_delta);
+  evel_nic_performance_rx_error_pkt_acc_set(nic_performance, recvd_error_packets_acc);
+  evel_nic_performance_rx_error_pkt_delta_set(nic_performance, recvd_error_packets_delta);
+  evel_nic_performance_rx_mcast_pkt_acc_set(nic_performance, recvd_mcast_packets_acc);
+  evel_nic_performance_rx_mcast_pkt_delta_set(nic_performance, recvd_mcast_packets_delta);
+  evel_nic_performance_rx_octets_acc_set(nic_performance, recvd_octets_acc);
+  evel_nic_performance_rx_octets_delta_set(nic_performance, recvd_octets_delta);
+  evel_nic_performance_rx_total_pkt_acc_set(nic_performance, recvd_total_packets_acc);
+  evel_nic_performance_rx_total_pkt_delta_set(nic_performance, recvd_total_packets_delta);
+  evel_nic_performance_rx_ucast_pkt_acc_set(nic_performance, recvd_ucast_packets_acc);
+  evel_nic_performance_rx_ucast_pkt_delta_set(nic_performance, recvd_ucast_packets_delta);
+  evel_nic_performance_tx_bcast_pkt_acc_set(nic_performance, tx_bcast_packets_acc);
+  evel_nic_performance_tx_bcast_pkt_delta_set(nic_performance, tx_bcast_packets_delta);
+  evel_nic_performance_tx_discarded_pkt_acc_set(nic_performance, tx_discarded_packets_acc);
+  evel_nic_performance_tx_discarded_pkt_delta_set(nic_performance, tx_discarded_packets_delta);
+  evel_nic_performance_tx_error_pkt_acc_set(nic_performance, tx_error_packets_acc);
+  evel_nic_performance_tx_error_pkt_delta_set(nic_performance, tx_error_packets_delta);
+  evel_nic_performance_tx_mcast_pkt_acc_set(nic_performance, tx_mcast_packets_acc);
+  evel_nic_performance_tx_mcast_pkt_delta_set(nic_performance, tx_mcast_packets_delta);
+  evel_nic_performance_tx_octets_acc_set(nic_performance, tx_octets_acc);
+  evel_nic_performance_tx_octets_delta_set(nic_performance, tx_octets_delta);
+  evel_nic_performance_tx_total_pkt_acc_set(nic_performance, tx_total_packets_acc);
+  evel_nic_performance_tx_total_pkt_delta_set(nic_performance, tx_total_packets_delta);
+  evel_nic_performance_tx_ucast_pkt_acc_set(nic_performance, tx_ucast_packets_acc);
+  evel_nic_performance_tx_ucast_pkt_delta_set(nic_performance, tx_ucast_packets_delta);
+  evel_meas_nic_performance_add(measurement, nic_performance);
+}
+
+MEASUREMENT_IPMI * evel_measurement_new_ipmi_add(
+                                  EVENT_MEASUREMENT * measurement)
+{
+  MEASUREMENT_IPMI *ipmi = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(measurement != NULL);
+  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  ipmi = malloc(sizeof(MEASUREMENT_IPMI));
+  assert(ipmi != NULL);
+  memset(ipmi, 0, sizeof(MEASUREMENT_IPMI));
+
+  evel_init_option_double(&ipmi->exitAirTemperature);
+  evel_init_option_double(&ipmi->frontPanelTemperature);
+  evel_init_option_double(&ipmi->ioModuleTemperature);
+  evel_init_option_double(&ipmi->systemAirflow);
+
+  dlist_initialize(&ipmi->ipmi_base_board_temparature);
+  dlist_initialize(&ipmi->ipmi_base_board_voltage);
+  dlist_initialize(&ipmi->ipmi_battery);
+  dlist_initialize(&ipmi->ipmi_fan);
+  dlist_initialize(&ipmi->ipmi_hsbp);
+  dlist_initialize(&ipmi->ipmi_global_agg_temp_margin);
+  dlist_initialize(&ipmi->ipmi_nic);
+  dlist_initialize(&ipmi->ipmi_power);
+  dlist_initialize(&ipmi->ipmi_processor);
+
+  dlist_push_last(&measurement->ipmis, ipmi);
+
+  EVEL_EXIT();
+  return ipmi;
 }
 
 /**************************************************************************//**
- * Encode the measurement as a JSON measurement.
+ * Set the System fan exit air flow temperature in Celsius of IPMI
  *
- * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
- * @param event         Pointer to the ::EVENT_HEADER to encode.
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param double
  *****************************************************************************/
-void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
-                                  EVENT_MEASUREMENT * event)
+void evel_measurement_ipmi_exitAirTemperature_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val)
 {
-  MEASUREMENT_CPU_USE * cpu_use = NULL;
-  MEASUREMENT_MEM_USE * mem_use = NULL;
-  MEASUREMENT_DISK_USE * disk_use = NULL;
-  MEASUREMENT_FSYS_USE * fsys_use = NULL;
-  MEASUREMENT_LATENCY_BUCKET * bucket = NULL;
-  MEASUREMENT_VNIC_PERFORMANCE * vnic_performance = NULL;
-  MEASUREMENT_ERRORS * errors = NULL;
-  MEASUREMENT_FEATURE_USE * feature_use = NULL;
-  MEASUREMENT_CODEC_USE * codec_use = NULL;
-  MEASUREMENT_GROUP * measurement_group = NULL;
-  CUSTOM_MEASUREMENT * custom_measurement = NULL;
-  DLIST_ITEM * item = NULL;
-  DLIST_ITEM * nested_item = NULL;
-  DLIST_ITEM * addl_info_item = NULL;
-  OTHER_FIELD *addl_info = NULL;
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  evel_set_option_double(&ipmi->exitAirTemperature, val, "exitAirTemperature");
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Front panel temp in Celsius of IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param double
+ *****************************************************************************/
+void evel_measurement_ipmi_frontPanelTemperature_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  evel_set_option_double(&ipmi->frontPanelTemperature, val, "frontPanelTemperature");
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Io module temp in Celsius of IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param double
+ *****************************************************************************/
+void evel_measurement_ipmi_ioModuleTemperature_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  evel_set_option_double(&ipmi->ioModuleTemperature, val, "ioModuleTemperature");
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the Airflow in cubic feet per minute (cfm) of IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param double
+ *****************************************************************************/
+void evel_measurement_ipmi_systemAirflow_set(MEASUREMENT_IPMI *ipmi,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  evel_set_option_double(&ipmi->systemAirflow, val, "systemAirflow");
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Add a new Baseboard Temperature Array element to IPMI
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param ipmi      Pointer to the IPMI Use.
+ * @param id        Indentifier
+ *****************************************************************************/
+MEASUREMENT_IPMI_BB_TEMPERATURE *evel_measurement_new_base_board_temp_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_BB_TEMPERATURE * bb_temp = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  bb_temp = malloc(sizeof(MEASUREMENT_IPMI_BB_TEMPERATURE));
+  assert(bb_temp != NULL);
+  memset(bb_temp, 0, sizeof(MEASUREMENT_IPMI_BB_TEMPERATURE));
+  bb_temp->BBTemperatureID = strdup(id);
+  evel_init_option_double(&bb_temp->BBTemperature);
+
+  dlist_push_last(&ipmi->ipmi_base_board_temparature, bb_temp);
+
+  EVEL_EXIT();
+  return bb_temp;
+}
+
+
+void evel_measurement_ipmi_bb_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BB_TEMPERATURE * bb_temp,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(bb_temp != NULL);
+  evel_set_option_double(&bb_temp->BBTemperature, val, "Base Board Temperature");
+  EVEL_EXIT();
+}
+
+
+MEASUREMENT_IPMI_BB_VOLTAGE *evel_measurement_new_base_board_volt_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 const char const * id)
+{
+  MEASUREMENT_IPMI_BB_VOLTAGE * bb_volt = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  bb_volt = malloc(sizeof(MEASUREMENT_IPMI_BB_VOLTAGE));
+  assert(bb_volt != NULL);
+  assert(id != NULL);
+  memset(bb_volt, 0, sizeof(MEASUREMENT_IPMI_BB_VOLTAGE));
+
+  bb_volt->BBVoltageRegID = strdup(id);
+  evel_init_option_double(&bb_volt->voltageRegTemperature);
+
+  dlist_push_last(&ipmi->ipmi_base_board_voltage, bb_volt);
+
+  EVEL_EXIT();
+  return bb_volt;
+}
+
+
+void evel_measurement_ipmi_bb_volt_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BB_VOLTAGE * bb_volt,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(bb_volt != NULL);
+  evel_set_option_double(&bb_volt->voltageRegTemperature, val, "Voltage Regulator Temperature");
+  EVEL_EXIT();
+}
+
+
+
+MEASUREMENT_IPMI_BATTERY *evel_measurement_new_ipmi_battery_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_BATTERY * ipmi_battery = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  ipmi_battery = malloc(sizeof(MEASUREMENT_IPMI_BATTERY));
+  assert(ipmi_battery != NULL);
+  memset(ipmi_battery, 0, sizeof(MEASUREMENT_IPMI_BATTERY));
+  ipmi_battery->batteryIdentifier = strdup(id);
+  evel_init_option_string(&ipmi_battery->batteryType);
+  evel_init_option_double(&ipmi_battery->batteryVoltageLevel);
+
+  dlist_push_last(&ipmi->ipmi_battery, ipmi_battery);
+
+  EVEL_EXIT();
+  return ipmi_battery;
+}
+
+
+void evel_measurement_ipmi_battery_type_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BATTERY * ipmiBattery,
+                                    const char * const batteryType)
+{
+
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmiBattery != NULL);
+  assert(batteryType != NULL);
+  evel_set_option_string(&ipmiBattery->batteryType, batteryType, "Battery type");
+  EVEL_EXIT();
+}
+
+
+
+void evel_measurement_ipmi_battery_voltage_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_BATTERY * ipmiBattery,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmiBattery != NULL);
+  evel_set_option_double(&ipmiBattery->batteryVoltageLevel, val, "Battery Voltage Level");
+  EVEL_EXIT();
+}
+
+
+
+MEASUREMENT_IPMI_FAN *evel_measurement_new_ipmi_fan_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_FAN * ipmi_fan = NULL;
 
   EVEL_ENTER();
 
   /***************************************************************************/
-  /* Check preconditions.                                                    */
+  /* Check assumptions.                                                      */
   /***************************************************************************/
-  assert(event != NULL);
-  assert(event->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
-
-  evel_json_encode_header(jbuf, &event->header);
-  evel_json_open_named_object(jbuf, "measurementsForVfScalingFields");
+  assert(ipmi != NULL);
+  assert(id != NULL);
 
   /***************************************************************************/
-  /* Mandatory fields.                                                       */
+  /* Allocate a container for the value and push onto the list.              */
   /***************************************************************************/
-  evel_enc_kv_int(jbuf, "measurementInterval", event->measurement_interval);
+  EVEL_DEBUG("Adding id=%s", id);
+  ipmi_fan = malloc(sizeof(MEASUREMENT_IPMI_FAN));
+  assert(ipmi_fan != NULL);
+  memset(ipmi_fan, 0, sizeof(MEASUREMENT_IPMI_FAN));
+  ipmi_fan->fanIdentifier = strdup(id);
+  evel_init_option_double(&ipmi_fan->fanSpeed);
+
+  dlist_push_last(&ipmi->ipmi_fan, ipmi_fan);
+
+  EVEL_EXIT();
+  return ipmi_fan;
+}
+
+
+void evel_measurement_ipmi_fan_speed_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_FAN * ipmiFan,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmiFan != NULL);
+  evel_set_option_double(&ipmiFan->fanSpeed, val, "Fan Speed");
+  EVEL_EXIT();
+}
+
+
+
+MEASUREMENT_IPMI_HSBP *evel_measurement_new_ipmi_hsbp_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_HSBP * ipmi_hsbp = NULL;
+  EVEL_ENTER();
 
   /***************************************************************************/
-  /* Optional fields.                                                        */
+  /* Check assumptions.                                                      */
   /***************************************************************************/
-  // additional fields
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  ipmi_hsbp = malloc(sizeof(MEASUREMENT_IPMI_HSBP));
+  assert(ipmi_hsbp != NULL);
+  memset(ipmi_hsbp, 0, sizeof(MEASUREMENT_IPMI_HSBP));
+  ipmi_hsbp->hsbpIdentifier = strdup(id);
+  evel_init_option_double(&ipmi_hsbp->hsbpTemperature);
+
+  dlist_push_last(&ipmi->ipmi_hsbp, ipmi_hsbp);
+
+  EVEL_EXIT();
+  return ipmi_hsbp;
+}
+
+
+void evel_measurement_ipmi_hsbp_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_HSBP * ipmiHsbp,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmiHsbp != NULL);
+  evel_set_option_double(&ipmiHsbp->hsbpTemperature, val, "HSBP Temperature");
+  EVEL_EXIT();
+}
+
+
+MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN *evel_measurement_new_ipmi_global_temp_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 const char * const id)
+{
+  MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN * global_temp = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  global_temp = malloc(sizeof(MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN));
+  assert(global_temp != NULL);
+  memset(global_temp, 0, sizeof(MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN));
+  global_temp->globalAggTempID = strdup(id);
+  evel_init_option_double(&global_temp->globalAggTempMargin);
+
+  dlist_push_last(&ipmi->ipmi_global_agg_temp_margin, global_temp);
+
+  EVEL_EXIT();
+  return global_temp;
+}
+
+void evel_measurement_ipmi_global_temp_margin_set(MEASUREMENT_IPMI *ipmi,
+                      MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN * ipmig_temp,
+                      const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmig_temp != NULL);
+  evel_set_option_double(&ipmig_temp->globalAggTempMargin, val, "Global Aggregate Temperature Margin");
+  EVEL_EXIT();
+}
+
+
+MEASUREMENT_IPMI_NIC *evel_measurement_new_ipmi_nic_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_NIC * ipmi_nic = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  ipmi_nic = malloc(sizeof(MEASUREMENT_IPMI_NIC));
+  assert(ipmi_nic != NULL);
+  memset(ipmi_nic, 0, sizeof(MEASUREMENT_IPMI_NIC));
+  ipmi_nic->nicIdentifier = strdup(id);
+  evel_init_option_double(&ipmi_nic->nicTemperature);
+
+  dlist_push_last(&ipmi->ipmi_nic, ipmi_nic);
+
+  EVEL_EXIT();
+  return ipmi_nic;
+}
+
+
+void evel_measurement_ipmi_nic_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_NIC * ipminic,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipminic != NULL);
+  evel_set_option_double(&ipminic->nicTemperature, val, "NIC Temperature");
+  EVEL_EXIT();
+}
+
+
+MEASUREMENT_IPMI_POWER_SUPPLY *evel_measurement_new_ipmi_power_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_POWER_SUPPLY * ipmi_power = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  ipmi_power = malloc(sizeof(MEASUREMENT_IPMI_POWER_SUPPLY));
+  assert(ipmi_power != NULL);
+  memset(ipmi_power, 0, sizeof(MEASUREMENT_IPMI_POWER_SUPPLY));
+  ipmi_power->powerSupplyIdentifier = strdup(id);
+  evel_init_option_double(&ipmi_power->powerSupplyInputPower);
+  evel_init_option_double(&ipmi_power->powerSupplyCurrentOutput);
+  evel_init_option_double(&ipmi_power->powerSupplyTemperature);
+
+  dlist_push_last(&ipmi->ipmi_power, ipmi_power);
+
+  EVEL_EXIT();
+  return ipmi_power;
+}
+
+
+void evel_measurement_ipmi_power_inputpwr_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_POWER_SUPPLY * ipmipwr,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmipwr != NULL);
+  evel_set_option_double(&ipmipwr->powerSupplyInputPower, val, "Power Supply Input Power");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_ipmi_power_current_op_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_POWER_SUPPLY * ipmipwr,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmipwr != NULL);
+  evel_set_option_double(&ipmipwr->powerSupplyCurrentOutput, val, "Power Supply Current Output");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_ipmi_power_temp_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_POWER_SUPPLY * ipmipwr,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmipwr != NULL);
+  evel_set_option_double(&ipmipwr->powerSupplyTemperature, val, "Power Supply Temperature");
+  EVEL_EXIT();
+}
+
+
+MEASUREMENT_IPMI_PROCESSOR *evel_measurement_new_ipmi_processor_add(
+                                 MEASUREMENT_IPMI * ipmi,
+                                 char * id)
+{
+  MEASUREMENT_IPMI_PROCESSOR * ipmi_processor = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s", id);
+  ipmi_processor = malloc(sizeof(MEASUREMENT_IPMI_PROCESSOR));
+  assert(ipmi_processor != NULL);
+  memset(ipmi_processor, 0, sizeof(MEASUREMENT_IPMI_PROCESSOR));
+  ipmi_processor->processorIdentifier = strdup(id);
+  evel_init_option_double(&ipmi_processor->pprocessorThermalControl);
+  evel_init_option_double(&ipmi_processor->processorDtsThermalMargin);
+
+  dlist_initialize(&ipmi_processor->processorDimmAggregateThermalMargin);
+
+  dlist_push_last(&ipmi->ipmi_processor, ipmi_processor);
+
+  EVEL_EXIT();
+  return ipmi_processor;
+}
+
+
+void evel_measurement_ipmi_processor_theralCtrl_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_PROCESSOR * ipmi_processor,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmi_processor != NULL);
+  evel_set_option_double(&ipmi_processor->pprocessorThermalControl, val, "IO Module Temperature");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_ipmi_processor_theralMargin_set(MEASUREMENT_IPMI *ipmi,
+                                    MEASUREMENT_IPMI_PROCESSOR * ipmi_processor,
+                                    const double val)
+{
+  EVEL_ENTER();
+  assert(ipmi != NULL);
+  assert(ipmi_processor != NULL);
+  evel_set_option_double(&ipmi_processor->processorDtsThermalMargin, val, "Front Panel Temperature");
+  EVEL_EXIT();
+}
+
+MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM * evel_measurement_ipmi_processor_new_dimmAggThermalMargin_add(
+                                  MEASUREMENT_IPMI * ipmi,
+                                  MEASUREMENT_IPMI_PROCESSOR *ipmi_processor,
+                                  const char * const id, double therm_margin)
+{
+  MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM * thermal_margin = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(ipmi != NULL);
+  assert(ipmi_processor != NULL);
+  assert(id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s, thermal_margin=%lf", id, thermal_margin);
+  thermal_margin = malloc(sizeof(MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM));
+  assert(thermal_margin != NULL);
+  memset(thermal_margin, 0, sizeof(MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM));
+  thermal_margin->MarginIdentifier = strdup(id);
+  thermal_margin->thermalMargin = therm_margin;
+
+  dlist_push_last(&ipmi_processor->processorDimmAggregateThermalMargin, thermal_margin);
+
+  EVEL_EXIT();
+  return thermal_margin;
+}
+
+
+MEASUREMENT_LOAD * evel_measurement_new_loads_add(
+                                  EVENT_MEASUREMENT * measurement)
+{
+  MEASUREMENT_LOAD *load = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(measurement != NULL);
+  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  load = malloc(sizeof(MEASUREMENT_LOAD));
+  assert(load != NULL);
+  memset(load, 0, sizeof(MEASUREMENT_LOAD));
+
+  evel_init_option_double(&load->shortTerm);
+  evel_init_option_double(&load->midTerm);
+  evel_init_option_double(&load->longTerm);
+
+  dlist_push_last(&measurement->loads, load);
+
+
+  EVEL_EXIT();
+  return load;
+}
+
+
+void evel_measurement_load_shortTerm_set(MEASUREMENT_LOAD *load,
+                                const double val)
+{
+  EVEL_ENTER();
+  assert(load != NULL);
+  evel_set_option_double(&load->shortTerm, val, "shortTerm");
+  EVEL_EXIT();
+}
+
+void evel_measurement_load_midTerm_set(MEASUREMENT_LOAD *load,
+                                const double val)
+{
+  EVEL_ENTER();
+  assert(load != NULL);
+  evel_set_option_double(&load->midTerm, val, "midTerm");
+  EVEL_EXIT();
+}
+
+void evel_measurement_load_longTerm_set(MEASUREMENT_LOAD *load,
+                                const double val)
+{
+  EVEL_ENTER();
+  assert(load != NULL);
+  evel_set_option_double(&load->longTerm, val, "longTerm");
+  EVEL_EXIT();
+}
+
+MEASUREMENT_PROCESS_STATS * evel_measurement_new_process_stats_add(
+                                  EVENT_MEASUREMENT * measurement, 
+                                  const char * const processIdentifier )
+{
+  MEASUREMENT_PROCESS_STATS *process_stat = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(measurement != NULL);
+  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s Process State", processIdentifier);
+  process_stat = malloc(sizeof(MEASUREMENT_PROCESS_STATS));
+  assert(process_stat != NULL);
+  memset(process_stat, 0, sizeof(MEASUREMENT_PROCESS_STATS));
+  process_stat->processIdentifier = strdup(processIdentifier);
+  assert(process_stat->processIdentifier != NULL);
+  dlist_push_last(&measurement->process_stats, process_stat);
+
+  evel_init_option_double(&process_stat->forkRate);
+  evel_init_option_double(&process_stat->psStateBlocked);
+  evel_init_option_double(&process_stat->psStatePaging);
+  evel_init_option_double(&process_stat->psStateRunning);
+  evel_init_option_double(&process_stat->psStateSleeping);
+  evel_init_option_double(&process_stat->psStateStopped);
+  evel_init_option_double(&process_stat->psStateZombie);
+
+  EVEL_EXIT();
+  return process_stat;
+}
+
+void evel_measurement_process_stat_forkRate_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->forkRate, val, "forkRate");
+  EVEL_EXIT();
+}
+
+
+
+void evel_measurement_process_stat_psStateBlocked_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->psStateBlocked, val, "psStateBlocked");
+  EVEL_EXIT();
+}
+
+void evel_measurement_process_stat_psStatePaging_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->psStatePaging, val, "psStatePaging");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_process_stat_psStateRunning_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->psStateRunning, val, "psStateRunning");
+  EVEL_EXIT();
+}
+
+void evel_measurement_process_stat_psStateSleeping_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->psStateSleeping, val, "psStateSleeping");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_process_stat_psStateStopped_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->psStateStopped, val, "psStateStopped");
+  EVEL_EXIT();
+}
+
+void evel_measurement_process_stat_psStateZombie_set(MEASUREMENT_PROCESS_STATS *process_stat,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(process_stat != NULL);
+  evel_set_option_double(&process_stat->psStateZombie, val, "psStateZombie");
+  EVEL_EXIT();
+}
+
+MACHINE_CHECK_EXCEPTION * evel_measurement_new_machine_check_exception_add(
+                                  EVENT_MEASUREMENT * measurement, 
+                                  const char * const process_id )
+{
+  MACHINE_CHECK_EXCEPTION *machine_check = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(measurement != NULL);
+  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+  assert(process_id != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s - machine check exception", process_id);
+  machine_check = malloc(sizeof(MACHINE_CHECK_EXCEPTION));
+  assert(machine_check != NULL);
+  memset(machine_check, 0, sizeof(MACHINE_CHECK_EXCEPTION));
+  machine_check->process_id = strdup(process_id);
+  assert(machine_check->process_id != NULL);
+
+  evel_init_option_double(&machine_check->corrected_memory_errors);
+  evel_init_option_double(&machine_check->corrected_memory_errors_in_1Hr);
+  evel_init_option_double(&machine_check->uncorrected_memory_errors);
+  evel_init_option_double(&machine_check->uncorrected_memory_errors_in_1Hr);
+
+  dlist_push_last(&measurement->machine_check_exception, machine_check);
+
+  EVEL_EXIT();
+  return machine_check;
+}
+
+void evel_measurement_machine_check_cor_mem_err_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(machine_check != NULL);
+  evel_set_option_double(&machine_check->corrected_memory_errors, val, "corrected_memory_errors");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_machine_check_cor_mem_err_1hr_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(machine_check != NULL);
+  evel_set_option_double(&machine_check->corrected_memory_errors_in_1Hr, val, "corrected_memory_errors_in_1Hr");
+  EVEL_EXIT();
+}
+
+void evel_measurement_machine_check_uncor_mem_err_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(machine_check != NULL);
+  evel_set_option_double(&machine_check->uncorrected_memory_errors, val, "uncorrected_memory_errors");
+  EVEL_EXIT();
+}
+
+void evel_measurement_machine_check_uncor_mem_err_1hr_set(MACHINE_CHECK_EXCEPTION *machine_check,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(machine_check != NULL);
+  evel_set_option_double(&machine_check->uncorrected_memory_errors_in_1Hr, val, "uncorrected_memory_errors_in_1Hr");
+  EVEL_EXIT();
+}
+
+MEASUREMENT_HUGE_PAGE * evel_measurement_new_huge_page_add(
+                                  EVENT_MEASUREMENT * measurement, 
+                                  const char * const hugePagesIdentifier )
+{
+  MEASUREMENT_HUGE_PAGE *huge_page = NULL;
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(measurement != NULL);
+  assert(measurement->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+  assert(hugePagesIdentifier != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding id=%s Huge Page", hugePagesIdentifier);
+  huge_page = malloc(sizeof(MEASUREMENT_HUGE_PAGE));
+  assert(huge_page != NULL);
+  memset(huge_page, 0, sizeof(MEASUREMENT_HUGE_PAGE));
+  huge_page->hugePagesIdentifier = strdup(hugePagesIdentifier);
+  assert(huge_page->hugePagesIdentifier != NULL);
+
+  evel_init_option_double(&huge_page->bytesUsed);
+  evel_init_option_double(&huge_page->bytesFree);
+  evel_init_option_double(&huge_page->vmPageNumberUsed);
+  evel_init_option_double(&huge_page->vmPageNumberFree);
+  evel_init_option_double(&huge_page->percentUsed);
+  evel_init_option_double(&huge_page->percentFree);
+
+  dlist_push_last(&measurement->huge_pages, huge_page);
+
+  EVEL_EXIT();
+  return huge_page;
+}
+
+void evel_measurement_huge_page_bytesUsed_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(huge_page != NULL);
+  evel_set_option_double(&huge_page->bytesUsed, val, "bytesUsed");
+  EVEL_EXIT();
+}
+
+void evel_measurement_huge_page_bytesFree_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(huge_page != NULL);
+  evel_set_option_double(&huge_page->bytesFree, val, "bytesFree");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_huge_page_vmPageNumberUsed_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(huge_page != NULL);
+  evel_set_option_double(&huge_page->vmPageNumberUsed, val, "vmPageNumberUsed");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_huge_page_vmPageNumberFree_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(huge_page != NULL);
+  evel_set_option_double(&huge_page->vmPageNumberFree, val, "vmPageNumberFree");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_huge_page_percentUsed_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(huge_page != NULL);
+  evel_set_option_double(&huge_page->percentUsed, val, "percentUsed");
+  EVEL_EXIT();
+}
+
+
+void evel_measurement_huge_page_percentFree_set(MEASUREMENT_HUGE_PAGE *huge_page,
+                                              const double val)
+{
+  EVEL_ENTER();
+  assert(huge_page != NULL);
+  evel_set_option_double(&huge_page->percentFree, val, "percentFree");
+  EVEL_EXIT();
+}
+
+void evel_json_encode_ipmi(EVEL_JSON_BUFFER * jbuf, MEASUREMENT_IPMI * ipmi_entry)
+{
+
+  DLIST_ITEM * item = NULL;
+  MEASUREMENT_IPMI_BB_TEMPERATURE * bb_temp = NULL;
+  MEASUREMENT_IPMI_BB_VOLTAGE * bb_volt = NULL;
+  MEASUREMENT_IPMI_BATTERY * ipmi_batt = NULL;
+  MEASUREMENT_IPMI_FAN * ipmi_fan = NULL;
+  MEASUREMENT_IPMI_HSBP * ipmi_hsbp = NULL;
+  MEASUREMENT_IPMI_NIC * ipmi_nic = NULL;
+  MEASUREMENT_IPMI_POWER_SUPPLY * ipmi_pwr = NULL;
+  MEASUREMENT_IPMI_PROCESSOR * ipmi_proc = NULL;
+  MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM * dimm_therm = NULL;
+  MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN * agg_temp = NULL;
+  DLIST_ITEM * item1 = NULL;
+
+  EVEL_ENTER();
+  assert(ipmi_entry != NULL);
+
+  evel_enc_kv_opt_double(jbuf, "exitAirTemperature", &ipmi_entry->exitAirTemperature);
+  evel_enc_kv_opt_double(jbuf, "frontPanelTemperature", &ipmi_entry->frontPanelTemperature);
+  evel_enc_kv_opt_double(jbuf, "ioModuleTemperature", &ipmi_entry->ioModuleTemperature);
+  evel_enc_kv_opt_double(jbuf, "systemAirflow", &ipmi_entry->systemAirflow);
+
+  /***************************************************************************/
+  /* Baseboard Temperature                                                   */
+  /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalFields"))
+  if (evel_json_open_opt_named_list(jbuf, "ipmiBaseboardTemperatureArray"))
   {
     bool item_added = false;
 
-    addl_info_item = dlist_get_first(&event->additional_info);
-    while (addl_info_item != NULL)
+    item = dlist_get_first(&ipmi_entry->ipmi_base_board_temparature);
+    while (item != NULL)
     {
-      addl_info = (OTHER_FIELD*) addl_info_item->item;
-      assert(addl_info != NULL);
+      bb_temp = (MEASUREMENT_IPMI_BB_TEMPERATURE *) item->item;
+      assert(bb_temp != NULL);
 
       if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalFields",
-                                          addl_info->name))
+                                          "ipmiBaseboardTemperatureArray",
+                                          bb_temp->BBTemperatureID))
       {
         evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", addl_info->name);
-        evel_enc_kv_string(jbuf, "value", addl_info->value);
+
+        evel_enc_kv_string(jbuf, "baseboardTemperatureIdentifier", bb_temp->BBTemperatureID);
+        evel_enc_kv_opt_double(jbuf, "baseboardTemperature", &bb_temp->BBTemperature);
+
         evel_json_close_object(jbuf);
         item_added = true;
       }
-      addl_info_item = dlist_get_next(addl_info_item);
+      item = dlist_get_next(item);
     }
     evel_json_close_list(jbuf);
 
@@ -3078,7 +4496,740 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
     }
   }
 
-  // TBD additional json objects
+  /***************************************************************************/
+  /* Baseboard Voltage                                                       */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiBaseboardVoltageRegulatorArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_base_board_voltage);
+    while (item != NULL)
+    {
+      bb_volt = (MEASUREMENT_IPMI_BB_VOLTAGE *) item->item;
+      assert(bb_volt != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiBaseboardVoltageRegulatorArray",
+                                          bb_volt->BBVoltageRegID))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "baseboardVoltageRegulatorIdentifier", bb_volt->BBVoltageRegID);
+        evel_enc_kv_opt_double(jbuf, "voltageRegulatorTemperature", &bb_volt->voltageRegTemperature);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* IPMI Battery                                                            */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiBatteryArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_battery);
+    while (item != NULL)
+    {
+      ipmi_batt = (MEASUREMENT_IPMI_BATTERY *) item->item;
+      assert(ipmi_batt != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiBatteryArray",
+                                          ipmi_batt->batteryIdentifier))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "batteryIdentifier", ipmi_batt->batteryIdentifier);
+        evel_enc_kv_opt_double(jbuf, "batteryVoltageLevel", &ipmi_batt->batteryVoltageLevel);
+        evel_enc_kv_opt_string(jbuf, "batteryType", &ipmi_batt->batteryType);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+
+  /***************************************************************************/
+  /* IPMI Fan                                                                */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiFanArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_fan);
+    while (item != NULL)
+    {
+      ipmi_fan = (MEASUREMENT_IPMI_FAN *) item->item;
+      assert(ipmi_fan != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiFanArray",
+                                          ipmi_fan->fanIdentifier))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "fanIdentifier", ipmi_fan->fanIdentifier);
+        evel_enc_kv_opt_double(jbuf, "fanSpeed", &ipmi_fan->fanSpeed);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* IPMI HSBP                                                               */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiHsbpArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_hsbp);
+    while (item != NULL)
+    {
+      ipmi_hsbp = (MEASUREMENT_IPMI_HSBP *) item->item;
+      assert(ipmi_hsbp != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiHsbpArray",
+                                          ipmi_hsbp->hsbpIdentifier))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "hsbpIdentifier", ipmi_hsbp->hsbpIdentifier);
+        evel_enc_kv_opt_double(jbuf, "hsbpTemperature", &ipmi_hsbp->hsbpTemperature);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* IPMI Global Aggregate Temperature margin                                */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "globalAggregateTemperatureMarginArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_global_agg_temp_margin);
+    while (item != NULL)
+    {
+      agg_temp = (MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN *) item->item;
+      assert(agg_temp != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                   "ipmiGlobalAggregateTemperatureMarginArray",
+                                    agg_temp->globalAggTempID))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "globalAggregateTemperatureMarginIdentifier", agg_temp->globalAggTempID);
+        evel_enc_kv_opt_double(jbuf, "globalAggregateTemperatureMargin", &agg_temp->globalAggTempMargin);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* IPMI NIC                                                                */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiNicArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_nic);
+    while (item != NULL)
+    {
+      ipmi_nic = (MEASUREMENT_IPMI_NIC *) item->item;
+      assert(ipmi_nic != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiNicArray",
+                                          ipmi_nic->nicIdentifier))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "nicIdentifier", ipmi_nic->nicIdentifier);
+        evel_enc_kv_opt_double(jbuf, "nicTemperature", &ipmi_nic->nicTemperature);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* IPMI Power                                                              */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiPowerSupplyArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_power);
+    while (item != NULL)
+    {
+      ipmi_pwr = (MEASUREMENT_IPMI_POWER_SUPPLY *) item->item;
+      assert(ipmi_pwr != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiPowerSupplyArray",
+                                          ipmi_pwr->powerSupplyIdentifier))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "powerSupplyIdentifier", ipmi_pwr->powerSupplyIdentifier);
+        evel_enc_kv_opt_double(jbuf, "powerSupplyCurrentOutputPercent", &ipmi_pwr->powerSupplyCurrentOutput);
+        evel_enc_kv_opt_double(jbuf, "powerSupplyInputPower", &ipmi_pwr->powerSupplyInputPower);
+        evel_enc_kv_opt_double(jbuf, "powerSupplyTemperature", &ipmi_pwr->powerSupplyTemperature);
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* IPMI Processor                                                          */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "ipmiProcessorArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&ipmi_entry->ipmi_processor);
+    while (item != NULL)
+    {
+      ipmi_proc = (MEASUREMENT_IPMI_PROCESSOR *) item->item;
+      assert(ipmi_proc != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "ipmiProcessorArray",
+                                          ipmi_proc->processorIdentifier))
+      {
+        evel_json_open_object(jbuf);
+
+        evel_enc_kv_string(jbuf, "processorIdentifier", ipmi_proc->processorIdentifier);
+        evel_enc_kv_opt_double(jbuf, "processorDtsThermalMargin", &ipmi_proc->processorDtsThermalMargin);
+        evel_enc_kv_opt_double(jbuf, "processorThermalControlPercent", &ipmi_proc->pprocessorThermalControl);
+        evel_json_checkpoint(jbuf);
+        if (evel_json_open_opt_named_list(jbuf, "processorDimmAggregateThermalMarginArray"))
+        {
+          bool item1_added = false;
+
+          item1 = dlist_get_first(&ipmi_proc->processorDimmAggregateThermalMargin);
+          while (item1 != NULL)
+          {
+            dimm_therm = (MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM *) item1->item;
+            assert(dimm_therm != NULL);
+
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "processorDimmAggregateThermalMarginArray",
+                                          dimm_therm->MarginIdentifier))
+            {
+              evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, "processorDimmAggregateThermalMarginIdentifier", dimm_therm->MarginIdentifier);
+              evel_enc_kv_double(jbuf, "thermalMargin", dimm_therm->thermalMargin);
+
+              evel_json_close_object(jbuf);
+              item1_added = true;
+            }
+            item1 = dlist_get_next(item1);
+          }
+          evel_json_close_list(jbuf);
+
+          if (!item1_added)
+          {
+            evel_json_rewind(jbuf);
+          }
+        }
+
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Encode the measurement as a JSON measurement.
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to encode into.
+ * @param event         Pointer to the ::EVENT_HEADER to encode.
+ *****************************************************************************/
+void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
+                                  EVENT_MEASUREMENT * event)
+{
+  MEASUREMENT_HUGE_PAGE * huge_page = NULL;
+  MEASUREMENT_CPU_USE * cpu_use = NULL;
+  MEASUREMENT_MEM_USE * mem_use = NULL;
+  MEASUREMENT_DISK_USE * disk_use = NULL;
+  MEASUREMENT_FSYS_USE * fsys_use = NULL;
+  MEASUREMENT_LATENCY_BUCKET * bucket = NULL;
+  MEASUREMENT_NIC_PERFORMANCE * nic_performance = NULL;
+  MEASUREMENT_CODEC_USE * codec_use = NULL;
+  MEASUREMENT_PROCESS_STATS * proc_stat = NULL;
+  MEASUREMENT_LOAD * load = NULL;
+  MACHINE_CHECK_EXCEPTION * machine_check = NULL;
+  MEASUREMENT_IPMI * ipmi_entry = NULL;
+  DLIST_ITEM * item = NULL;
+  DLIST_ITEM * other_field_item = NULL;
+  EVEL_JSON_OBJECT_INSTANCE * jsonobjinst = NULL;
+  EVEL_JSON_OBJECT * jsonobjp = NULL;
+  DLIST_ITEM * jsobj_field_item = NULL;
+  EVEL_INTERNAL_KEY * keyinst = NULL;
+  DLIST_ITEM * keyinst_field_item = NULL;
+  DLIST_ITEM * dlist_item = NULL;
+  HASHTABLE_T * ht;
+  ENTRY_T *entry;
+  char * state = NULL;
+
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(event != NULL);
+  assert(event->header.event_domain == EVEL_DOMAIN_MEASUREMENT);
+
+  evel_json_encode_header(jbuf, &event->header);
+  evel_json_open_named_object(jbuf, "measurementFields");
+
+  /***************************************************************************/
+  /* Mandatory fields.                                                       */
+  /***************************************************************************/
+  evel_enc_kv_int(jbuf, "measurementInterval", event->measurement_interval);
+
+  /***************************************************************************/
+  /* Optional fields.                                                        */
+  /***************************************************************************/
+
+  /***************************************************************************/
+  /* IPMI                                                                    */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_object(jbuf, "ipmi"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&event->ipmis);
+    while (item != NULL)
+    {
+      ipmi_entry = (MEASUREMENT_IPMI *) item->item;
+      assert(ipmi_entry != NULL);
+
+      if (!evel_throttle_suppress_field(jbuf->throttle_spec,
+                                          "ipmi"))
+      {
+       // evel_json_open_object(jbuf);
+        evel_json_encode_ipmi(jbuf, ipmi_entry);
+       // evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_object(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* Huge Page                                                               */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "hugePagesArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&event->huge_pages);
+    while (item != NULL)
+    {
+      huge_page = (MEASUREMENT_HUGE_PAGE *) item->item;
+      assert(huge_page != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "hugePagesArray",
+                                          huge_page->hugePagesIdentifier))
+      {
+        evel_json_open_object(jbuf);
+        evel_enc_kv_string(jbuf, "hugePagesIdentifier", huge_page->hugePagesIdentifier);
+        evel_enc_kv_opt_double(jbuf, "bytesUsed", &huge_page->bytesUsed);
+        evel_enc_kv_opt_double(jbuf, "bytesFree", &huge_page->bytesFree);
+        evel_enc_kv_opt_double(jbuf, "vmPageNumberUsed", &huge_page->vmPageNumberUsed);
+        evel_enc_kv_opt_double(jbuf, "vmPageNumberFree", &huge_page->vmPageNumberFree);
+        evel_enc_kv_opt_double(jbuf, "percentUsed", &huge_page->bytesUsed);
+        evel_enc_kv_opt_double(jbuf, "percentFree", &huge_page->bytesUsed);
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* Machine check exception                                                 */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "machineCheckExceptionArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&event->machine_check_exception);
+    while (item != NULL)
+    {
+      machine_check = (MACHINE_CHECK_EXCEPTION *) item->item;
+      assert(machine_check != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "machineCheckExceptionArray",
+                                          machine_check->process_id))
+      {
+        evel_json_open_object(jbuf);
+        evel_enc_kv_string(jbuf, "vmIdentifier", machine_check->process_id);
+        evel_enc_kv_opt_double(jbuf, "correctedMemoryErrors", &machine_check->corrected_memory_errors);
+        evel_enc_kv_opt_double(jbuf, "correctedMemoryErrorsIn1Hr", &machine_check->corrected_memory_errors_in_1Hr);
+        evel_enc_kv_opt_double(jbuf, "uncorrectedMemoryErrors", &machine_check->uncorrected_memory_errors);
+        evel_enc_kv_opt_double(jbuf, "uncorrectedMemoryErrorsIn1Hr", &machine_check->uncorrected_memory_errors_in_1Hr);
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /* Loads                                                                   */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "loadArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&event->loads);
+    while (item != NULL)
+    {
+      load = (MEASUREMENT_LOAD *) item->item;
+      assert(load != NULL);
+
+      if (!evel_throttle_suppress_field(jbuf->throttle_spec,
+                                          "loadArray"))
+      {
+        evel_json_open_object(jbuf);
+        evel_enc_kv_opt_double(jbuf, "shortTerm", &load->shortTerm);
+        evel_enc_kv_opt_double(jbuf, "midTerm", &load->midTerm);
+        evel_enc_kv_opt_double(jbuf, "longTerm", &load->longTerm);
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  /***************************************************************************/
+  /*  Process stats                                                          */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "processStatsArray"))
+  {
+    bool item_added = false;
+
+    item = dlist_get_first(&event->process_stats);
+    while (item != NULL)
+    {
+      proc_stat = (MEASUREMENT_PROCESS_STATS *) item->item;
+      assert(proc_stat != NULL);
+
+      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                          "processStatsArray",
+                                          proc_stat->processIdentifier))
+      {
+        evel_json_open_object(jbuf);
+        evel_enc_kv_string(jbuf, "processIdentifier", proc_stat->processIdentifier);
+        evel_enc_kv_opt_double(jbuf, "forkRate", &proc_stat->forkRate);
+        evel_enc_kv_opt_double(jbuf, "psStateBlocked", &proc_stat->psStateBlocked);
+        evel_enc_kv_opt_double(jbuf, "psStatePaging", &proc_stat->psStatePaging);
+        evel_enc_kv_opt_double(jbuf, "psStateRunning", &proc_stat->psStateRunning);
+        evel_enc_kv_opt_double(jbuf, "psStateSleeping", &proc_stat->psStateSleeping);
+        evel_enc_kv_opt_double(jbuf, "psStateStopped", &proc_stat->psStateStopped);
+        evel_enc_kv_opt_double(jbuf, "psStateZombie", &proc_stat->psStateZombie);
+        evel_json_close_object(jbuf);
+        item_added = true;
+      }
+      item = dlist_get_next(item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!item_added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  // additional fields
+  evel_json_checkpoint(jbuf);
+  ht = event->additional_info;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding additionalFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalFields",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_object(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
+  evel_json_checkpoint(jbuf);
+  if(evel_json_open_opt_named_list(jbuf, "additionalObjects"))
+  {
+  bool item_added = false;
+  other_field_item = dlist_get_first(&event->additional_objects);
+  while (other_field_item != NULL)
+  {
+    jsonobjp = (EVEL_JSON_OBJECT *) other_field_item->item;
+    if(jsonobjp != NULL)
+    {
+     evel_json_open_object(jbuf);
+
+       if( evel_json_open_opt_named_list(jbuf, "objectInstances"))
+       {
+        bool item_added2 = false;
+        jsobj_field_item = dlist_get_first(&jsonobjp->jsonobjectinstances);
+        while (jsobj_field_item != NULL)
+        {
+           jsonobjinst = (EVEL_JSON_OBJECT_INSTANCE *) jsobj_field_item->item;
+           if( jsonobjinst != NULL )
+           {
+              evel_json_open_object(jbuf);
+              evel_enc_kv_object(jbuf, "objectInstance", jsonobjinst->jsonstring);
+              evel_enc_kv_opt_ull(jbuf, "objectInstanceEpochMicrosec", &jsonobjinst->objinst_epoch_microsec);
+  //evel_json_checkpoint(jbuf);
+  if (evel_json_open_opt_named_list(jbuf, "objectKeys"))
+  {
+//   bool item_added3 = false;
+
+    keyinst_field_item = dlist_get_first(&jsonobjinst->object_keys);
+    while (keyinst_field_item != NULL)
+    {
+      keyinst = (EVEL_INTERNAL_KEY *)keyinst_field_item->item;
+      if(keyinst != NULL)
+      {
+        evel_json_open_object(jbuf);
+        evel_enc_kv_string(jbuf, "keyName", keyinst->keyname);
+        evel_enc_kv_opt_int(jbuf, "keyOrder", &keyinst->keyorder);
+        evel_enc_kv_opt_string(jbuf, "keyValue", &keyinst->keyvalue);
+        evel_json_close_object(jbuf);
+//      item_added3 = true;
+      }
+      keyinst_field_item = dlist_get_next(keyinst_field_item);
+    }
+    evel_json_close_list(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    //if (!item_added3)
+    //{
+    //  evel_json_rewind(jbuf);
+    //}
+  }
+               evel_json_close_object(jbuf);
+            }
+            item_added2 = true;
+            jsobj_field_item = dlist_get_next(jsobj_field_item);
+        }
+        evel_json_close_list(jbuf);
+        if( !item_added2 )
+        {
+          evel_json_rewind(jbuf);
+        }
+       }
+
+    evel_enc_kv_string(jbuf, "objectName", jsonobjp->object_name);
+    evel_enc_kv_opt_string(jbuf, "objectSchema", &jsonobjp->objectschema);
+    evel_enc_kv_opt_string(jbuf, "objectSchemaUrl", &jsonobjp->objectschemaurl);
+    evel_enc_kv_opt_string(jbuf, "nfSubscribedObjectName", &jsonobjp->nfsubscribedobjname);
+    evel_enc_kv_opt_string(jbuf, "nfSubscriptionId", &jsonobjp->nfsubscriptionid);
+    evel_json_close_object(jbuf);
+    item_added = true;
+  }
+  other_field_item = dlist_get_next(other_field_item);
+  }
+  evel_json_close_list(jbuf);
+
+  if (!item_added)
+  {
+     evel_json_rewind(jbuf);
+  }
+  }
+
+
+  // additional json objects
   evel_enc_kv_opt_int(jbuf, "concurrentSessions", &event->concurrent_sessions);
   evel_enc_kv_opt_int(jbuf, "configuredEntities", &event->configured_entities);
 
@@ -3111,6 +5262,13 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
         evel_enc_kv_opt_double(jbuf, "cpuUsageUser", &cpu_use->user);
         evel_enc_kv_opt_double(jbuf, "cpuWait", &cpu_use->wait);
         evel_enc_kv_double(jbuf, "percentUsage",cpu_use->usage);
+        evel_enc_kv_opt_double(jbuf, "cpuCapacityContention", &cpu_use->cpuCapacityContention);
+        evel_enc_kv_opt_double(jbuf, "cpuDemandAvg", &cpu_use->cpuDemandAvg);
+        evel_enc_kv_opt_double(jbuf, "cpuDemandMhz", &cpu_use->cpuDemandMhz);
+        evel_enc_kv_opt_double(jbuf, "cpuDemandPct", &cpu_use->cpuDemandPct);
+        evel_enc_kv_opt_double(jbuf, "cpuLatencyAvg", &cpu_use->cpuLatencyAvg);
+        evel_enc_kv_opt_double(jbuf, "cpuOverheadAvg", &cpu_use->cpuOverheadAvg);
+        evel_enc_kv_opt_double(jbuf, "cpuSwapWaitTime", &cpu_use->cpuSwapWaitTime);
         evel_json_close_object(jbuf);
         item_added = true;
       }
@@ -3188,6 +5346,20 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
         evel_enc_kv_opt_double(jbuf, "diskTimeWriteLast", &disk_use->timewritelast);
         evel_enc_kv_opt_double(jbuf, "diskTimeWriteMax", &disk_use->timewritemax);
         evel_enc_kv_opt_double(jbuf, "diskTimeWriteMin", &disk_use->timewritemin);
+        evel_enc_kv_opt_double(jbuf, "diskBusResets", &disk_use->diskBusResets);
+        evel_enc_kv_opt_double(jbuf, "diskCommandsAborted", &disk_use->diskCommandsAborted);
+        evel_enc_kv_opt_double(jbuf, "diskTime", &disk_use->diskTime);
+        evel_enc_kv_opt_double(jbuf, "diskFlushRequests", &disk_use->diskFlushRequests);
+        evel_enc_kv_opt_double(jbuf, "diskFlushTime", &disk_use->diskFlushTime);
+        evel_enc_kv_opt_double(jbuf, "diskCommandsAvg", &disk_use->diskCommandsAvg);
+        evel_enc_kv_opt_double(jbuf, "diskReadCommandsAvg", &disk_use->diskReadCommandsAvg);
+        evel_enc_kv_opt_double(jbuf, "diskWriteCommandsAvg", &disk_use->diskWriteCommandsAvg);
+        evel_enc_kv_opt_double(jbuf, "diskTotalReadLatencyAvg", &disk_use->diskTotalReadLatencyAvg);
+        evel_enc_kv_opt_double(jbuf, "diskTotalWriteLatencyAvg", &disk_use->diskTotalWriteLatencyAvg);
+        evel_enc_kv_opt_double(jbuf, "diskWeightedIoTimeAvg", &disk_use->diskWeightedIoTimeAvg);
+        evel_enc_kv_opt_double(jbuf, "diskWeightedIoTimeLast", &disk_use->diskWeightedIoTimeLast);
+        evel_enc_kv_opt_double(jbuf, "diskWeightedIoTimeMax", &disk_use->diskWeightedIoTimeMax);
+        evel_enc_kv_opt_double(jbuf, "diskWeightedIoTimeMin", &disk_use->diskWeightedIoTimeMin);
         evel_json_close_object(jbuf);
         item_added = true;
       }
@@ -3274,93 +5446,125 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
 
   evel_enc_kv_opt_double(
     jbuf, "meanRequestLatency", &event->mean_request_latency);
-  evel_enc_kv_opt_int(jbuf, "requestRate", &event->request_rate);
+  evel_enc_kv_opt_double(jbuf, "requestRate", &event->request_rate);
 
   /***************************************************************************/
-  /* vNIC Usage TBD Performance array                          */
+  /* NIC Usage TBD Performance array                          */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "vNicUsageArray"))
+  if (evel_json_open_opt_named_list(jbuf, "nicPerformanceArray"))
   {
     bool item_added = false;
 
-    item = dlist_get_first(&event->vnic_usage);
+    item = dlist_get_first(&event->nic_performance);
     while (item != NULL)
     {
-      vnic_performance = (MEASUREMENT_VNIC_PERFORMANCE *) item->item;
-      assert(vnic_performance != NULL);
+      nic_performance = (MEASUREMENT_NIC_PERFORMANCE *) item->item;
+      assert(nic_performance != NULL);
 
       if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "vNicPerformanceArray",
-                                          vnic_performance->vnic_id))
+                                          "nicPerformanceArray",
+                                          nic_performance->nic_id))
       {
         evel_json_open_object(jbuf);
 
         /*********************************************************************/
         /* Optional fields.                                                  */
         /*********************************************************************/
+        state = evel_entity_opt_op_state(&nic_performance->administrativeState);
+        if (state != NULL)
+        {
+          evel_enc_kv_string(jbuf, "administrativeState", state);
+        }
+        state = evel_entity_opt_op_state(&nic_performance->operationalState);
+        if (state != NULL)
+        {
+          evel_enc_kv_string(jbuf, "operationalState", state);
+        }
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedBroadcastPacketsAccumulated", &vnic_performance->recvd_bcast_packets_acc);
+		 "receivedPercentDiscard", &nic_performance->receivedPercentDiscard);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedBroadcastPacketsDelta", &vnic_performance->recvd_bcast_packets_delta);
+		 "receivedPercentError", &nic_performance->receivedPercentError);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedDiscardedPacketsAccumulated", &vnic_performance->recvd_discarded_packets_acc);
+		 "receivedUtilization", &nic_performance->receivedUtilization);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedDiscardedPacketsDelta", &vnic_performance->recvd_discarded_packets_delta);
+		 "speed", &nic_performance->speed);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedErrorPacketsAccumulated", &vnic_performance->recvd_error_packets_acc);
+		 "transmittedPercentDiscard", &nic_performance->transmittedPercentDiscard);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedErrorPacketsDelta", &vnic_performance->recvd_error_packets_delta);
+		 "transmittedPercentError", &nic_performance->transmittedPercentError);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedMulticastPacketsAccumulated", &vnic_performance->recvd_mcast_packets_acc);
+		 "transmittedUtilization", &nic_performance->transmittedUtilization);
+
         evel_enc_kv_opt_double( jbuf,
-		 "receivedMulticastPacketsDelta", &vnic_performance->recvd_mcast_packets_delta);
+		 "receivedBroadcastPacketsAccumulated", &nic_performance->recvd_bcast_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "receivedOctetsAccumulated", &vnic_performance->recvd_octets_acc);
+		 "receivedBroadcastPacketsDelta", &nic_performance->recvd_bcast_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "receivedOctetsDelta", &vnic_performance->recvd_octets_delta);
+		 "receivedDiscardedPacketsAccumulated", &nic_performance->recvd_discarded_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "receivedTotalPacketsAccumulated", &vnic_performance->recvd_total_packets_acc);
+		 "receivedDiscardedPacketsDelta", &nic_performance->recvd_discarded_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "receivedTotalPacketsDelta", &vnic_performance->recvd_total_packets_delta);
+		 "receivedErrorPacketsAccumulated", &nic_performance->recvd_error_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "receivedUnicastPacketsAccumulated", &vnic_performance->recvd_ucast_packets_acc);
+		 "receivedErrorPacketsDelta", &nic_performance->recvd_error_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "receivedUnicastPacketsDelta", &vnic_performance->recvd_ucast_packets_delta);
+		 "receivedMulticastPacketsAccumulated", &nic_performance->recvd_mcast_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedBroadcastPacketsAccumulated", &vnic_performance->tx_bcast_packets_acc);
+		 "receivedMulticastPacketsDelta", &nic_performance->recvd_mcast_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedBroadcastPacketsDelta", &vnic_performance->tx_bcast_packets_delta);
+		 "receivedOctetsAccumulated", &nic_performance->recvd_octets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedDiscardedPacketsAccumulated", &vnic_performance->tx_discarded_packets_acc);
+		 "receivedOctetsDelta", &nic_performance->recvd_octets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedDiscardedPacketsDelta", &vnic_performance->tx_discarded_packets_delta);
+		 "receivedTotalPacketsAccumulated", &nic_performance->recvd_total_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedErrorPacketsAccumulated", &vnic_performance->tx_error_packets_acc);
+		 "receivedTotalPacketsDelta", &nic_performance->recvd_total_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedErrorPacketsDelta", &vnic_performance->tx_error_packets_delta);
+		 "receivedUnicastPacketsAccumulated", &nic_performance->recvd_ucast_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedMulticastPacketsAccumulated", &vnic_performance->tx_mcast_packets_acc);
+		 "receivedUnicastPacketsDelta", &nic_performance->recvd_ucast_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedMulticastPacketsDelta", &vnic_performance->tx_mcast_packets_delta);
+		 "transmittedBroadcastPacketsAccumulated", &nic_performance->tx_bcast_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedOctetsAccumulated", &vnic_performance->tx_octets_acc);
+		 "transmittedBroadcastPacketsDelta", &nic_performance->tx_bcast_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedOctetsDelta", &vnic_performance->tx_octets_delta);
+		 "transmittedDiscardedPacketsAccumulated", &nic_performance->tx_discarded_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedTotalPacketsAccumulated", &vnic_performance->tx_total_packets_acc);
+		 "transmittedDiscardedPacketsDelta", &nic_performance->tx_discarded_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedTotalPacketsDelta", &vnic_performance->tx_total_packets_delta);
+		 "transmittedErrorPacketsAccumulated", &nic_performance->tx_error_packets_acc);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedUnicastPacketsAccumulated", &vnic_performance->tx_ucast_packets_acc);
+		 "transmittedErrorPacketsDelta", &nic_performance->tx_error_packets_delta);
         evel_enc_kv_opt_double( jbuf,
-		 "transmittedUnicastPacketsDelta", &vnic_performance->tx_ucast_packets_delta);
+		 "transmittedMulticastPacketsAccumulated", &nic_performance->tx_mcast_packets_acc);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedMulticastPacketsDelta", &nic_performance->tx_mcast_packets_delta);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedOctetsAccumulated", &nic_performance->tx_octets_acc);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedOctetsDelta", &nic_performance->tx_octets_delta);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedTotalPacketsAccumulated", &nic_performance->tx_total_packets_acc);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedTotalPacketsDelta", &nic_performance->tx_total_packets_delta);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedUnicastPacketsAccumulated", &nic_performance->tx_ucast_packets_acc);
+        evel_enc_kv_opt_double( jbuf,
+		 "transmittedUnicastPacketsDelta", &nic_performance->tx_ucast_packets_delta);
 
         /*********************************************************************/
         /* Mandatory fields.                                                 */
         /*********************************************************************/
-        evel_enc_kv_string(jbuf, "valuesAreSuspect", vnic_performance->valuesaresuspect);
-        evel_enc_kv_string(jbuf, "vNicIdentifier", vnic_performance->vnic_id);
+        evel_enc_kv_string(jbuf, "valuesAreSuspect", nic_performance->valuesaresuspect);
+        evel_enc_kv_string(jbuf, "nicIdentifier", nic_performance->nic_id);
 
         evel_json_close_object(jbuf);
         item_added = true;
@@ -3381,7 +5585,7 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
 
 
   /***************************************************************************/
-  /* Memory Use list.                                                           */
+  /* Memory Use list.                                                        */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
   if (evel_json_open_opt_named_list(jbuf, "memoryUsageArray"))
@@ -3396,17 +5600,27 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
 
       if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
                                           "memoryUsageArray",
-                                          mem_use->id))
+                                          mem_use->vmid))
       {
         evel_json_open_object(jbuf);
-        evel_enc_kv_double(jbuf, "memoryBuffered", mem_use->membuffsz);
+        evel_enc_kv_opt_double(jbuf, "memoryBuffered", &mem_use->membuffsz);
         evel_enc_kv_opt_double(jbuf, "memoryCached", &mem_use->memcache);
         evel_enc_kv_opt_double(jbuf, "memoryConfigured", &mem_use->memconfig);
-        evel_enc_kv_opt_double(jbuf, "memoryFree", &mem_use->memfree);
+        evel_enc_kv_double(jbuf, "memoryFree", mem_use->memfree);
         evel_enc_kv_opt_double(jbuf, "memorySlabRecl", &mem_use->slabrecl);
         evel_enc_kv_opt_double(jbuf, "memorySlabUnrecl", &mem_use->slabunrecl);
-        evel_enc_kv_opt_double(jbuf, "memoryUsed", &mem_use->memused);
-        evel_enc_kv_string(jbuf, "vmIdentifier", mem_use->id);
+        evel_enc_kv_double(jbuf, "memoryUsed", mem_use->memused);
+        evel_enc_kv_string(jbuf, "vmIdentifier", mem_use->vmid);
+        evel_enc_kv_opt_double(jbuf, "memoryDemand", &mem_use->memoryDemand);
+        evel_enc_kv_opt_double(jbuf, "memoryLatencyAvg", &mem_use->memoryLatencyAvg);
+        evel_enc_kv_opt_double(jbuf, "memorySharedAvg", &mem_use->memorySharedAvg);
+        evel_enc_kv_opt_double(jbuf, "memorySwapInAvg", &mem_use->memorySwapInAvg);
+        evel_enc_kv_opt_double(jbuf, "memorySwapInRateAvg", &mem_use->memorySwapInRateAvg);
+        evel_enc_kv_opt_double(jbuf, "memorySwapOutAvg", &mem_use->memorySwapOutAvg);
+        evel_enc_kv_opt_double(jbuf, "memorySwapOutRateAvg", &mem_use->memorySwapOutRateAvg);
+        evel_enc_kv_opt_double(jbuf, "memorySwapUsedAvg", &mem_use->memorySwapUsedAvg);
+        evel_enc_kv_opt_double(jbuf, "percentMemoryUsage", &mem_use->percentMemoryUsage);
+
         evel_json_close_object(jbuf);
         item_added = true;
       }
@@ -3427,55 +5641,52 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
   evel_enc_kv_opt_int(
     jbuf, "numberOfMediaPortsInUse", &event->media_ports_in_use);
   evel_enc_kv_opt_int(
-    jbuf, "vnfcScalingMetric", &event->vnfc_scaling_metric);
-
-  /***************************************************************************/
-  /* Errors list.                                                            */
-  /***************************************************************************/
-  if ((event->errors != NULL) &&
-      evel_json_open_opt_named_object(jbuf, "errors"))
-  {
-    errors = event->errors;
-    evel_enc_kv_int(jbuf, "receiveDiscards", errors->receive_discards);
-    evel_enc_kv_int(jbuf, "receiveErrors", errors->receive_errors);
-    evel_enc_kv_int(jbuf, "transmitDiscards", errors->transmit_discards);
-    evel_enc_kv_int(jbuf, "transmitErrors", errors->transmit_errors);
-    evel_json_close_object(jbuf);
-  }
+    jbuf, "nfcScalingMetric", &event->vnfc_scaling_metric);
 
   /***************************************************************************/
   /* Feature Utilization list.                                               */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "featureUsageArray"))
+  ht = event->feature_usage;
+  if( ht != NULL )
   {
-    bool item_added = false;
-
-    item = dlist_get_first(&event->feature_usage);
-    while (item != NULL)
+    bool added = false;
+    if( ht->size > 0)
     {
-      feature_use = (MEASUREMENT_FEATURE_USE*) item->item;
-      assert(feature_use != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "featureUsageArray",
-                                          feature_use->feature_id))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "featureUsageArray"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "featureIdentifier", feature_use->feature_id);
-        evel_enc_kv_int(
-          jbuf, "featureUtilization", feature_use->feature_utilization);
-        evel_json_close_object(jbuf);
-        item_added = true;
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding feature usage %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "featureUsageArray",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      item = dlist_get_next(item);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
 
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
     /*************************************************************************/
-    if (!item_added)
+    if (!added)
     {
       evel_json_rewind(jbuf);
     }
@@ -3521,52 +5732,67 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
   /***************************************************************************/
   /* Additional Measurement Groups list.                                     */
   /***************************************************************************/
+  /***************************************************************************/
+  /* Checkpoint, so that we can wind back if all fields are suppressed.      */
+  /***************************************************************************/
   evel_json_checkpoint(jbuf);
   if (evel_json_open_opt_named_list(jbuf, "additionalMeasurements"))
   {
-    bool item_added = false;
+    bool added_array = false;
 
-    item = dlist_get_first(&event->additional_measurements);
-    while (item != NULL)
+    dlist_item = dlist_get_first(&event->additional_measurements);
+    while (dlist_item != NULL)
     {
-      measurement_group = (MEASUREMENT_GROUP *) item->item;
-      assert(measurement_group != NULL);
+      bool added = false;
+      ht = (HASHTABLE_T *) dlist_item->item;
+      assert(ht != NULL);
 
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalMeasurements",
-                                          measurement_group->name))
+      if((ht->size > 0) && (ht-> n > 0))
       {
+        evel_json_checkpoint(jbuf);
         evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", measurement_group->name);
-        evel_json_open_opt_named_list(jbuf, "arrayOfFields");
+        evel_enc_kv_string(jbuf, "name", ht->hmName);
 
-        /*********************************************************************/
-        /* Measurements list.                                                */
-        /*********************************************************************/
-        nested_item = dlist_get_first(&measurement_group->measurements);
-        while (nested_item != NULL)
+        if (evel_json_open_opt_named_object(jbuf, "hashMap"))
         {
-          custom_measurement = (CUSTOM_MEASUREMENT *) nested_item->item;
-          assert(custom_measurement != NULL);
 
-          evel_json_open_object(jbuf);
-          evel_enc_kv_string(jbuf, "name", custom_measurement->name);
-          evel_enc_kv_string(jbuf, "value", custom_measurement->value);
+          for(unsigned int idx = 0; idx < ht->size; idx++ )
+          {
+            /*****************************************************************/
+            /* Get the first entry of a particular Key and loop through the  */
+            /* remaining if any. Then proceed to next key.                   */
+            /*****************************************************************/
+            entry =  ht->table[idx];
+            while( entry != NULL && entry->key != NULL)
+            {
+              EVEL_DEBUG("Encoding additional measurements %s %s",(char *) (entry->key), entry->value);
+              if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                                ht->hmName,
+                                                entry->key))
+              {
+
+                //evel_json_open_object(jbuf);
+                evel_enc_kv_string(jbuf, entry->key, entry->value);
+                //evel_json_close_object(jbuf);
+                added = true;
+                added_array = true;
+              }
+              entry = entry->next;
+            }
+          }
           evel_json_close_object(jbuf);
-          nested_item = dlist_get_next(nested_item);
+          if (!added)
+          {
+            evel_json_rewind(jbuf);
+          }
         }
-        evel_json_close_list(jbuf);
         evel_json_close_object(jbuf);
-        item_added = true;
       }
-      item = dlist_get_next(item);
+      dlist_item = dlist_get_next(dlist_item);
     }
     evel_json_close_list(jbuf);
 
-    /*************************************************************************/
-    /* If we've not written anything, rewind to before we opened the list.   */
-    /*************************************************************************/
-    if (!item_added)
+    if (!added_array)
     {
       evel_json_rewind(jbuf);
     }
@@ -3577,10 +5803,128 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
   /* closes the object, too.                                                 */
   /***************************************************************************/
   evel_enc_version(jbuf,
-                   "measurementsForVfScalingVersion",
+                   "measurementFieldsVersion",
                    event->major_version,
                    event->minor_version);
   evel_json_close_object(jbuf);
+
+  EVEL_EXIT();
+}
+void evel_measurement_free_ipmi_processor(MEASUREMENT_IPMI_PROCESSOR * ipmi_processor)
+{
+
+  MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM * proc_dimm_therm = NULL;
+
+  EVEL_ENTER();
+
+  free(ipmi_processor->processorIdentifier);
+
+  proc_dimm_therm = dlist_pop_last(&ipmi_processor->processorDimmAggregateThermalMargin);
+  while (proc_dimm_therm != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI proc dimm therm Info (%s)", proc_dimm_therm->MarginIdentifier);
+    free(proc_dimm_therm->MarginIdentifier);
+    free(proc_dimm_therm);
+    proc_dimm_therm = dlist_pop_last(&ipmi_processor->processorDimmAggregateThermalMargin);
+  }
+
+  EVEL_EXIT();
+}
+
+void  evel_measurement_free_ipmi(MEASUREMENT_IPMI * ipmi)
+{
+  MEASUREMENT_IPMI_BB_TEMPERATURE * bb_temp = NULL;
+  MEASUREMENT_IPMI_BB_VOLTAGE * bb_volt = NULL;
+  MEASUREMENT_IPMI_BATTERY * ipmi_battery = NULL;
+  MEASUREMENT_IPMI_FAN * ipmi_fan = NULL;
+  MEASUREMENT_IPMI_HSBP * ipmi_hsbp = NULL;
+  MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN * ipmi_tempMargin = NULL;
+  MEASUREMENT_IPMI_NIC * ipmi_nic = NULL;
+  MEASUREMENT_IPMI_POWER_SUPPLY * ipmi_power = NULL;
+  MEASUREMENT_IPMI_PROCESSOR * ipmi_processor = NULL;
+
+  EVEL_ENTER();
+
+  bb_temp = dlist_pop_last(&ipmi->ipmi_base_board_temparature);
+  while (bb_temp != NULL)
+  {
+    EVEL_DEBUG("Freeing base board temp Info (%s)", bb_temp->BBTemperatureID);
+    free(bb_temp->BBTemperatureID);
+    free(bb_temp);
+    bb_temp = dlist_pop_last(&ipmi->ipmi_base_board_temparature);
+  }
+
+  bb_volt = dlist_pop_last(&ipmi->ipmi_base_board_voltage);
+  while (bb_volt != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI FAN Info (%s)", bb_volt->BBVoltageRegID);
+    free(bb_volt->BBVoltageRegID);
+    free(bb_volt);
+    bb_volt = dlist_pop_last(&ipmi->ipmi_base_board_voltage);
+  }
+
+  ipmi_battery = dlist_pop_last(&ipmi->ipmi_battery);
+  while (ipmi_battery != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI Battery Info (%s)", ipmi_battery->batteryIdentifier);
+    free(ipmi_battery->batteryIdentifier);
+    free(ipmi_battery);
+    ipmi_battery = dlist_pop_last(&ipmi->ipmi_battery);
+  }
+
+  ipmi_fan = dlist_pop_last(&ipmi->ipmi_fan);
+  while (ipmi_fan != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI FAN Info (%s)", ipmi_fan->fanIdentifier);
+    free(ipmi_fan->fanIdentifier);
+    free(ipmi_fan);
+    ipmi_fan = dlist_pop_last(&ipmi->ipmi_fan);
+  }
+
+  ipmi_hsbp = dlist_pop_last(&ipmi->ipmi_hsbp);
+  while (ipmi_hsbp != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI HSBP Info (%s)", ipmi_hsbp->hsbpIdentifier);
+    free(ipmi_hsbp->hsbpIdentifier);
+    free(ipmi_hsbp);
+    ipmi_hsbp = dlist_pop_last(&ipmi->ipmi_hsbp);
+  }
+
+  ipmi_tempMargin = dlist_pop_last(&ipmi->ipmi_global_agg_temp_margin);
+  while (ipmi_tempMargin != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI Global AGG Temp margin info (%s)", ipmi_tempMargin->globalAggTempID);
+    free(ipmi_tempMargin->globalAggTempID);
+    free(ipmi_tempMargin);
+    ipmi_tempMargin = dlist_pop_last(&ipmi->ipmi_global_agg_temp_margin);
+  }
+
+  ipmi_nic = dlist_pop_last(&ipmi->ipmi_nic);
+  while (ipmi_nic != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI NIC Info (%s)", ipmi_nic->nicIdentifier);
+    free(ipmi_nic->nicIdentifier);
+    free(ipmi_nic);
+    ipmi_nic = dlist_pop_last(&ipmi->ipmi_nic);
+  }
+
+  ipmi_power = dlist_pop_last(&ipmi->ipmi_power);
+  while (ipmi_power != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI Power Info (%s)", ipmi_power->powerSupplyIdentifier);
+    free(ipmi_power->powerSupplyIdentifier);
+    free(ipmi_power);
+    ipmi_power = dlist_pop_last(&ipmi->ipmi_power);
+  }
+
+  ipmi_processor = dlist_pop_last(&ipmi->ipmi_processor);
+  while (ipmi_processor != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI Processor Info (%s)", ipmi_processor->processorIdentifier);
+    evel_measurement_free_ipmi_processor(ipmi_processor);
+    free(ipmi_processor);
+    ipmi_processor = dlist_pop_last(&ipmi->ipmi_processor);
+  }
 
   EVEL_EXIT();
 }
@@ -3596,17 +5940,20 @@ void evel_json_encode_measurement(EVEL_JSON_BUFFER * jbuf,
  *****************************************************************************/
 void evel_free_measurement(EVENT_MEASUREMENT * event)
 {
+  MEASUREMENT_HUGE_PAGE * huge_page = NULL;
   MEASUREMENT_CPU_USE * cpu_use = NULL;
   MEASUREMENT_DISK_USE * disk_use = NULL;
   MEASUREMENT_FSYS_USE * fsys_use = NULL;
   MEASUREMENT_LATENCY_BUCKET * bucket = NULL;
   MEASUREMENT_MEM_USE * mem_use = NULL;
-  MEASUREMENT_VNIC_PERFORMANCE * vnic_performance = NULL;
-  MEASUREMENT_FEATURE_USE * feature_use = NULL;
+  MEASUREMENT_NIC_PERFORMANCE * nic_performance = NULL;
   MEASUREMENT_CODEC_USE * codec_use = NULL;
-  MEASUREMENT_GROUP * measurement_group = NULL;
-  CUSTOM_MEASUREMENT * measurement = NULL;
-  OTHER_FIELD *addl_info = NULL;
+  MEASUREMENT_LOAD * load = NULL;
+  MEASUREMENT_PROCESS_STATS * proc_stat = NULL;
+  MEASUREMENT_IPMI * ipmi = NULL;
+  MACHINE_CHECK_EXCEPTION * machine_check = NULL;
+  EVEL_JSON_OBJECT * jsonobjp = NULL;
+  HASHTABLE_T *ht;
 
   EVEL_ENTER();
 
@@ -3620,19 +5967,19 @@ void evel_free_measurement(EVENT_MEASUREMENT * event)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  addl_info = dlist_pop_last(&event->additional_info);
-  while (addl_info != NULL)
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Additional Info (%s, %s)",
-               addl_info->name,
-               addl_info->value);
-    free(addl_info->name);
-    free(addl_info->value);
-    free(addl_info);
-    addl_info = dlist_pop_last(&event->additional_info);
+     ht_destroy(ht);
   }
 
-
+  jsonobjp = dlist_pop_last(&event->additional_objects);
+  while (jsonobjp != NULL)
+  {
+    EVEL_DEBUG("Freeing jsonObject %p",jsonobjp);
+    evel_free_jsonobject( jsonobjp );
+    jsonobjp = dlist_pop_last(&event->additional_objects);
+  }
 
   cpu_use = dlist_pop_last(&event->cpu_usage);
   while (cpu_use != NULL)
@@ -3642,6 +5989,7 @@ void evel_free_measurement(EVENT_MEASUREMENT * event)
     free(cpu_use);
     cpu_use = dlist_pop_last(&event->cpu_usage);
   }
+
   disk_use = dlist_pop_last(&event->disk_usage);
   while (disk_use != NULL)
   {
@@ -3650,11 +5998,11 @@ void evel_free_measurement(EVENT_MEASUREMENT * event)
     free(disk_use);
     disk_use = dlist_pop_last(&event->disk_usage);
   }
+
   mem_use = dlist_pop_last(&event->mem_usage);
   while (mem_use != NULL)
   {
-    EVEL_DEBUG("Freeing Memory use Info (%s)", mem_use->id);
-    free(mem_use->id);
+    EVEL_DEBUG("Freeing Memory use Info - (%s)", mem_use->vmid);
     free(mem_use->vmid);
     free(mem_use);
     mem_use = dlist_pop_last(&event->mem_usage);
@@ -3677,13 +6025,22 @@ void evel_free_measurement(EVENT_MEASUREMENT * event)
     bucket = dlist_pop_last(&event->latency_distribution);
   }
 
-  vnic_performance = dlist_pop_last(&event->vnic_usage);
-  while (vnic_performance != NULL)
+  nic_performance = dlist_pop_last(&event->nic_performance);
+  while (nic_performance != NULL)
   {
-    EVEL_DEBUG("Freeing vNIC performance Info (%s)", vnic_performance->vnic_id);
-    evel_measurement_free_vnic_performance(vnic_performance);
-    free(vnic_performance);
-    vnic_performance = dlist_pop_last(&event->vnic_usage);
+    EVEL_DEBUG("Freeing NIC performance Info (%s)", nic_performance->nic_id);
+    evel_measurement_free_nic_performance(nic_performance);
+    free(nic_performance);
+    nic_performance = dlist_pop_last(&event->nic_performance);
+  }
+
+  ipmi = dlist_pop_last(&event->ipmis);
+  while (ipmi != NULL)
+  {
+    EVEL_DEBUG("Freeing IPMI");
+    evel_measurement_free_ipmi(ipmi);
+    free(ipmi);
+    ipmi = dlist_pop_last(&event->ipmis);
   }
 
   codec_use = dlist_pop_last(&event->codec_usage);
@@ -3695,38 +6052,54 @@ void evel_free_measurement(EVENT_MEASUREMENT * event)
     codec_use = dlist_pop_last(&event->codec_usage);
   }
 
-  if (event->errors != NULL)
+  proc_stat = dlist_pop_last(&event->process_stats);
+  while (proc_stat != NULL)
   {
-    EVEL_DEBUG("Freeing Errors");
-    free(event->errors);
+    EVEL_DEBUG("Freeing Process Stats Info (%s)", proc_stat->processIdentifier);
+    free(proc_stat->processIdentifier);
+    free(proc_stat);
+    proc_stat = dlist_pop_last(&event->process_stats);
   }
 
-  feature_use = dlist_pop_last(&event->feature_usage);
-  while (feature_use != NULL)
+  load = dlist_pop_last(&event->loads);
+  while (load != NULL)
   {
-    EVEL_DEBUG("Freeing Feature use Info (%s)", feature_use->feature_id);
-    free(feature_use->feature_id);
-    free(feature_use);
-    feature_use = dlist_pop_last(&event->feature_usage);
+    EVEL_DEBUG("Freeing load Info");
+    free(load);
+    load = dlist_pop_last(&event->loads);
   }
 
-  measurement_group = dlist_pop_last(&event->additional_measurements);
-  while (measurement_group != NULL)
+  ht = event->feature_usage;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Measurement Group (%s)", measurement_group->name);
+     ht_destroy(ht);
+  }
 
-    measurement = dlist_pop_last(&measurement_group->measurements);
-    while (measurement != NULL)
-    {
-      EVEL_DEBUG("Freeing Measurement (%s)", measurement->name);
-      free(measurement->name);
-      free(measurement->value);
-      free(measurement);
-      measurement = dlist_pop_last(&measurement_group->measurements);
-    }
-    free(measurement_group->name);
-    free(measurement_group);
-    measurement_group = dlist_pop_last(&event->additional_measurements);
+  huge_page = dlist_pop_last(&event->huge_pages);
+  while (huge_page != NULL)
+  {
+    EVEL_DEBUG("Freeing huge page id (%s)", huge_page->hugePagesIdentifier);
+    free(huge_page->hugePagesIdentifier);
+    free(huge_page);
+    huge_page = dlist_pop_last(&event->huge_pages);
+  }
+
+  machine_check = dlist_pop_last(&event->machine_check_exception);
+  while (machine_check != NULL)
+  {
+    EVEL_DEBUG("Freeing machine check exception id (%s)", machine_check->process_id);
+
+    free(machine_check->process_id);
+    free(machine_check);
+    machine_check = dlist_pop_last(&event->machine_check_exception);
+  }
+
+  ht = dlist_pop_last(&event->additional_measurements);
+  while (ht != NULL)
+  {
+    EVEL_DEBUG("Freeing measurement additional_measurements %s", ht->hmName);
+    ht_destroy(ht);
+    ht = dlist_pop_last(&event->additional_measurements);
   }
 
   evel_free_header(&event->header);

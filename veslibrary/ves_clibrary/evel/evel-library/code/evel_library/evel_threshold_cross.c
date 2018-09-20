@@ -38,16 +38,12 @@
  *
  * @param event_name  Unique Event Name confirming Domain AsdcVnfModel Description
  * @param event_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
- * @param char* tcriticality   Performance Counter Criticality MAJ MIN,
- * @param char* tname          Performance Counter Threshold name
- * @param char* tthresholdCrossed  Counter Threshold crossed value
- * @param char* tvalue             Counter actual value
  * @param EVEL_EVENT_ACTION talertAction   Alert set continue or clear
  * @param char*  talertDescription
  * @param EVEL_ALERT_TYPE     talertType    Kind of anamoly
- * @param unsigned long long  tcollectionTimestamp time at which alert was collected
+ * @param char* tcollectionTimestamp time at which alert was collected
  * @param EVEL_SEVERITIES     teventSeverity  Severity of Alert
- * @param unsigned long long  teventStartTimestamp Time when this alert started
+ * @param char* teventStartTimestamp Time when this alert started
  *
  * @returns pointer to the newly manufactured ::EVENT_THRESHOLD_CROSS.  If the
  *          event is not used it must be released using
@@ -55,30 +51,26 @@
  * @retval  NULL  Failed to create the event.
  *****************************************************************************/
 EVENT_THRESHOLD_CROSS * evel_new_threshold_cross(const char * ev_name, const char * ev_id,
-			   char *  tcriticality,
-                           char *  tname,
-                           char *  tthresholdCrossed,
-                           char *  tvalue,
-                           EVEL_EVENT_ACTION  talertAction,
+                           EVEL_ALERT_ACTIONS talertAction,
                            char *             talertDescription, 
                            EVEL_ALERT_TYPE    talertType,
-                           unsigned long long  tcollectionTimestamp, 
+                           char *  tcollectionTimestamp, 
                            EVEL_SEVERITIES     teventSeverity,
-                           unsigned long long  teventStartTimestamp )
+                           char *  teventStartTimestamp )
 {
         EVENT_THRESHOLD_CROSS * event = NULL;
+
         EVEL_ENTER();
 
-	assert( tcriticality!= NULL );
-	assert( tname!= NULL );
-	assert( tthresholdCrossed != NULL );
-	assert( tvalue!= NULL );
 	assert( talertDescription != NULL );
+	assert( talertAction < EVEL_MAX_ALERT_ACTIONS );
+	assert( talertType < EVEL_MAX_ANOMALY );
+	assert( teventSeverity < EVEL_MAX_SEVERITIES );
 		
 
-	/***************************************************************************/
-	/* Allocate the Threshold crossing event.                                  */
-	/***************************************************************************/
+/***************************************************************************/
+/* Allocate the Threshold crossing event.                                  */
+/***************************************************************************/
 	event = malloc(sizeof(EVENT_THRESHOLD_CROSS));
 	if (event == NULL)
 	{
@@ -96,17 +88,12 @@ EVENT_THRESHOLD_CROSS * evel_new_threshold_cross(const char * ev_name, const cha
   event->major_version = EVEL_THRESHOLD_CROSS_MAJOR_VERSION;
   event->minor_version = EVEL_THRESHOLD_CROSS_MINOR_VERSION;
 
-
-  event->additionalParameters.criticality = strdup(tcriticality);
-  event->additionalParameters.name = strdup(tname);
-  event->additionalParameters.thresholdCrossed = strdup(tthresholdCrossed);
-  event->additionalParameters.value = strdup(tvalue);
   event->alertAction      =  talertAction;
   event->alertDescription =  strdup(talertDescription); 
   event->alertType        =  talertType;
-  event->collectionTimestamp =   tcollectionTimestamp; 
+  event->collectionTimestamp =   strdup(tcollectionTimestamp); 
   event->eventSeverity       =   teventSeverity;
-  event->eventStartTimestamp =   teventStartTimestamp;
+  event->eventStartTimestamp =   strdup(teventStartTimestamp);
 
   evel_init_option_string(&event->alertValue);
   evel_init_option_string(&event->dataCollector);
@@ -114,8 +101,9 @@ EVENT_THRESHOLD_CROSS * evel_new_threshold_cross(const char * ev_name, const cha
   evel_init_option_string(&event->interfaceName);
   evel_init_option_string(&event->networkService);
   evel_init_option_string(&event->possibleRootCause);
-  dlist_initialize(&event->additional_info);
+  event->additional_info = ht_create();
   dlist_initialize(&event->alertidList);
+  dlist_initialize(&event->additionalParameters);
 
 exit_label:
 
@@ -124,6 +112,76 @@ exit_label:
 
 }
 
+/**************************************************************************//**
+ * Add the TCA additional performance counter
+ *
+ * @param tcp                     Pointer to the ::EVENT_THRESHOLD_CROSS.
+ * @param char* tcriticality      Performance Counter criticality
+ * @param char* tthresholdCrossed Performance Counter Threshold name 
+ *****************************************************************************/
+PERF_COUNTER * evel_threshold_cross_add_addl_parameters(
+                                  EVENT_THRESHOLD_CROSS * const event,
+			          char *  tcriticality,
+                                  char *  tthresholdCrossed)
+{
+  PERF_COUNTER *perf_ctr = NULL;
+
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(event != NULL);
+  assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+  assert(tcriticality!= NULL);
+  assert(tthresholdCrossed != NULL);
+
+  /***************************************************************************/
+  /* Allocate a container for the value and push onto the list.              */
+  /***************************************************************************/
+  EVEL_DEBUG("Adding criticality=%s, thresholdCrossed=%s", tcriticality, tthresholdCrossed);
+  perf_ctr = malloc(sizeof(PERF_COUNTER));
+  assert(perf_ctr != NULL);
+  perf_ctr->criticality = strdup(tcriticality);
+  perf_ctr->thresholdCrossed = strdup(tthresholdCrossed);
+  perf_ctr->hashmap = ht_create();
+
+  dlist_push_last(&event->additionalParameters, perf_ctr);
+
+  EVEL_EXIT();
+  return perf_ctr; 
+}
+
+/**************************************************************************//**
+ * Set the TCA name / Value for additional performance counter
+ *                                
+ * @param PERF_COUNTER perf_ctr Pointer to additional Parameter array element
+ * @param char* name          Performance Counter Threshold name
+ * @param char* value         Performance Counter actual value
+ *****************************************************************************/
+void evel_threshold_cross_addl_parameters_hashmap_set(
+                                  PERF_COUNTER * perf_ctr,
+			          char *  name,
+                                  char *  value)
+{
+  char * nam = NULL;
+  char * val = NULL;
+
+  EVEL_ENTER();
+  
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
+  assert(perf_ctr != NULL);
+  assert(name != NULL);
+  assert(value != NULL);
+
+  nam = strdup(name);
+  val = strdup(value);
+  ht_insert(perf_ctr->hashmap, nam, val);
+
+  EVEL_EXIT();
+}
 
 /**************************************************************************//**
  * Set the Event Type property of the TC Alert.
@@ -190,7 +248,8 @@ void evel_threshold_cross_alertid_add(EVENT_THRESHOLD_CROSS * const event,char *
  *****************************************************************************/
 void evel_threshold_cross_addl_info_add(EVENT_THRESHOLD_CROSS * const event, const char *  name, const char *  value)
 {
-  OTHER_FIELD * nv_pair = NULL;
+  char *nam=NULL;
+  char *val=NULL;
 
   EVEL_ENTER();
 
@@ -202,15 +261,10 @@ void evel_threshold_cross_addl_info_add(EVENT_THRESHOLD_CROSS * const event, con
   assert(name != NULL);
   assert(value != NULL);
 
+  nam = strdup(name);
+  val = strdup(value);
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  nv_pair = malloc(sizeof(OTHER_FIELD));
-  assert(nv_pair != NULL);
-  nv_pair->name = strdup(name);
-  nv_pair->value = strdup(value);
-  assert(nv_pair->name != NULL);
-  assert(nv_pair->value != NULL);
-
-  dlist_push_last(&event->additional_info, nv_pair);
+  ht_insert(event->additional_info, nam, val);
 
   EVEL_EXIT();
 }
@@ -226,8 +280,10 @@ void evel_threshold_cross_addl_info_add(EVENT_THRESHOLD_CROSS * const event, con
  *****************************************************************************/
 void evel_free_threshold_cross(EVENT_THRESHOLD_CROSS * const event)
 {
-  OTHER_FIELD * addl_info = NULL;
+  HASHTABLE_T *ht;
   char *ptr;
+  PERF_COUNTER * perf_ctr = NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -240,17 +296,12 @@ void evel_free_threshold_cross(EVENT_THRESHOLD_CROSS * const event)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  addl_info = dlist_pop_last(&event->additional_info);
-  while (addl_info != NULL)
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Additional Info (%s, %s)",
-               addl_info->name,
-               addl_info->value);
-    free(addl_info->name);
-    free(addl_info->value);
-    free(addl_info);
-    addl_info = dlist_pop_last(&event->additional_info);
+     ht_destroy(ht);
   }
+
   ptr = dlist_pop_last(&event->alertidList);
   while (ptr != NULL)
   {
@@ -258,10 +309,17 @@ void evel_free_threshold_cross(EVENT_THRESHOLD_CROSS * const event)
     ptr = dlist_pop_last(&event->alertidList);
   }
 
-  free(event->additionalParameters.criticality);
-  free(event->additionalParameters.name);
-  free(event->additionalParameters.thresholdCrossed);
-  free(event->additionalParameters.value);
+  perf_ctr = dlist_pop_last(&event->additionalParameters);
+  while (perf_ctr != NULL)
+  {
+    EVEL_DEBUG("Freeing Other performance counter");
+    ht_destroy(perf_ctr->hashmap);
+    free(perf_ctr->criticality);
+    free(perf_ctr->thresholdCrossed);
+    free(perf_ctr);
+    perf_ctr = dlist_pop_last(&event->additionalParameters);
+  }
+
   free(event->alertDescription); 
 
   evel_free_option_string(&event->alertValue);
@@ -275,145 +333,147 @@ void evel_free_threshold_cross(EVENT_THRESHOLD_CROSS * const event)
   EVEL_EXIT();
 }
 
-  /**************************************************************************//**
-   * Set the TCA probable Root cause.
-   *
-   * @param sheader     Possible root cause to Threshold
-   *****************************************************************************/
-  void evel_threshold_cross_possible_rootcause_set(EVENT_THRESHOLD_CROSS * const event, char *  sheader)
-  {
+/**************************************************************************//**
+ * Set the TCA probable Root cause.
+ *
+ * @param sheader     Possible root cause to Threshold
+ *****************************************************************************/
+void evel_threshold_cross_possible_rootcause_set(EVENT_THRESHOLD_CROSS * const event, char *  sheader)
+{
+   EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+  assert(sheader != NULL);
+
+  evel_set_option_string(&event->possibleRootCause,
+                        sheader,
+                        "Rootcause value");
+
+  EVEL_EXIT();
+}
+    
+/**************************************************************************//**
+ * Set the TCA networking cause.
+ *
+ * @param sheader     Possible networking service value to Threshold
+ *****************************************************************************/
+void evel_threshold_cross_networkservice_set(EVENT_THRESHOLD_CROSS * const event, char *  sheader)
+{
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
-    assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
-    assert(sheader != NULL);
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+  assert(sheader != NULL);
 
-    evel_set_option_string(&event->possibleRootCause,
-                         sheader,
-                         "Rootcause value");
+  evel_set_option_string(&event->networkService,
+                        sheader,
+                        "Networking service value");
 
+  EVEL_EXIT();
+}
+    
+ /**************************************************************************//**
+  * Set the TCA Interface name.
+  *
+  * @param sheader     Interface name to threshold
+  *****************************************************************************/
+void evel_threshold_cross_interfacename_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
+{
+    EVEL_ENTER();
+
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
+   assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+   assert(sheader != NULL);
+
+    evel_set_option_string(&event->interfaceName,
+                           sheader,
+                           "TCA Interface name");
     EVEL_EXIT();
-  }
+}
     
-  /**************************************************************************//**
-   * Set the TCA networking cause.
-   *
-   * @param sheader     Possible networking service value to Threshold
-   *****************************************************************************/
-  void evel_threshold_cross_networkservice_set(EVENT_THRESHOLD_CROSS * const event, char *  sheader)
-  {
-	    EVEL_ENTER();
+/**************************************************************************//**
+ * Set the TCA Data element type.
+ *
+ * @param sheader     element type of Threshold
+ *****************************************************************************/
+void evel_threshold_cross_data_elementtype_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
+{
+    EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
-    assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
-    assert(sheader != NULL);
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
+   assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+   assert(sheader != NULL);
 
-    evel_set_option_string(&event->networkService,
-                         sheader,
-                         "Networking service value");
-
-	    EVEL_EXIT();
-  }
-    
-  /**************************************************************************//**
-   * Set the TCA Interface name.
-   *
-   * @param sheader     Interface name to threshold
-   *****************************************************************************/
-  void evel_threshold_cross_interfacename_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
-  {
-	    EVEL_ENTER();
-
-	    /***************************************************************************/
-	    /* Check preconditions.                                                    */
-	    /***************************************************************************/
-            assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
-	    assert(sheader != NULL);
-
-	    evel_set_option_string(&event->interfaceName,
-	                           sheader,
-	                           "TCA Interface name");
-	    EVEL_EXIT();
-  }
-    
-  /**************************************************************************//**
-   * Set the TCA Data element type.
-   *
-   * @param sheader     element type of Threshold
-   *****************************************************************************/
-  void evel_threshold_cross_data_elementtype_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
-  {
-	    EVEL_ENTER();
-
-	    /***************************************************************************/
-	    /* Check preconditions.                                                    */
-	    /***************************************************************************/
-            assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
-	    assert(sheader != NULL);
-
-	    evel_set_option_string(&event->elementType,
-	                           sheader,
-	                           "TCA Element type value");
-	    EVEL_EXIT();
-  }
-
-  /**************************************************************************//**
-   * Set the TCA Data collector value.
-   *
-   * @param sheader     Data collector value
-   *****************************************************************************/
-  void evel_threshold_cross_data_collector_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
-  {
-	    EVEL_ENTER();
-
-	    /***************************************************************************/
-	    /* Check preconditions.                                                    */
-	    /***************************************************************************/
-            assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
-	    assert(sheader != NULL);
-
-	    evel_set_option_string(&event->dataCollector,
-	                           sheader,
-	                           "Datacollector value");
-	    EVEL_EXIT();
-  }
-    
-    
-    
-  /**************************************************************************//**
-   * Set the TCA alert value.
-   *
-   * @param sheader     Possible alert value
-   *****************************************************************************/
-  void evel_threshold_cross_alertvalue_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
-  {
-	    EVEL_ENTER();
-
-	    /***************************************************************************/
-	    /* Check preconditions.                                                    */
-	    /***************************************************************************/
-            assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
-	    assert(sheader != NULL);
-
-	    evel_set_option_string(&event->alertValue,
-	                           sheader,
-	                           "Alert value");
-	    EVEL_EXIT();
-  }
+   evel_set_option_string(&event->elementType,
+                           sheader,
+                           "TCA Element type value");
+    EVEL_EXIT();
+}
 
 /**************************************************************************//**
- * Encode the Mobile Flow GTP Per Flow Metrics as a JSON object.
+ * Set the TCA Data collector value.
+ *
+ * @param sheader     Data collector value
+ *****************************************************************************/
+void evel_threshold_cross_data_collector_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
+{
+    EVEL_ENTER();
+
+/***************************************************************************/
+/* Check preconditions.                                                    */
+/***************************************************************************/
+    assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+    assert(sheader != NULL);
+
+    evel_set_option_string(&event->dataCollector,
+                           sheader,
+                           "Datacollector value");
+    EVEL_EXIT();
+}
+    
+    
+    
+/**************************************************************************//**
+ * Set the TCA alert value.
+ *
+ * @param sheader     Possible alert value
+ *****************************************************************************/
+void evel_threshold_cross_alertvalue_set(EVENT_THRESHOLD_CROSS * const event,char *  sheader)
+{
+   EVEL_ENTER();
+
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
+   assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
+   assert(sheader != NULL);
+
+   evel_set_option_string(&event->alertValue,
+                           sheader,
+                           "Alert value");
+   EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Encode the performance counter as a JSON object.
  *
  * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
- * @param metrics       Pointer to the ::EVENT_MOBILE_FLOW to encode.
- * @returns Number of bytes actually written.
+ * @param pcounter      Pointer to the performance counter to encode.
  *****************************************************************************/
 void evel_json_encode_perf_counter( EVEL_JSON_BUFFER * jbuf, PERF_COUNTER *pcounter)
 {
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -422,16 +482,39 @@ void evel_json_encode_perf_counter( EVEL_JSON_BUFFER * jbuf, PERF_COUNTER *pcoun
   assert(jbuf != NULL);
   assert(pcounter != NULL);
 
-  evel_json_open_named_object(jbuf, "additionalParameters");
-
+  evel_json_open_object(jbuf);
   /***************************************************************************/
   /* Mandatory parameters.                                                   */
   /***************************************************************************/
   evel_enc_kv_string(jbuf, "criticality", pcounter->criticality);
-  evel_enc_kv_string(jbuf, "name", pcounter->name);
-  evel_enc_kv_string(jbuf, "thresholdCrossed", pcounter->name);
-  evel_enc_kv_string(jbuf, "value", pcounter->value);
-
+  evel_enc_kv_string(jbuf, "thresholdCrossed", pcounter->thresholdCrossed);
+  ht = pcounter->hashmap;
+  if( ht != NULL )
+  {
+    if( ht->size > 0)
+    {
+      if (evel_json_open_opt_named_object(jbuf, "hashMap"))
+      {
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding TCAFields %s %s",(char *) (entry->key), entry->value);
+            //evel_json_open_object(jbuf);
+            evel_enc_kv_string(jbuf, entry->key, entry->value);
+            //evel_json_close_object(jbuf);
+            entry = entry->next;
+          }
+        }
+      }
+      evel_json_close_object(jbuf);
+    }
+  }
   evel_json_close_object(jbuf);
 
   EVEL_EXIT();
@@ -447,8 +530,14 @@ void evel_json_encode_perf_counter( EVEL_JSON_BUFFER * jbuf, PERF_COUNTER *pcoun
 void evel_json_encode_threshold_cross(EVEL_JSON_BUFFER * const jbuf,
                                 EVENT_THRESHOLD_CROSS * const event)
 {
-  OTHER_FIELD * nv_pair = NULL;
-  DLIST_ITEM * dlist_item = NULL;
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
+  char * alert_action = NULL;
+  char * alert_type = NULL;
+  char * event_sev = NULL;
+  DLIST_ITEM * item  = NULL;
+  char * alert_id = NULL;
+  PERF_COUNTER * perf_ctr = NULL;
 
   EVEL_ENTER();
 
@@ -459,19 +548,38 @@ void evel_json_encode_threshold_cross(EVEL_JSON_BUFFER * const jbuf,
   assert(event->header.event_domain == EVEL_DOMAIN_THRESHOLD_CROSS);
 
   evel_json_encode_header(jbuf, &event->header);
-  evel_json_open_named_object(jbuf, "thresholdCrossingAlert");
+  evel_json_open_named_object(jbuf, "thresholdCrossingAlertFields");
 
   /***************************************************************************/
   /* Mandatory fields                                                        */
   /***************************************************************************/
-  evel_json_encode_perf_counter(jbuf, &event->additionalParameters);
-  evel_enc_kv_int(jbuf, "alertAction", event->alertAction);
+
+  evel_json_open_named_list(jbuf, "additionalParameters");
+
+  item = dlist_get_first(&event->additionalParameters);
+  while (item != NULL)
+  {
+    perf_ctr = (PERF_COUNTER *) item->item;
+    assert(perf_ctr != NULL);
+    evel_json_encode_perf_counter(jbuf, perf_ctr);
+    item = dlist_get_next(item);
+  }
+  evel_json_close_list(jbuf);
+
+  alert_action = evel_alert_action(event->alertAction);
+  evel_enc_kv_string(jbuf, "alertAction", alert_action);
   evel_enc_kv_string(jbuf, "alertDescription", event->alertDescription);
-  evel_enc_kv_int(jbuf, "alertType", event->alertType);
-  evel_enc_kv_ull(
+
+  alert_type = evel_alert_type(event->alertType);
+  evel_enc_kv_string(jbuf, "alertType", alert_type);
+
+  evel_enc_kv_string(
     jbuf, "collectionTimestamp", event->collectionTimestamp);
-  evel_enc_kv_int(jbuf, "eventSeverity", event->eventSeverity);
-  evel_enc_kv_ull(
+
+  event_sev = evel_severity(event->eventSeverity);
+  evel_enc_kv_string(jbuf, "eventSeverity", event_sev);
+
+  evel_enc_kv_string(
     jbuf, "eventStartTimestamp", event->eventStartTimestamp);
 
   /***************************************************************************/
@@ -484,33 +592,63 @@ void evel_json_encode_threshold_cross(EVEL_JSON_BUFFER * const jbuf,
   evel_enc_kv_opt_string(jbuf, "networkService", &event->networkService);
   evel_enc_kv_opt_string(jbuf, "possibleRootCause", &event->possibleRootCause);
 
+  evel_json_checkpoint(jbuf);
+  evel_json_open_named_list(jbuf, "associatedAlertIdList");
+  bool added = false;
+  item = dlist_get_first(&event->alertidList);
+  while (item != NULL)
+  {
+    alert_id = (char *)item->item;
+    evel_enc_list_item(jbuf, "\"%s\"", alert_id);
+    added = true;
+    item = dlist_get_next(item);
+  }
+  evel_json_close_list(jbuf);
+  if (!added)
+  {
+    evel_json_rewind(jbuf);
+  }
+
   /***************************************************************************/
   /* Checkpoint, so that we can wind back if all fields are suppressed.      */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalFields"))
+  ht = event->additional_info;
+  if( ht != NULL )
   {
     bool added = false;
-
-    dlist_item = dlist_get_first(&event->additional_info);
-    while (dlist_item != NULL)
+    if( ht->size > 0)
     {
-      nv_pair = (OTHER_FIELD *) dlist_item->item;
-      assert(nv_pair != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalFields",
-                                          nv_pair->name))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", nv_pair->name);
-        evel_enc_kv_string(jbuf, "value", nv_pair->value);
-        evel_json_close_object(jbuf);
-        added = true;
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding TCA Fields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalFields",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      dlist_item = dlist_get_next(dlist_item);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
 
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
@@ -520,6 +658,7 @@ void evel_json_encode_threshold_cross(EVEL_JSON_BUFFER * const jbuf,
       evel_json_rewind(jbuf);
     }
   }
+
   evel_enc_version(jbuf,
                    "thresholdCrossingFieldsVersion",
                    event->major_version,

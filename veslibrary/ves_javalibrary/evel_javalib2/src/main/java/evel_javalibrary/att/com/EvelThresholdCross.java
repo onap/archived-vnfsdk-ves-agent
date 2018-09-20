@@ -25,6 +25,10 @@ package evel_javalibrary.att.com;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -33,6 +37,7 @@ import javax.json.JsonObjectBuilder;
 
 import org.apache.log4j.Logger;
 
+import evel_javalibrary.att.com.EvelHeader.PRIORITIES;
 import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 
 
@@ -58,7 +63,8 @@ public class EvelThresholdCross extends EvelHeader {
     		     EVEL_ELEMENT_ANOMALY, 
     		     EVEL_INTERFACE_ANOMALY, 
     			 EVEL_SERVICE_ANOMALY,
-                 EVEL_MAX_ANOMALY
+                 EVEL_MAX_ANOMALY,
+                 
 	}
 	
 	public enum EVEL_SEVERITIES{
@@ -80,6 +86,10 @@ public class EvelThresholdCross extends EvelHeader {
 		String name;
 		String thresholdCrossed;
 		String value;
+		
+		
+		Map<String,String> hashMap;
+		
 	}
 	
 	PERF_COUNTER       additionalParameters;
@@ -94,7 +104,10 @@ public class EvelThresholdCross extends EvelHeader {
 	/***************************************************************************/
 	/* Optional fields                                                         */
 	/***************************************************************************/
-    ArrayList<String[]> additional_info;
+    //ArrayList<String[]> additional_info;
+    Map<String,String> additional_inf;
+    
+    
     EvelOptionString    alertValue;
     ArrayList<String>   alertidList;
     EvelOptionString    dataCollector;
@@ -102,7 +115,9 @@ public class EvelThresholdCross extends EvelHeader {
     EvelOptionString    interfaceName;
     EvelOptionString    networkService;
     EvelOptionString    possibleRootCause;
-
+    
+    
+    
 	
 	private static final Logger LOGGER = Logger.getLogger( EvelThresholdCross.class.getName() );
 
@@ -123,9 +138,9 @@ public class EvelThresholdCross extends EvelHeader {
 	   *****************************************************************************/
 	public EvelThresholdCross( String evname,String evid,
 			                   String tcriticality,
-	                           String tname,
+	                           //String tname,
 	                           String tthresholdCrossed,
-	                           String tvalue,
+	                           //String tvalue,
                                EVEL_EVENT_ACTION  talertAction,
                                String             talertDescription, 
                                EVEL_ALERT_TYPE    talertType,
@@ -136,18 +151,22 @@ public class EvelThresholdCross extends EvelHeader {
 		super(evname,evid);
 		event_domain = EvelHeader.DOMAINS.EVEL_DOMAIN_THRESHOLD_CROSSING;
 		assert( tcriticality!= null );
-		assert( tname!= null );
+	//	assert( tname!= null );
 		assert( tthresholdCrossed!= null );
-		assert( tvalue!= null );
+	//	assert( tvalue!= null );
 		assert( talertAction!= null );
 		
 		additionalParameters = new PERF_COUNTER();
 		assert( additionalParameters != null);
 		
 		additionalParameters.criticality = tcriticality;
-		additionalParameters.name = tname;
+	//	additionalParameters.name = tname;
 		additionalParameters.thresholdCrossed = tthresholdCrossed;
-		additionalParameters.value = tvalue;
+	//	additionalParameters.value = tvalue;
+		
+		
+		additionalParameters.hashMap = null;
+		
         alertAction      =  talertAction;
         alertDescription = talertDescription; 
         alertType        = talertType;
@@ -155,7 +174,7 @@ public class EvelThresholdCross extends EvelHeader {
         eventSeverity       =    teventSeverity;
         eventStartTimestamp =    teventStartTimestamp;
 		
-        additional_info = null;
+        additional_inf = null;
         alertValue = new EvelOptionString();
         alertidList = null;
         dataCollector = new EvelOptionString();
@@ -213,6 +232,7 @@ public class EvelThresholdCross extends EvelHeader {
 	  LOGGER.debug(MessageFormat.format("Adding alertid={0}", alertid));
 
 	  alertidList.add(new String(alertid));
+	  
 
 	  EVEL_EXIT();
 	}
@@ -232,7 +252,7 @@ public class EvelThresholdCross extends EvelHeader {
 	 *****************************************************************************/
 	public void evel_thresholdcross_addl_info_add(String name, String value)
 	{
-	  String[] addl_info = null;
+	  //String[] addl_info = null;
 	  EVEL_ENTER();
 
 	  /***************************************************************************/
@@ -242,21 +262,67 @@ public class EvelThresholdCross extends EvelHeader {
 	  assert(name != null);
 	  assert(value != null);
 	  
-	  if( additional_info == null )
+	  if( additional_inf == null )
 	  {
-		  additional_info = new ArrayList<String[]>();
+		 // additional_info = new ArrayList<String[]>();
+		  additional_inf = new HashMap<String,String>();
 	  }
 
 	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-	  addl_info = new String[2];
-	  assert(addl_info != null);
-	  addl_info[0] = name;
-	  addl_info[1] = value;
-
-	  additional_info.add(addl_info);
+	//  addl_info = new String[2];
+	//  assert(addl_info != null);
+	//  addl_info[0] = name;
+	//  addl_info[1] = value;
+	  additional_inf.put(name,  value);
+	//  additional_info.add(addl_info);
 
 	  EVEL_EXIT();
 	}
+	
+	
+
+	/**************************************************************************//**
+	 * Add an optional additional value name/value pair to the Alert.
+	 *
+	 * The name and value are null delimited ASCII strings.  The library takes
+	 * a copy so the caller does not have to preserve values after the function
+	 * returns.
+	 * @param name      ASCIIZ string with the attribute's name.  The caller
+	 *                  does not need to preserve the value once the function
+	 *                  returns.
+	 * @param value     ASCIIZ string with the attribute's value.  The caller
+	 *                  does not need to preserve the value once the function
+	 *                  returns.
+	 *****************************************************************************/
+	public void evel_thresholdcross_hashMap_add(String name, String value)
+	{
+	  //String[] addl_info = null;
+	  EVEL_ENTER();
+
+	  /***************************************************************************/
+	  /* Check preconditions.                                                    */
+	  /***************************************************************************/
+	  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_THRESHOLD_CROSSING);
+	  assert(name != null);
+	  assert(value != null);
+	  
+	  if( additionalParameters.hashMap == null )
+	  {
+		 // additional_info = new ArrayList<String[]>();
+		  additionalParameters.hashMap = new HashMap<String,String>();
+	  }
+
+	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
+	//  addl_info = new String[2];
+	//  assert(addl_info != null);
+	//  addl_info[0] = name;
+	//  addl_info[1] = value;
+	  additionalParameters.hashMap.put(name,  value);
+	//  additional_info.add(addl_info);
+
+	  EVEL_EXIT();
+	}
+	
 	
 
 	  /**************************************************************************//**
@@ -392,8 +458,118 @@ public class EvelThresholdCross extends EvelHeader {
 		                           "Alert value");
 		    EVEL_EXIT();
 	  }
+	  
+	  
+	  String evel_alerType(EVEL_ALERT_TYPE alerType)
+	  {
+	    String result;
+
+	    EVEL_ENTER();
+
+	    switch (alerType)
+	    {
+	      case EVEL_CARD_ANOMALY:
+	        result = "CARD-ANOMALY";
+	        break;
+
+	      case EVEL_ELEMENT_ANOMALY:
+	        result = "ELEMENT-ANOMALY";
+	        break;
+
+	      case EVEL_SERVICE_ANOMALY:
+	        result = "INTERFACE-ANOMALY";
+	        break;
+
+	      case EVEL_MAX_ANOMALY:
+	        result = "SERVICE-ANOMALY";
+	        break;
+
+	      default:
+	        result = null;
+	        
+	    }
+
+	    EVEL_EXIT();
+
+	    return result;
+	  }
+	  
+	
+	  String evel_alertAction(EVEL_EVENT_ACTION alertAction)
+	  {
+	    String result;
+
+	    EVEL_ENTER();
+	    
+	    switch (alertAction)
+	    {
+	      case EVEL_EVENT_ACTION_CLEAR:
+	        result = "CLEAR";
+	        break;
+
+	      case EVEL_EVENT_ACTION_CONTINUE:
+	        result = "CONT";
+	        break;
+
+	      case EVEL_EVENT_ACTION_SET:
+	        result = "SET";
+	        break;
+
+	      case EVEL_MAX_EVENT_ACTION:
+	        result = "ACTION";
+	        break;
+
+	      default:
+	        result = null;
+	        
+	    }
+
+	    EVEL_EXIT();
+
+	    return result;
+	  }
 
 	
+	  String eventSeverity(EVEL_SEVERITIES eventSeverity)
+	  {
+	    String result;
+
+	    EVEL_ENTER();
+	    
+	    
+	    
+	    switch (eventSeverity)
+	    {
+	      case EVEL_SEVERITY_CRITICAL:
+	        result = "CRITICAL";
+	        break;
+
+	      case EVEL_SEVERITY_MAJOR:
+	        result = "MAJOR";
+	        break;
+
+	      case EVEL_SEVERITY_WARNING:
+	        result = "WARNING";
+	        break;
+
+	      case EVEL_SEVERITY_NORMAL:
+	        result = "NORMAL";
+	        break;
+          
+	      case EVEL_MAX_SEVERITIES:
+		        result = "MINOR";
+		        break;
+		        
+	      default:
+	        result = null;
+	        
+	    }
+
+	    EVEL_EXIT();
+
+	    return result;
+	  }
+
 	/**************************************************************************//**
 	 * Encode the fault in JSON according to AT&T's schema for the TC ALert type.
 	 *
@@ -401,10 +577,13 @@ public class EvelThresholdCross extends EvelHeader {
 	 *****************************************************************************/
 	 JsonObjectBuilder evelThresholdCrossingObject()
 	 {
-	    double version = major_version+(double)minor_version/10;
-
+	  //  double version = major_version+(double)minor_version/10;
+        String version = "4.0";
 	    EVEL_ENTER();
-	  
+	   
+	    String actionAlert = evel_alertAction(alertAction);
+	    String typeAlert = evel_alerType(alertType);
+	    String severityEvent = eventSeverity(eventSeverity);
 
 	  /***************************************************************************/
 	  /* Check preconditions.                                                    */
@@ -415,60 +594,109 @@ public class EvelThresholdCross extends EvelHeader {
 	  /* Mandatory fields.                                                       */
 	  /***************************************************************************/
 	  //encode counter
+	  JsonArrayBuilder counterobjArray = Json.createArrayBuilder();
       JsonObjectBuilder counterobj =  Json.createObjectBuilder()
               .add( "criticality",additionalParameters.criticality)
-              .add( "name", additionalParameters.name)
-              .add( "thresholdCrossed",additionalParameters.thresholdCrossed)
-              .add( "value", additionalParameters.value);
+//              .add( "name", additionalParameters.name)
+              .add( "thresholdCrossed",additionalParameters.thresholdCrossed);
+//              .add( "value", additionalParameters.value);
+      
+      
+	  if(additionalParameters.hashMap != null) {
+		  JsonObjectBuilder builder =  Json.createObjectBuilder();
+		  Iterator<Entry<String, String>> it = additionalParameters.hashMap.entrySet().iterator();
+		  while(it.hasNext()) {
+			  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
+			  String addl_info_key = add_inf.getKey();
+			  String addl_info_value = add_inf.getValue();
+//			  JsonObject obj1 = Json.createObjectBuilder()
+//			    	     .add("name", addl_info_key)
+//			    	     .add("value", addl_info_value).build();
+			  builder.add(addl_info_key, addl_info_value);
+		  }
+		  counterobj.add("hashMap", builder);
+		  
+		  counterobjArray.add(counterobj);
+	  }
+              
 
 	    
 	  JsonObjectBuilder evelrep = Json.createObjectBuilder()
-	    		               .add("additionalParameters", counterobj)
-	   	                       .add("alertAction", alertAction.toString())
+	    		               .add("additionalParameters", counterobjArray)
+	   	                       .add("alertAction", actionAlert)
 	   	                       .add("alertDescription", alertDescription)
-                               .add("alertType", alertType.toString())
+                               .add("alertType", typeAlert)
                                .add("collectionTimestamp", collectionTimestamp.toString())
-                               .add("eventSeverity",eventSeverity.toString())
+                               .add("eventSeverity",severityEvent)
                                .add("eventStartTimestamp",eventStartTimestamp.toString());
 
 	    /***************************************************************************/
 	    /* Optional fields.                                                        */
 	    /***************************************************************************/
 	    alertValue.encJsonValue(evelrep, "alertValue");
-	    if( alertidList != null && alertidList.size() > 0)
-	    {
-		    JsonArrayBuilder builder = Json.createArrayBuilder();
-		    for(int i=0;i<alertidList.size();i++) {
-			  String addl_info = alertidList.get(i);
-			  JsonObject obj = Json.createObjectBuilder()
-			    	     .add("item",addl_info).build();
-			  builder.add(obj);
-		    }
-			evelrep.add("associatedAlertIdList", builder);
-	    }
-
+	    
+	    
 	    dataCollector.encJsonValue(evelrep, "dataCollector");
 	    elementType.encJsonValue(evelrep, "elementType");
 	    interfaceName.encJsonValue(evelrep, "interfaceName");
 	    networkService.encJsonValue(evelrep, "networkService");
 	    possibleRootCause.encJsonValue(evelrep, "possibleRootCause");
+	    
+	    
+//	    if( alertidList != null && alertidList.size() > 0)
+//	    {
+//		    JsonArrayBuilder builder = Json.createArrayBuilder();
+//		    for(int i=0;i<alertidList.size();i++) {
+//			  String addl_info = alertidList.get(i);
+//			  JsonObject obj = Json.createObjectBuilder()
+//			    	     .add("item",addl_info).build();
+//			  builder.add(obj);
+//		    }
+//			evelrep.add("associatedAlertIdList", builder);
+//		    
+//	    }
+	    
+	    
+	    if( alertidList != null && alertidList.size() > 0)
+	    {
+		    JsonArrayBuilder builder = Json.createArrayBuilder();
+		    for(int i=0;i<alertidList.size();i++) {
+			  String addl_info = alertidList.get(i);
+			  builder.add( addl_info);
+			  //srikant send string array instedof itme and strting
+			 // JsonObject obj = Json.createObjectBuilder()
+			    	    // .add("item",addl_info).build();
+			 // builder.add(obj);
+		    }
+			evelrep.add("associatedAlertIdList", builder);
+		    
+	    }
+	    
+
+	
 
 	  
-	  evelrep.add( "thresholdCrossingFieldsVersion", version);
+	 
 
-	  if( additional_info != null )
-	  {
-	    JsonArrayBuilder builder = Json.createArrayBuilder();
-	    for(int i=0;i<additional_info.size();i++) {
-		  String[] addl_info = additional_info.get(i);
-		  JsonObject obj = Json.createObjectBuilder()
-		    	     .add("name", addl_info[0])
-		    	     .add("value", addl_info[1]).build();
-		  builder.add(obj);
-	    }
-		evelrep.add("additionalFields", builder);
+
+
+	  if(additional_inf != null) {
+		  //JsonArrayBuilder builder = Json.createArrayBuilder();
+		  JsonObjectBuilder builder = Json.createObjectBuilder();
+		  Iterator<Entry<String, String>> it = additional_inf.entrySet().iterator();
+		  while(it.hasNext()) {
+			  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
+			  String addl_info_key = add_inf.getKey();
+			  String addl_info_value = add_inf.getValue();
+//			  JsonObject obj1 = Json.createObjectBuilder()
+//			    	     .add("name", addl_info_key)
+//			    	     .add("value", addl_info_value).build();
+			  builder.add(addl_info_key, addl_info_key);
+		  }
+		  evelrep.add("additionalFields", builder);
 	  }
-
+	  evelrep.add( "thresholdCrossingFieldsVersion", version);
+	  
 
 	  EVEL_EXIT();
 	  
@@ -489,7 +717,7 @@ public class EvelThresholdCross extends EvelHeader {
 	    JsonObject obj = Json.createObjectBuilder()
 	    	     .add("event", Json.createObjectBuilder()
 		    	         .add( "commonEventHeader",eventHeaderObject() )
-		    	         .add( "thresholdCrossingAlert",evelThresholdCrossingObject() )
+		    	         .add( "thresholdCrossingAlertFields",evelThresholdCrossingObject() )
 		    	         ).build();
 
 	    EVEL_EXIT();

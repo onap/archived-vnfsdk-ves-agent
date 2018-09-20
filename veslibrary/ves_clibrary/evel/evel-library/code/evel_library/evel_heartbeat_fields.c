@@ -77,7 +77,8 @@ EVENT_HEARTBEAT_FIELD * evel_new_heartbeat_field(int interval,const char* ev_nam
   event->minor_version = EVEL_HEARTBEAT_FIELD_MINOR_VERSION;
 
   event->heartbeat_interval = interval;
-  dlist_initialize(&event->additional_info);
+
+  event->additional_info = ht_create();
 
 exit_label:
 
@@ -102,7 +103,9 @@ void evel_hrtbt_field_addl_field_add(EVENT_HEARTBEAT_FIELD * const event,
                                  const char * const name,
                                  const char * const value)
 {
-  OTHER_FIELD * nv_pair = NULL;
+
+  char *nam=NULL;
+  char *val=NULL;
 
   EVEL_ENTER();
 
@@ -115,14 +118,11 @@ void evel_hrtbt_field_addl_field_add(EVENT_HEARTBEAT_FIELD * const event,
   assert(value != NULL);
 
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  nv_pair = malloc(sizeof(OTHER_FIELD));
-  assert(nv_pair != NULL);
-  nv_pair->name = strdup(name);
-  nv_pair->value = strdup(value);
-  assert(nv_pair->name != NULL);
-  assert(nv_pair->value != NULL);
 
-  dlist_push_last(&event->additional_info, nv_pair);
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(event->additional_info, nam, val);
 
   EVEL_EXIT();
 }
@@ -166,8 +166,8 @@ void evel_hrtbt_interval_set(EVENT_HEARTBEAT_FIELD * const event,
 void evel_json_encode_hrtbt_field(EVEL_JSON_BUFFER * const jbuf,
                                 EVENT_HEARTBEAT_FIELD * const event)
 {
-  OTHER_FIELD * nv_pair = NULL;
-  DLIST_ITEM * dlist_item = NULL;
+  HASHTABLE_T *ht; 
+  ENTRY_T *entry;
 
   EVEL_ENTER();
 
@@ -178,7 +178,7 @@ void evel_json_encode_hrtbt_field(EVEL_JSON_BUFFER * const jbuf,
   assert(event->header.event_domain == EVEL_DOMAIN_HEARTBEAT_FIELD);
 
   evel_json_encode_header(jbuf, &event->header);
-  evel_json_open_named_object(jbuf, "heartbeatField");
+  evel_json_open_named_object(jbuf, "heartbeatFields");
 
   /***************************************************************************/
   /* Mandatory fields                                                        */
@@ -194,29 +194,46 @@ void evel_json_encode_hrtbt_field(EVEL_JSON_BUFFER * const jbuf,
   /* Checkpoint, so that we can wind back if all fields are suppressed.      */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalFields"))
+
+  /***************************************************************************/
+  /* Go through the Hashmap of additional information and encode key / Value */ 
+  /***************************************************************************/
+  ht = event->additional_info;
+  if( ht != NULL )
   {
     bool added = false;
-
-    dlist_item = dlist_get_first(&event->additional_info);
-    while (dlist_item != NULL)
+    if( ht->size > 0)
     {
-      nv_pair = (OTHER_FIELD *) dlist_item->item;
-      assert(nv_pair != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalFields",
-                                          nv_pair->name))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", nv_pair->name);
-        evel_enc_kv_string(jbuf, "value", nv_pair->value);
-        evel_json_close_object(jbuf);
-        added = true;
+      
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalFields",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      dlist_item = dlist_get_next(dlist_item);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
 
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
@@ -242,7 +259,7 @@ void evel_json_encode_hrtbt_field(EVEL_JSON_BUFFER * const jbuf,
  *****************************************************************************/
 void evel_free_hrtbt_field(EVENT_HEARTBEAT_FIELD * const event)
 {
-  OTHER_FIELD * nv_pair = NULL;
+  HASHTABLE_T *ht; 
 
   EVEL_ENTER();
 
@@ -255,15 +272,12 @@ void evel_free_hrtbt_field(EVENT_HEARTBEAT_FIELD * const event)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  nv_pair = dlist_pop_last(&event->additional_info);
-  while (nv_pair != NULL)
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Other Field (%s, %s)", nv_pair->name, nv_pair->value);
-    free(nv_pair->name);
-    free(nv_pair->value);
-    free(nv_pair);
-    nv_pair = dlist_pop_last(&event->additional_info);
+     ht_destroy(ht);
   }
+
   evel_free_header(&event->header);
 
   EVEL_EXIT();

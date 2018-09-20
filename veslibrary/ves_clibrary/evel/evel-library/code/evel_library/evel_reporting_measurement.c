@@ -330,7 +330,7 @@ void evel_json_encode_report(EVEL_JSON_BUFFER * jbuf,
       {
         evel_json_open_object(jbuf);
         evel_enc_kv_string(jbuf, "name", measurement_group->name);
-        evel_json_open_named_list(jbuf, "arrayOfFields");
+        evel_json_open_named_object(jbuf, "hashMap");
 
         /*********************************************************************/
         /* Measurements list.                                                */
@@ -341,13 +341,10 @@ void evel_json_encode_report(EVEL_JSON_BUFFER * jbuf,
           custom_measurement = (CUSTOM_MEASUREMENT *) nested_item->item;
           assert(custom_measurement != NULL);
 
-          evel_json_open_object(jbuf);
-          evel_enc_kv_string(jbuf, "name", custom_measurement->name);
-          evel_enc_kv_string(jbuf, "value", custom_measurement->value);
-          evel_json_close_object(jbuf);
+          evel_enc_kv_string(jbuf, custom_measurement->name, custom_measurement->value);
           nested_item = dlist_get_next(nested_item);
         }
-        evel_json_close_list(jbuf);
+        evel_json_close_object(jbuf);
         evel_json_close_object(jbuf);
         item_added = true;
       }

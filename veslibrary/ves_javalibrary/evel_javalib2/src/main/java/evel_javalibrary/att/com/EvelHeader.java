@@ -44,6 +44,7 @@ import org.slf4j.helpers.MessageFormatter;
 
 public class EvelHeader {
 	
+	
 	/**************************************************************************//**
 	 * Event domains for the various events we support.
 	 * JSON equivalent field: domain
@@ -62,7 +63,10 @@ public class EvelHeader {
 	  EVEL_DOMAIN_THRESHOLD_CROSSING,  /** A Threshold crossing alert Event     */
 	  EVEL_DOMAIN_VOICE_QUALITY,  /** A Voice Quality Event		 	     */
 	  EVEL_DOMAIN_HEARTBEAT_FIELD,/** A Heartbeat field event.                   */
-	  EVEL_MAX_DOMAINS            /** Maximum number of recognized Event types.  */
+	  EVEL_DOMAIN_NOTIFICATION,
+	  EVEL_DOMAIN_PNFREGISTRATION,
+	  EVEL_MAX_DOMAINS          /** Maximum number of recognized Event types.  */
+	  
 	}
 	
 	/**************************************************************************//**
@@ -77,7 +81,7 @@ public class EvelHeader {
 	  EVEL_MAX_PRIORITIES
 	}
 	
-	final int EVEL_HEADER_MAJOR_VERSION = 3;
+	final int EVEL_HEADER_MAJOR_VERSION = 4;
 	final int EVEL_HEADER_MINOR_VERSION = 0;
 	  /***************************************************************************/
 	  /* Version                                                                 */
@@ -97,6 +101,9 @@ public class EvelHeader {
 	  Long start_epoch_microsec = 0L;
 	  Long last_epoch_microsec = 0L;
 	  int sequence = 0;
+	  
+	  //VES 7.0 added 4Sept2108
+	  String ves_eventListener_version =null;
 
 	  /***************************************************************************/
 	  /* Optional fields                                                         */
@@ -107,6 +114,12 @@ public class EvelHeader {
 	  EvelOptionIntHeader internal_field;
 	  EvelOptionString nfcnaming_code;
 	  EvelOptionString nfnaming_code;
+	  
+	  
+	//VES 7.0 added 4Sept2108
+	  EvelOptionString nfVendor_name;
+	  EvelOptionString timeZoneOffset;
+	  
 	  
 	  /**************************************************************************//**
 	   * Unique sequence number for events from this VNF.
@@ -173,12 +186,14 @@ public class EvelHeader {
 	    	LOGGER.warning("WARNING:not confirming to Common Event Format 28.3 standard");
 	    } else {
 	    	event_id = ev_id;
-	        sequence = 0;
+	        sequence = 1000;
 	    }
 	    event_name = eventname;
 	    start_epoch_microsec = last_epoch_microsec;
 	    last_epoch_microsec = System.nanoTime()/1000;
 	    priority = PRIORITIES.EVEL_PRIORITY_NORMAL;
+	    
+	    
 	    
 	    String hostname = "Unknown";
 	    String uuid = "Unknown";
@@ -238,6 +253,9 @@ public class EvelHeader {
 
 	    major_version = EVEL_HEADER_MAJOR_VERSION;
 	    minor_version = EVEL_HEADER_MINOR_VERSION;
+	    
+	    //VES 7.0 added 4Sept 2018
+	    ves_eventListener_version = "7.0.2";
 
 	    /***************************************************************************/
 	    /* Optional parameters.                                                    */
@@ -248,7 +266,10 @@ public class EvelHeader {
 	    reporting_entity_id = new EvelOptionString(true, uuid);
 	    source_id = new EvelOptionString(true, uuid);
 	    internal_field = new EvelOptionIntHeader(false, null);
-
+	    
+	    //VES 7.0 added 4Sept2018
+	    nfVendor_name = new EvelOptionString(false, null);
+        timeZoneOffset = new EvelOptionString(false, null);
 	    EVEL_EXIT();
 	  }
 
@@ -397,8 +418,8 @@ public class EvelHeader {
 	    nfcnaming_code.SetValue(nfcnam);
 	
 	    EVEL_EXIT();
-	  }
-
+	  }	  
+	
 	  /**************************************************************************//**
 	   * Set the NF Naming code property of the event header.
 	   *
@@ -418,8 +439,79 @@ public class EvelHeader {
 
 	    EVEL_EXIT();
 	  }
+	  
+	//VES 7.0 added 4Sept2018
+	  /**************************************************************************//**
+	   * Set the NF Vendor name property of the event header.
+	   *
+	   * @param header        Pointer to the ::EVENT_HEADER.
+	   * @param nfVendorName String
+	   *****************************************************************************/
+	  public void evel_nfVendorName_set(String nfvendor)
+	  {
+	    EVEL_ENTER();
 
+	    /***************************************************************************/
+	    /* Check preconditions and assign the new value.                           */
+	    /***************************************************************************/
+	    assert(nfvendor != null);
+	    nfVendor_name.set_option(true);
+	    nfVendor_name.SetValue(nfvendor);
 
+	    EVEL_EXIT();
+	  }
+
+	  
+	  /**************************************************************************//**
+	   * Set the NF Vendor name property of the event header.
+	   *
+	   * @param header        Pointer to the ::EVENT_HEADER.
+	   * @param nfVendorName String
+	   *****************************************************************************/
+	  public void evel_timeZoneOffset_set(String timezoneset)
+	  {
+	    EVEL_ENTER();
+
+	    /***************************************************************************/
+	    /* Check preconditions and assign the new value.                           */
+	    /***************************************************************************/
+	    assert(timezoneset != null);
+	    timeZoneOffset.set_option(true);
+	    timeZoneOffset.SetValue(timezoneset);
+
+	    EVEL_EXIT();
+	  }
+	  
+	  
+	  
+	  /**************************************************************************//**
+	   * Set the Ves Event Listener Version property of the event header.
+	   *
+	   * @note The Ves Event Listener Version defaults to the OpenStack VM Name.
+	   *
+	   * @param header        Pointer to the ::EVENT_HEADER.
+	   * @param vesEventListenerVersion   The vesEventListenerVersion to set.
+	   *****************************************************************************/
+	  public void evel_vesEventListenerVersion_set(String vesEventListVersion)
+	  {
+	    EVEL_ENTER();
+
+	    /***************************************************************************/
+	    /* Check preconditions and assign the new value.                           */
+	    /***************************************************************************/
+	    assert(vesEventListVersion != null);
+
+	    /***************************************************************************/
+	    /* Free the previously allocated memory and replace it with a copy of the  */
+	    /* provided one.                                                           */
+	    /***************************************************************************/
+	    ves_eventListener_version = vesEventListVersion;
+
+	    EVEL_EXIT();
+	  }
+	  
+	  
+	 
 	  /**************************************************************************//**
 	   * Set the Reporting Entity Name property of the event header.
 	   *
@@ -555,7 +647,7 @@ public class EvelHeader {
 	        break;
 
 	      case EVEL_DOMAIN_MEASUREMENT:
-	        result = "measurementsForVfScaling";
+	        result = "measurement";
 	        break;
 
 	      case EVEL_DOMAIN_REPORT:
@@ -593,7 +685,14 @@ public class EvelHeader {
 	      case EVEL_DOMAIN_THRESHOLD_CROSSING:
 		        result = "thresholdCrossingAlert";
 		        break;
-		        
+	      case EVEL_DOMAIN_NOTIFICATION:
+	    	  result="notification";
+	    	  break;
+	      
+	      case EVEL_DOMAIN_PNFREGISTRATION:
+	    	  result="pnfRegistration";
+	    	  break;
+	    	  
 	      default:
 	        result = null;
 	        LOGGER.severe(MessageFormat.format("Unexpected domain {0}", domain));
@@ -654,8 +753,8 @@ public class EvelHeader {
 	  {
 	    String domain = evel_event_domain(event_domain);
 	    String prity = evel_event_priority(priority);
-	    double version = major_version+(double)minor_version/10;
-	    
+	  //  double version = major_version+(double)minor_version/10;
+	    String version = "4.0.2";
 	    EVEL_ENTER();
 	    
 	    /***************************************************************************/
@@ -663,6 +762,7 @@ public class EvelHeader {
 	    /***************************************************************************/
 	    
 	    JsonObjectBuilder commheader = Json.createObjectBuilder()
+	         	 .add("vesEventListenerVersion", ves_eventListener_version)
 	   	         .add("domain", domain)
 	   	         .add("eventId", event_id)
 	   	         .add("eventName", event_name)
@@ -695,6 +795,13 @@ public class EvelHeader {
 	    if( nfnaming_code.is_set )
 	    	commheader.add("nfNamingCode", nfnaming_code.GetValue());
 	    
+	    //VES 7.0 added 4Sept2018
+	    if( nfVendor_name.is_set )
+	    	commheader.add("nfNamingCode", nfVendor_name.GetValue());
+	    if( timeZoneOffset.is_set )
+	    	commheader.add("timeZoneOffset", timeZoneOffset.GetValue());
+	    
+	    
 	    EVEL_EXIT();
 	    
 	    return commheader;
@@ -706,19 +813,32 @@ public class EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event header only message
 	   *****************************************************************************/
-	  JsonObject evel_json_encode_event()
+  	  JsonObject evel_json_encode_event()
 	  {
 	        
 	    JsonObject obj = Json.createObjectBuilder()
-	    	     .add("event", Json.createObjectBuilder()
-		    	         .add( "commonEventHeader",eventHeaderObject() )
-		    	         ).build();
+	    		
+	    		.add("event", Json.createObjectBuilder())	
+		   .add( "commonEventHeader",eventHeaderObject() ).build();
 
 	    EVEL_EXIT();
 	    
 	    return obj;
 
-	  }
+	  }   
+	  
+	  JsonObject evel_json_encode_eventNew()
+	  {
+	        
+	    JsonObject obj = Json.createObjectBuilder()
+	    		
+		  .add( "commonEventHeader",eventHeaderObject() ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }  
 	  
 	  
 

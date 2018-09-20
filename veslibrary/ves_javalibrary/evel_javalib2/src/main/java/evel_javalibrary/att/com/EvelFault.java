@@ -25,6 +25,10 @@ package evel_javalibrary.att.com;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -74,9 +78,7 @@ public class EvelFault extends EvelHeader {
 	  /* Vendor-specific values should be added here, and handled appropriately  */
 	  /* in evel_event.c.                                                        */
 	  /***************************************************************************/
-	  EVEL_SOURCE_OLT,
-	  EVEL_SOURCE_ONT,
-	  EVEL_SOURCE_ONU,
+
 	  /***************************************************************************/
 	  /* END OF VENDOR-SPECIFIC VALUES                                           */
 	  /***************************************************************************/
@@ -111,8 +113,10 @@ public class EvelFault extends EvelHeader {
 	/***************************************************************************/
 	  EvelOptionString category;
 	  EvelOptionString alarm_interface_a;
-	  ArrayList<String[]> additional_info;
+	//  ArrayList<String[]> additional_info;
 	
+	  HashMap<String, String > additional_inf;
+	  
 	  private static final Logger LOGGER = Logger.getLogger( EvelFault.class.getName() );
 
 	  /**************************************************************************//**
@@ -155,7 +159,11 @@ public class EvelFault extends EvelHeader {
 		//Init optional fields
 		category = new EvelOptionString(false, null);
 		alarm_interface_a = new EvelOptionString(false, null);
-		additional_info = null;		
+		
+		
+		additional_inf = null;		
+		
+		
 		if( severity.equals(EVEL_SEVERITIES.EVEL_SEVERITY_NORMAL))
 			sequence = 0;
 		else
@@ -179,7 +187,7 @@ public class EvelFault extends EvelHeader {
 	 *****************************************************************************/
 	public void evel_fault_addl_info_add(String name, String value)
 	{
-	  String[] addl_info = null;
+	 // String[] addl_info = null;
 	  EVEL_ENTER();
 
 	  /***************************************************************************/
@@ -189,18 +197,19 @@ public class EvelFault extends EvelHeader {
 	  assert(name != null);
 	  assert(value != null);
 	  
-	  if( additional_info == null )
+	  if( additional_inf == null )
 	  {
-		  additional_info = new ArrayList<String[]>();
+		 // additional_info = new ArrayList<String[]>();
+		  additional_inf = new HashMap<>();
 	  }
 
 	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-	  addl_info = new String[2];
-	  assert(addl_info != null);
-	  addl_info[0] = name;
-	  addl_info[1] = value;
-
-	  additional_info.add(addl_info);
+	 // addl_info = new String[2];
+	 // assert(addl_info != null);
+	 // addl_info[0] = name;
+	 // addl_info[1] = value;
+	  additional_inf.put(name,  value);
+	//  additional_info.add(addl_info);
 
 	  EVEL_EXIT();
 	}
@@ -294,7 +303,7 @@ public class EvelFault extends EvelHeader {
 	 * @param source_type   The source type to convert.
 	 * @returns The equivalent string.
 	 *****************************************************************************/
-	static String evel_source_type(EVEL_SOURCE_TYPES source_type)
+	String evel_source_type(EVEL_SOURCE_TYPES source_type)
 	{
 	  String result;
 
@@ -340,18 +349,6 @@ public class EvelFault extends EvelHeader {
 
 	    case EVEL_SOURCE_VIRTUAL_NETWORK_FUNCTION:
 	      result = "virtualNetworkFunction";
-	      break;
-
-	    case EVEL_SOURCE_OLT:
-	      result = "OLT";
-	      break;
-            
-	    case EVEL_SOURCE_ONT:
-	      result = "ONT";
-	      break;
-	    
-	     case EVEL_SOURCE_ONU:
-	      result = "ONU";
 	      break;
 
 	    default:
@@ -465,8 +462,8 @@ public class EvelFault extends EvelHeader {
 	  String fault_severity;
 	  String fault_source_type;
 	  String fault_vf_status;
-	  double version = major_version+(double)minor_version/10;
-
+	 // double version = major_version+(double)minor_version/10;
+	  String version = "4.0";
 	  EVEL_ENTER();
 	  
 	  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_FAULT);
@@ -486,15 +483,18 @@ public class EvelFault extends EvelHeader {
 	  /* Optional fields.                                                        */
 	  /***************************************************************************/
 	  
-	  if( category.is_set )
-		  evelfault.add("eventCategory", category.GetValue());
-	  if( alarm_interface_a.is_set )
-		  evelfault.add("eventCategory", alarm_interface_a.GetValue());
+	//  if( category.is_set )
+	//	  evelfault.add("eventCategory", category.GetValue());
+	//  if( alarm_interface_a.is_set )
+	//	  evelfault.add("eventCategory", alarm_interface_a.GetValue());
 	  
 
 	  /***************************************************************************/
 	  /* Mandatory fields.                                                       */
 	  /***************************************************************************/
+	  evelfault.add("eventCategory", category.GetValue());
+	  evelfault.add("alarmInterfaceA", alarm_interface_a.GetValue());
+	  
 	  evelfault.add( "eventSeverity", fault_severity);
 	  evelfault.add( "eventSourceType", fault_source_type);
 	  evelfault.add( "specificProblem", specific_problem);
@@ -504,7 +504,7 @@ public class EvelFault extends EvelHeader {
 	  /***************************************************************************/
 	  /* Encode additional Name value pairs if any.      */
 	  /***************************************************************************/
-	  if( additional_info != null )
+	  /*if( additional_info != null )
 	  {
 	    JsonArrayBuilder builder = Json.createArrayBuilder();
 	    for(int i=0;i<additional_info.size();i++) {
@@ -516,7 +516,26 @@ public class EvelFault extends EvelHeader {
 	    }
 		evelfault.add("alarmAdditionalInformation", builder);
 	  }
+         */
+	  
+	  if(additional_inf != null) {
+		 // JsonArrayBuilder builder = Json.createArrayBuilder();
+		  JsonObjectBuilder builder = Json.createObjectBuilder();
+		  Iterator<Entry<String, String>> it = additional_inf.entrySet().iterator();
+		  while(it.hasNext()) {
+			  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
+			  String addl_info_key = add_inf.getKey();
+			  String addl_info_value = add_inf.getValue();
+			  JsonObject obj1 = Json.createObjectBuilder()
+			    	     .add("name", addl_info_key)
+			    	     .add("value", addl_info_value).build();
+			  builder.add(addl_info_key, addl_info_value);
+		  }
+		  evelfault.add("alarmAdditionalInformation", builder);
+	  }
 
+	  
+	  
 	  EVEL_EXIT();
 	  
 	  return evelfault;

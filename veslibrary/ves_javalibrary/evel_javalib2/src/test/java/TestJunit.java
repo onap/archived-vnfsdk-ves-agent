@@ -31,7 +31,7 @@ import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_CPU_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_MEM_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_LATENCY_BUCKET;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_DISK_USE;
-import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_VNIC_PERFORMANCE;
+import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_NIC_PERFORMANCE;
 import evel_javalibrary.att.com.EvelStateChange.EVEL_ENTITY_STATE;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_ALERT_TYPE;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_EVENT_ACTION;
@@ -62,7 +62,6 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import java.net.HttpURLConnection;
 
 @PrepareForTest({AgentMain.class})
 @RunWith(PowerMockRunner.class)
@@ -234,7 +233,7 @@ public class TestJunit {
               sm.evel_measurement_cpu_use_system_set(my1,0.5);
               sm.evel_measurement_cpu_use_usageuser_set(my1,0.5);
 
-              MEASUREMENT_MEM_USE mym1 = sm.evel_measurement_new_mem_use_add("mem1", "vm1",123456.0);
+              MEASUREMENT_MEM_USE mym1 = sm.evel_measurement_new_mem_use_add("mem1",123456.0);
               sm.evel_measurement_mem_use_memcache_set(mym1, 456.);
 	      sm.evel_measurement_mem_use_memconfig_set(mym1, 456.);
 	      sm.evel_measurement_mem_use_memfree_set(mym1, 456.);
@@ -286,7 +285,7 @@ public class TestJunit {
 	      sm.evel_measurement_disk_use_timewritemin_set(dsk,45.);
 
 
-              MEASUREMENT_VNIC_PERFORMANCE vnic_p = sm.evel_measurement_new_vnic_performance("vnic1","true");
+              MEASUREMENT_NIC_PERFORMANCE vnic_p = sm.evel_measurement_new_vnic_performance("vnic1","true");
               vnic_p.recvd_bcast_packets_acc.SetValue(2400000.0);
               vnic_p.recvd_mcast_packets_delta.SetValue(5677888.0);
               vnic_p.recvd_mcast_packets_acc.SetValue(5677888.0);
@@ -302,8 +301,12 @@ public class TestJunit {
               sm.evel_meas_latency_bucket_low_end_set(myb,1.);
               sm.evel_meas_latency_bucket_add(myb);
               sm.evel_measurement_latency_add(1.,10.,20);
+              
+              /*
+               * Arguments updated 15/07/2018
+               */
 
-              sm.evel_measurement_vnic_performance_add("vnic","vals", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12.,13.,14.,15.,16.,17.,18.,19.,20.,21.,22.,23.,24.,25.,26.,27.,28.);
+              sm.evel_measurement_vnic_performance_add("vnic","vals","5 mbps", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12.,13.,14.,15.,16.,17.,18.,19.,20.,21.,22.,23.,24.,25.,26.,27.,28.,29.,30.,31.,32.,33.,34.,35.,36.);
 
               when(mymainmock.evel_post_event(sm)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(sm);
@@ -395,7 +398,11 @@ public class TestJunit {
             		  "calleeSideCodc",
       			    "callerSideCodc", "corlator",
     			    "midCllRtcp", "juniper");
-              vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 15.1, 160.12, 170, 180, 190);
+              /*
+               * Arguments updated 15/07/2018
+               */
+              vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 20, 30, 40, 50, 60, 70, 80, 100, 110, 120, 130, 140, 15.1, 160.12, 170, 190, 200,210,220,230,240,250,260,270,280,290,300);
+              //vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 15.1, 160.12, 170, 190, 200,210,220,230,240,250,260,270,280,290,300);
               vq.evel_voice_quality_addl_info_add("bgpb", "fail");
               vq.evel_voice_quality_callee_codec_set("codec1");
               vq.evel_voice_quality_caller_codec_set("codec1");
@@ -404,7 +411,11 @@ public class TestJunit {
               vq.evel_voice_quality_vnfmodule_name_set("mod1");
               vq.evel_voice_quality_vnfname_set("mod1");
               vq.evel_voice_quality_phone_number_set("1234-567-8910");
-              vq.evel_voice_quality_end_metrics_set("name","descr", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12,13.,14.,15.,16.,17.,18.,19.);
+ /*
+  * Arguments updated 15/07/2018
+  */
+              
+          //    vq.evel_voice_quality_end_metrics_set("name","descr",2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12,13.,14.,15.,16.,17.,19.,20.,21.,22.,23.,24.,25.,26.,27.,28.,29.,30.);
               
               when(mymainmock.evel_post_event(vq)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(vq);
@@ -468,17 +479,25 @@ public class TestJunit {
     		}
               
               
-              EvelThresholdCross tca = new EvelThresholdCross("ThresholdCross_vVNF", "vmname_ip",
-              "CRIT",
-              "mcast Limit reached",
-              "mcastRxPackets",
-              "1250000000",
-              EvelThresholdCross.EVEL_EVENT_ACTION.EVEL_EVENT_ACTION_SET,
-              "Mcast Rx breached", 
-              EvelThresholdCross.EVEL_ALERT_TYPE.EVEL_ELEMENT_ANOMALY,
-              d1, 
-              EvelThresholdCross.EVEL_SEVERITIES.EVEL_SEVERITY_CRITICAL,
-              d2);
+//              EvelThresholdCross tca = new EvelThresholdCross("ThresholdCross_vVNF", "vmname_ip",
+//              "CRIT",
+//              "mcast Limit reached",
+//              "mcastRxPackets",
+//              "1250000000",
+//              EvelThresholdCross.EVEL_EVENT_ACTION.EVEL_EVENT_ACTION_SET,
+//              "Mcast Rx breached", 
+//              EvelThresholdCross.EVEL_ALERT_TYPE.EVEL_ELEMENT_ANOMALY,
+//              d1, 
+//              EvelThresholdCross.EVEL_SEVERITIES.EVEL_SEVERITY_CRITICAL,
+//              d2);
+              
+              EvelThresholdCross tca = new EvelThresholdCross("ThresholdCross_vVNF", "vmname_ip", "CRIT", 
+              		"mcastRxPackets", EvelThresholdCross.EVEL_EVENT_ACTION.EVEL_EVENT_ACTION_CLEAR, 
+              		"Mcast Rx breached", 
+              		EvelThresholdCross.EVEL_ALERT_TYPE.EVEL_CARD_ANOMALY, 
+              		
+              		d1, EvelThresholdCross.EVEL_SEVERITIES.EVEL_SEVERITY_CRITICAL, 
+              		d2);
               tca.evel_threshold_cross_interfacename_set("ns345");
               tca.evel_thresholdcross_addl_info_add("n1", "v1");
               tca.evel_thresholdcross_addl_info_add("n2", "v2");
@@ -556,26 +575,6 @@ public class TestJunit {
               assertTrue( ret );
    }
 
-   @Test
-   public void testBlockingPost() throws Exception, IOException {
-	      EvelFault flt  = new EvelFault("Fault_vVNF", "vmname_ip",
-                          "NIC error", "Hardware failed",
-                  EvelHeader.PRIORITIES.EVEL_PRIORITY_HIGH,
-                  EVEL_SEVERITIES.EVEL_SEVERITY_MAJOR,
-                  EVEL_SOURCE_TYPES.EVEL_SOURCE_CARD,
-                  EVEL_VF_STATUSES.EVEL_VF_STATUS_ACTIVE);
-              flt.evel_fault_addl_info_add("nichw", "fail");
-              flt.evel_fault_addl_info_add("nicsw", "fail");
-              flt.evel_fault_category_set("intftype");
-              flt.evel_fault_interface_set("eth0");
-              flt.evel_fault_type_set("vmintf");
-      	      when(mymainmock.sendObjectWithReturn(any(EvelObject.class))).thenReturn(200);
-	      when(mymainmock.evel_post_event_immediate(flt)).thenCallRealMethod();
-	      int ret = mymainmock.evel_post_event_immediate(flt);
-	      LOG.info("Returned "+ret);
-              assertEquals(200,  ret);
-
-   }
 
 }
 

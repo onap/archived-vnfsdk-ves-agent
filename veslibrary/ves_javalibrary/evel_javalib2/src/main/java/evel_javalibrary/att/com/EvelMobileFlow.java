@@ -26,6 +26,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -148,11 +149,9 @@ public class EvelMobileFlow extends EvelHeader {
 		  double avg_packet_delay_variation;
 		  int avg_packet_latency;
 		  int avg_receive_throughput;
-		  int avg_transmit_throughput;
-		  
+		  int avg_transmit_throughput;		  
 		  int flow_activation_epoch;
-		  int flow_activation_microsec;
-		  
+		  int flow_activation_microsec;		  
 		  int flow_deactivation_epoch;
 		  int flow_deactivation_microsec;
 		  Date flow_deactivation_time;
@@ -200,6 +199,9 @@ public class EvelMobileFlow extends EvelHeader {
 		  EvelOptionInt num_gtp_echo_failures;
 		  EvelOptionInt num_gtp_tunnel_errors;
 		  EvelOptionInt num_http_errors;
+		  
+		  Map<String,String> iptos_count_list;
+		  
 
 	  /**************************************************************************//**
 	   * Create a new Mobile GTP Per Flow Metrics.
@@ -394,6 +396,10 @@ public class EvelMobileFlow extends EvelHeader {
 	    num_gtp_echo_failures = new EvelOptionInt();
 	    num_gtp_tunnel_errors = new EvelOptionInt();
 	    num_http_errors = new EvelOptionInt();
+	    
+	    
+	    
+	    iptos_count_list = null;
 
 	    EVEL_EXIT();
 	  }
@@ -414,7 +420,11 @@ public class EvelMobileFlow extends EvelHeader {
 	  /***************************************************************************/
 	  /* Optional fields                                                         */
 	  /***************************************************************************/
-	  ArrayList<String[]> additional_info;
+	  //ArrayList<String[]> ipTosList;
+	  Map<String,String> additional_inf;
+	  
+	  Map<String,String> hashMap;
+	  
 	  EvelOptionString application_type;
 	  EvelOptionString app_protocol_type;
 	  EvelOptionString app_protocol_version;
@@ -538,8 +548,9 @@ public class EvelMobileFlow extends EvelHeader {
 	    tac = new EvelOptionString();
 	    tunnel_id = new EvelOptionString();
 	    vlan_id = new EvelOptionString();
-	    additional_info = null;
-
+	    additional_inf = null;
+        hashMap = null;
+        		
 	    EVEL_EXIT();
 
 	  }
@@ -562,7 +573,7 @@ public class EvelMobileFlow extends EvelHeader {
 	   *****************************************************************************/
 	  public void evel_mobile_flow_addl_field_add(String name, String value)
 		{
-		  String[] addl_info = null;
+		 // String[] addl_info = null;
 		  EVEL_ENTER();
 
 		  /***************************************************************************/
@@ -572,18 +583,18 @@ public class EvelMobileFlow extends EvelHeader {
 		  assert(name != null);
 		  assert(value != null);
 		  
-		  if( additional_info == null )
+		  if( additional_inf == null )
 		  {
-			  additional_info = new ArrayList<String[]>();
+			  additional_inf = new HashMap<String,String>();
 		  }
 
 		  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-		  addl_info = new String[2];
-		  assert(addl_info != null);
-		  addl_info[0] = name;
-		  addl_info[1] = value;
+	//	  addl_info = new String[2];
+	//	  assert(addl_info != null);
+	//	  addl_info[0] = name;
+	//	  addl_info[1] = value;
 
-		  additional_info.add(addl_info);
+		  additional_inf.put(name, value);
 
 		  EVEL_EXIT();
 		}
@@ -1750,7 +1761,34 @@ public class EvelMobileFlow extends EvelHeader {
 	                        "QCI COS");
 	    EVEL_EXIT();
 	  }
+	  
+	  
+		public void evel_mobileFlow_hashMap_add(String name, String value)
+		{
 
+		  EVEL_ENTER();
+
+		  /***************************************************************************/
+		  /* Check preconditions.                                                    */
+		  /***************************************************************************/
+		  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_THRESHOLD_CROSSING);
+		  assert(name != null);
+		  assert(value != null);
+		  
+		  if( hashMap == null )
+		  {
+
+			  hashMap = new HashMap<String,String>();
+		  }
+
+		  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
+		  hashMap.put(name,  value);
+
+
+		  EVEL_EXIT();
+		}
+		
+		
 
 		/**************************************************************************//**
 		 * Encode the GTP Per Flow Object in JSON according to AT&T's schema.
@@ -1825,20 +1863,28 @@ public class EvelMobileFlow extends EvelHeader {
 
 	    	    if (found_ip_tos)
 	    	    {
-	    	      JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	    	JsonObjectBuilder builder = Json.createObjectBuilder();		
+	    	    //  JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	      JsonArrayBuilder builderIpTosList = Json.createArrayBuilder();
 	    	      for (index = 0; index < EVEL_TOS_SUPPORTED; index++)
 	    	      {
 	    	        if (metrics.ip_tos_counts[index].is_set)
 	    	        {
-	    			  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-	 			    	     .add(Integer.toString(index), metrics.ip_tos_counts[index].value);
-	 			      builder.add(obj2);
+//	    			  JsonObjectBuilder obj2 = Json.createObjectBuilder()
+//	 			    	     .add(Integer.toString(index), metrics.ip_tos_counts[index].value);
+	 			      builder.add(Integer.toString(index)+"", metrics.ip_tos_counts[index].value+"");
+	 			      //srikant add String to IpTosList
+	 			     builderIpTosList.add( index+"" );
 	    	        }
 	    	      }
 	    	      obj.add("ipTosCountList", builder);
+	    	      obj.add("ipTosList", builderIpTosList);
+	    	      
+	    	      
 	    	    }
 
-
+	    	   
+	    	    
 	    	    /***************************************************************************/
 	    	    /* Make some compile-time assertions about EVEL_TCP_FLAGS.  If you update  */
 	    	    /* these, make sure you update evel_tcp_flag_strings to match the enum.    */
@@ -1853,7 +1899,9 @@ public class EvelMobileFlow extends EvelHeader {
 	    	        break;
 	    	      }
 	    	    }
-
+                
+	    	    
+	    	    JsonArrayBuilder builderTcpFlagList = Json.createArrayBuilder();
 	    	    if (found_tcp_flag)
 	    	    {
 	    	      JsonArrayBuilder builder = Json.createArrayBuilder();
@@ -1862,26 +1910,29 @@ public class EvelMobileFlow extends EvelHeader {
 	    	        if (metrics.tcp_flag_counts[index].is_set)
 	    	        {
 	    			  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-		 			    	     .add(Integer.toString(index), evel_tcp_flag_strings[index]);
+		 			    	     .add(Integer.toString(index)+"", evel_tcp_flag_strings[index]+"");
 		 			  builder.add(obj2);
 	    	        }
 	    	      }
-	    	      obj.add("tcpFlagList", builder);
+	    	    //  obj.add("tcpFlagList", builder);
 	    	    }
 
 	    	    if (found_tcp_flag)
 	    	    {
-	    	      JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	    	JsonObjectBuilder builder = Json.createObjectBuilder();	
+	    	     // JsonArrayBuilder builder = Json.createArrayBuilder();
 	    	      for (index = 0; index < EVEL_MAX_TCP_FLAGS; index++)
 	    	      {
 	    	        if (metrics.tcp_flag_counts[index].is_set)
 	    	        {
-		    		   JsonObjectBuilder obj2 = Json.createObjectBuilder()
-			 			    	     .add(evel_tcp_flag_strings[index], metrics.tcp_flag_counts[index].value);
-			 		   builder.add(obj2);
+//		    		   JsonObjectBuilder obj2 = Json.createObjectBuilder()
+//			 			    	     .add(evel_tcp_flag_strings[index], metrics.tcp_flag_counts[index].value);
+			 		   builder.add(evel_tcp_flag_strings[index]+"", metrics.tcp_flag_counts[index].value+"");
+			 		  builderTcpFlagList.add(evel_tcp_flag_strings[index]+"");
 	    	        }
 	    	      }
 	    	      obj.add("tcpFlagCountList", builder);
+	    	      obj.add("tcpFlagList", builderTcpFlagList);
 	    	    }
 
 	    	    /***************************************************************************/
@@ -1900,35 +1951,48 @@ public class EvelMobileFlow extends EvelHeader {
 	    	      }
 	    	    }
 
+	    	    JsonArrayBuilder builderQciCosList = Json.createArrayBuilder();
 	    	    if (found_qci_cos)
 	    	    {
-	    	      JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	     // JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	    	JsonObjectBuilder builder = Json.createObjectBuilder();
 	    	      for (index = 0; index < EVEL_MAX_QCI_COS_TYPES; index++)
 	    	      {
 	    	        if (metrics.qci_cos_counts[index].is_set)
 	    	        {
-			    	  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-			 			    	     .add(Integer.toString(index), evel_qci_cos_strings[index]);
-			 		  builder.add(obj2);
+//			    	  JsonObjectBuilder obj2 = Json.createObjectBuilder()
+//			 			    	     .add(Integer.toString(index), evel_qci_cos_strings[index]);
+			 		  builder.add(Integer.toString(index)+"", evel_qci_cos_strings[index]+"");
+			 		 
 	    	        }
 	    	      }
-	    	      obj.add("mobileQciCosList", builder);
+	    	    //  obj.add("mobileQciCosList", builder);
 	    	    }
 
+	    	    
+	    	    
+	    	    
 	    	    if (found_qci_cos)
 	    	    {
-	    	    	JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	    	//JsonArrayBuilder builder = Json.createArrayBuilder();
+	    	    	JsonObjectBuilder builder = Json.createObjectBuilder();
 	    	      for (index = 0; index < EVEL_MAX_QCI_COS_TYPES; index++)
 	    	      {
 	    	        if (metrics.qci_cos_counts[index].is_set)
 	    	        {
-				    	  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-			 			    	     .add(evel_qci_cos_strings[index], metrics.qci_cos_counts[index].value);
-			 		      builder.add(obj2);
+//				    	  JsonObjectBuilder obj2 = Json.createObjectBuilder()
+//			 			    	     .add(evel_qci_cos_strings[index], metrics.qci_cos_counts[index].value);
+			 		      builder.add(evel_qci_cos_strings[index]+"", metrics.qci_cos_counts[index].value+"");
+			 		     builderQciCosList.add(evel_qci_cos_strings[index]+"");
 	    	        }
 	    	      }
 	    	      obj.add("mobileQciCosCountList", builder);
+	    	      obj.add("mobileQciCosList", builderQciCosList);
 	    	    }
+	    	    
+	    	    
+	    	    		
+	    	    
 
 	    	    metrics.dur_connection_failed_status.encJsonValue(obj, "durConnectionFailedStatus");
 	    	    metrics.dur_tunnel_failed_status.encJsonValue(obj, "durTunnelFailedStatus");
@@ -1945,7 +2009,13 @@ public class EvelMobileFlow extends EvelHeader {
 	    	    metrics.num_gtp_tunnel_errors.encJsonValue(obj, "numGtpTunnelErrors");
 	    	    metrics.num_http_errors.encJsonValue(obj, "numHttpErrors");
 	    	    
-	    	    return obj;       
+	    	    
+	    	    
+	    	   
+	    	    
+	    	    return obj;
+	    	    
+	    	    	    	    
 	            
 	  }
 	  
@@ -1958,8 +2028,8 @@ public class EvelMobileFlow extends EvelHeader {
 	  JsonObjectBuilder evelMobileFlowObject()
 	  {
 
-	    double version = major_version+(double)minor_version/10;
-
+	 //   double version = major_version+(double)minor_version/10;
+        String version  = "4.0";
 	    EVEL_ENTER();
 
 	    /***************************************************************************/
@@ -1982,25 +2052,29 @@ public class EvelMobileFlow extends EvelHeader {
 	    //call gtp per flow object encoding function
 	    if(gtp_per_flow_metrics != null)
 	   	                  evelmf.add("gtpPerFlowMetrics", evelGtpPerFlowObject());
-                                  
+	                             
 
 
-	    /***************************************************************************/
-	    /* Optional fields.                                                        */
-	    /***************************************************************************/
-	    // additional fields
-		  if( additional_info != null )
-		  {
-		    JsonArrayBuilder builder = Json.createArrayBuilder();
-		    for(int i=0;i<additional_info.size();i++) {
-			  String[] addl_info = additional_info.get(i);
-			  JsonObject obj = Json.createObjectBuilder()
-			    	     .add("name", addl_info[0])
-			    	     .add("value", addl_info[1]).build();
-			  builder.add(obj);
-		    }
-			evelmf.add("additionalFields", builder);
-		  }
+
+		  
+		    /***************************************************************************/
+		    /* Optional fields.                                                        */
+		    /***************************************************************************/
+		    // additional fields
+			  if( additional_inf != null )
+			  { 
+				  JsonObjectBuilder builder = Json.createObjectBuilder();
+			   // JsonArrayBuilder builder = Json.createArrayBuilder();
+	            for(Map.Entry<String, String> entry : additional_inf.entrySet()){
+	              LOGGER.debug(MessageFormat.format("Key : {0} and Value: {1}", entry.getKey(), entry.getValue()));
+//				  JsonObject obj = Json.createObjectBuilder()
+//				    	     .add("name", entry.getKey())
+//				    	     .add("value",entry.getValue()).build();
+				  builder.add(entry.getKey(), entry.getValue());
+			    }
+				//eveloth.add("nameValuePairs", builder);
+	            evelmf.add("additionalFields", builder);
+			  }
 		  
 
 		    /***************************************************************************/

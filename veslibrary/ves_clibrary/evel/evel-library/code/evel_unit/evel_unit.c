@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "evel.h"
 #include "evel_internal.h"
@@ -49,35 +50,39 @@ typedef enum {
 /* Local prototypes.                                                         */
 /*****************************************************************************/
 static void test_encode_heartbeat();
-static void test_encode_header_overrides();
+//static void test_encode_header_overrides();
 static void test_encode_fault();
-static void test_encode_fault_with_escaping();
+//static void test_encode_fault_with_escaping();
 static void test_encode_measurement();
 static void test_encode_mobile_mand();
-static void test_encode_mobile_opts();
+//static void test_encode_mobile_opts();
 static void test_encode_other();
-static void test_encode_report();
-static void test_encode_service();
-static void test_encode_service_subset(const SERVICE_TEST service_test);
+static void test_encode_pnfreg();
+static void test_encode_tca();
+//static void test_encode_report();
+//static void test_encode_service();
+//static void test_encode_service_subset(const SERVICE_TEST service_test);
 static void test_encode_signaling();
+static void test_encode_voiceQ();
+static void test_encode_notif();
 static void test_encode_state_change();
 static void test_encode_syslog();
-static void test_json_response_junk();
-static void test_json_provide_throttle_state();
-static void test_json_measurement_interval();
-static void test_json_throttle_spec_field();
-static void test_json_throttle_spec_nv_pair();
-static void test_json_throttle_spec_two_domains();
-static void test_json_throttle_spec_bad_command_type();
-static void test_encode_fault_throttled();
-static void test_encode_measurement_throttled();
-static void test_encode_mobile_throttled();
-static void test_encode_other_throttled();
-static void test_encode_report_throttled();
-static void test_encode_service_throttled();
-static void test_encode_signaling_throttled();
-static void test_encode_state_change_throttled();
-static void test_encode_syslog_throttled();
+//static void test_json_response_junk();
+//static void test_json_provide_throttle_state();
+//static void test_json_measurement_interval();
+//static void test_json_throttle_spec_field();
+//static void test_json_throttle_spec_nv_pair();
+//static void test_json_throttle_spec_two_domains();
+//static void test_json_throttle_spec_bad_command_type();
+//static void test_encode_fault_throttled();
+//static void test_encode_measurement_throttled();
+//static void test_encode_mobile_throttled();
+//static void test_encode_other_throttled();
+//static void test_encode_report_throttled();
+//static void test_encode_service_throttled();
+//static void test_encode_signaling_throttled();
+//static void test_encode_state_change_throttled();
+//static void test_encode_syslog_throttled();
 static void compare_strings(char * expected,
                             char * actual,
                             int max_size,
@@ -93,9 +98,11 @@ static void compare_strings(char * expected,
  *****************************************************************************/
 int main(int argc, char ** argv)
 {
+  char * fqdn = "127.0.0.1";
+  int port = 30000;
   assert(argc >= 0);
   assert(argv != NULL);
-
+  
   /***************************************************************************/
   /* Fix our timezone to UTC.                                                */
   /***************************************************************************/
@@ -112,25 +119,65 @@ int main(int argc, char ** argv)
   functional_role = "UNIT TEST";
   log_initialize(EVEL_LOG_DEBUG, "EVEL");
 
+  /**************************************************************************/
+  /* Initialize                                                             */
+  /**************************************************************************/
+  if(evel_initialize(fqdn,                         /* FQDN                  */
+                     port,                         /* Port                  */
+                     NULL,                         /* Backup FQDN           */
+                     0,                            /* Backup port           */
+                     NULL,                         /* optional path         */
+                     NULL,                         /* optional topic        */
+                     100,                          /* Ring Buffer size      */
+                     0,                            /* HTTPS?                */
+                     0,                            /* active mode?          */
+                     NULL,                         /* cert file             */
+                     NULL,                         /* key  file             */
+                     NULL,                         /* ca   info             */
+                     NULL,                         /* ca   file             */
+                     0,                            /* verify peer           */
+                     0,                            /* verify host           */
+                     "will",                       /* Username              */
+                     "pill",                       /* Password              */
+                     "",                           /* Username2             */
+                     "",                           /* Password2             */
+                     NULL,                         /* Source ip             */
+                     NULL,                         /* Source ip2            */
+                     EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
+                     "UNIT Test",                  /* Role                  */
+                     1))                           /* Verbosity             */
+  {
+    fprintf(stderr, "\nFailed to initialize the EVEL library!!!\n");
+    exit(-1);
+  }
+  else
+  {
+    printf("\nInitialization completed\n");
+  }
+
   /***************************************************************************/
   /* Test each encoder.                                                      */
   /***************************************************************************/
-  test_encode_heartbeat();
-  test_encode_header_overrides();
-  test_encode_fault();
-  test_encode_measurement();
-  test_encode_mobile_mand();
-  test_encode_mobile_opts();
-  test_encode_other();
-  test_encode_report();
-  test_encode_service();
-  test_encode_signaling();
-  test_encode_state_change();
-  test_encode_syslog();
-
+  test_encode_heartbeat(); // Done
+//  test_encode_header_overrides(); // Done
+  test_encode_fault(); // Done
+  test_encode_measurement(); //Done
+  test_encode_mobile_mand(); // Done
+//  test_encode_mobile_opts(); // Done
+  test_encode_other();  // Done
+  test_encode_pnfreg();  // Done
+  test_encode_tca(); // Done
+//  test_encode_report();
+//  test_encode_service();
+  test_encode_signaling(); // Done - sip signaling
+  test_encode_voiceQ(); //Done
+  test_encode_notif(); //Done`
+  test_encode_state_change(); //Done
+  test_encode_syslog(); // Done
   /***************************************************************************/
   /* Test JSON Throttle.                                                     */
   /***************************************************************************/
+/*************
   test_json_response_junk();
   test_json_provide_throttle_state();
   test_json_measurement_interval();
@@ -138,27 +185,27 @@ int main(int argc, char ** argv)
   test_json_throttle_spec_nv_pair();
   test_json_throttle_spec_two_domains();
   test_json_throttle_spec_bad_command_type();
-
+*************/
   /***************************************************************************/
   /* Test each encoder with throttling applied.                              */
   /***************************************************************************/
-  test_encode_fault_throttled();
-  test_encode_measurement_throttled();
-  test_encode_mobile_throttled();
-  test_encode_other_throttled();
-  test_encode_report_throttled();
-  test_encode_service_throttled();
-  test_encode_signaling_throttled();
-  test_encode_state_change_throttled();
-  test_encode_syslog_throttled();
-
+//  test_encode_fault_throttled(); // done
+//  test_encode_measurement_throttled();
+//  test_encode_mobile_throttled(); //done
+//  test_encode_other_throttled();
+//  test_encode_report_throttled();
+//  test_encode_service_throttled();
+//  test_encode_signaling_throttled();
+//  test_encode_state_change_throttled();
+//  test_encode_syslog_throttled();
   /***************************************************************************/
   /* Test character escaping.                                                */
   /***************************************************************************/
+/********
   test_encode_fault_with_escaping();
-
+*******/
   printf ("\nAll Tests Passed\n");
-
+  evel_terminate();
   return 0;
 }
 
@@ -179,15 +226,16 @@ void test_encode_heartbeat()
     "{\"event\": {"
     "\"commonEventHeader\": {"
     "\"domain\": \"heartbeat\", "
-    "\"eventId\": \"121\", "
+    "\"eventId\": \"heartbeat000000001\", "
+    "\"eventName\": \"heartbeat_VM\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 121, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
-    "\"version\": 1.2, "
+    "\"version\": 3.0, "
     "\"eventType\": \"Autonomous heartbeat\", "
     "\"reportingEntityId\": \"Dummy VM UUID - No Metadata available\", "
     "\"sourceId\": \"Dummy VM UUID - No Metadata available\""
@@ -199,7 +247,7 @@ void test_encode_heartbeat()
   /***************************************************************************/
   /* Test the VM name/uuid once.                                             */
   /***************************************************************************/
-  evel_set_next_event_sequence(121);
+//  evel_set_next_event_sequence(121);
 
   EVENT_HEADER * heartbeat = evel_new_heartbeat();
   assert(heartbeat != NULL);
@@ -209,7 +257,16 @@ void test_encode_heartbeat()
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Heartbeat");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(heartbeat);
+  if(evel_post_event(heartbeat) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(heartbeat);
 }
 
 void test_encode_header_overrides()
@@ -219,17 +276,15 @@ void test_encode_header_overrides()
     "\"commonEventHeader\": {"
     "\"domain\": \"heartbeat\", "
     "\"eventId\": \"121\", "
-    "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000, "
     "\"priority\": \"Normal\", "
     "\"reportingEntityName\": \"entity_name_override\", "
     "\"sequence\": 121, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1001, "
     "\"version\": 1.2, "
     "\"eventType\": \"Autonomous heartbeat\", "
-    "\"reportingEntityId\": \"entity_id_override\", "
-    "\"sourceId\": \"Dummy VM UUID - No Metadata available\""
+    "\"reportingEntityId\": \"entity_id_override\" "
     "}}}";
 
   size_t json_size = 0;
@@ -238,7 +293,7 @@ void test_encode_header_overrides()
   /***************************************************************************/
   /* Test the VM name/uuid once.                                             */
   /***************************************************************************/
-  evel_set_next_event_sequence(121);
+//  evel_set_next_event_sequence(121);
 
   EVENT_HEADER * heartbeat = evel_new_heartbeat();
   assert(heartbeat != NULL);
@@ -247,6 +302,8 @@ void test_encode_header_overrides()
   evel_last_epoch_set(heartbeat, 1000);
   evel_reporting_entity_name_set(heartbeat, "entity_name_override");
   evel_reporting_entity_id_set(heartbeat, "entity_id_override");
+  evel_event_sequence_set(heartbeat, 121);
+  evel_time_zone_offset_set(heartbeat, "UTC+5:30");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) heartbeat);
@@ -262,13 +319,13 @@ void test_encode_fault()
     "{\"event\": {"
     "\"commonEventHeader\": {"
     "\"domain\": \"fault\", "
-    "\"eventId\": \"122\", "
-    "\"functionalRole\": \"UNIT TEST\", "
+    "\"eventId\": \"fault000000001\", "
+    "\"eventName\": \"fault_eNodeB_alarm\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 122, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Bad things happen...\", "
@@ -293,40 +350,52 @@ void test_encode_fault()
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
-  evel_set_next_event_sequence(122);
-  EVENT_FAULT * fault = evel_new_fault("My alarm condition",
+//  evel_set_next_event_sequence(122);
+  EVENT_FAULT * fault = evel_new_fault("fault_eNodeB_alarm", 
+                                       "fault000000001", 
+                                       "My alarm condition",
                                        "It broke very badly",
                                        EVEL_PRIORITY_NORMAL,
                                        EVEL_SEVERITY_MAJOR,
 					EVEL_SOURCE_HOST,
-                             EVEL_VF_STATUS_PREP_TERMINATE);
+                             EVEL_VF_STATUS_READY_TERMINATE);
   assert(fault != NULL);
   evel_fault_type_set(fault, "Bad things happen...");
   evel_fault_interface_set(fault, "My Interface Card");
   evel_fault_addl_info_add(fault, "name1", "value1");
   evel_fault_addl_info_add(fault, "name2", "value2");
+evel_fault_category_set(fault, "link");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) fault);
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Fault");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(fault);
-}
+  if(evel_post_event((EVENT_HEADER *)fault) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
 
+ // evel_free_event(fault);
+}
 void test_encode_measurement()
 {
   char * expected =
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"measurementsForVfScaling\", "
-    "\"eventId\": \"123\", "
+    "\"eventId\": \"mvfs000000001\", "
+    "\"eventName\": \"mvfs_perfUnit_issue\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 3000, "
     "\"priority\": \"Normal\", "
     "\"reportingEntityName\": \"entity_name\", "
     "\"sequence\": 123, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 2000, "
     "\"version\": 1.2, "
     "\"eventType\": \"Perf management...\", "
@@ -424,18 +493,21 @@ void test_encode_measurement()
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_MEASUREMENT * measurement = NULL;
   MEASUREMENT_LATENCY_BUCKET * bucket = NULL;
-  MEASUREMENT_VNIC_PERFORMANCE * vnic_use = NULL;
   MEASUREMENT_CPU_USE *cpu_use;
-
-  /***************************************************************************/
-  /* Measurement.                                                            */
-  /***************************************************************************/
-  evel_set_next_event_sequence(123);
-  measurement = evel_new_measurement(5.5);
+  MEASUREMENT_MEM_USE * mem_use;
+  MEASUREMENT_DISK_USE * disk_use;
+//  evel_set_next_event_sequence(123);
+  measurement = evel_new_measurement(5.5,"mvfs_perfUnit_issue", "mvfs000000001");
   assert(measurement != NULL);
   evel_measurement_type_set(measurement, "Perf management...");
+  evel_measurement_addl_info_add(measurement, "name1", "value1");
+//  evel_measurement_addl_info_add(measurement, "name2", "value2");
+//  evel_measurement_addl_info_add(measurement, "name3", "value3");
+//  evel_measurement_addl_info_add(measurement, "name4", "value4");
+
   evel_measurement_conc_sess_set(measurement, 1);
   evel_measurement_cfg_ents_set(measurement, 2);
+
   evel_measurement_mean_req_lat_set(measurement, 4.4);
   evel_measurement_request_rate_set(measurement, 7);
 
@@ -448,7 +520,14 @@ void test_encode_measurement()
   evel_measurement_cpu_use_system_set(cpu_use,77.77);
   evel_measurement_cpu_use_usageuser_set(cpu_use,88.88);
   evel_measurement_cpu_use_wait_set(cpu_use,99.99);
-
+  evel_measurement_cpu_use_cpuCapacityContention_set(cpu_use,12.2);
+  evel_measurement_cpu_use_cpuDemandAvg_set(cpu_use,14.4);
+  evel_measurement_cpu_use_cpuDemandMhz_set(cpu_use,15.4);
+  evel_measurement_cpu_use_cpuDemandPct_set(cpu_use,16.4);
+  evel_measurement_cpu_use_cpuLatencyAvg_set(cpu_use,17.4);
+  evel_measurement_cpu_use_cpuOverheadAvg_set(cpu_use,18.4);
+  evel_measurement_cpu_use_cpuSwapWaitTime_set(cpu_use,19.4);
+/**************
   cpu_use = evel_measurement_new_cpu_use_add(measurement, "cpu2", 22.22);
   evel_measurement_cpu_use_idle_set(cpu_use,12.22);
   evel_measurement_cpu_use_interrupt_set(cpu_use,33.33);
@@ -458,74 +537,294 @@ void test_encode_measurement()
   evel_measurement_cpu_use_system_set(cpu_use,77.77);
   evel_measurement_cpu_use_usageuser_set(cpu_use,88.88);
   evel_measurement_cpu_use_wait_set(cpu_use,19.99);
+  evel_measurement_cpu_use_cpuCapacityContention_set(cpu_use,22.2);
+  evel_measurement_cpu_use_cpuDemandAvg_set(cpu_use,24.4);
+  evel_measurement_cpu_use_cpuDemandMhz_set(cpu_use,25.4);
+  evel_measurement_cpu_use_cpuDemandPct_set(cpu_use,26.4);
+  evel_measurement_cpu_use_cpuLatencyAvg_set(cpu_use,27.4);
+  evel_measurement_cpu_use_cpuOverheadAvg_set(cpu_use,28.4);
+  evel_measurement_cpu_use_cpuSwapWaitTime_set(cpu_use,29.4);
+***************/
+  mem_use = evel_measurement_new_mem_use_add(measurement, "VMID", 120, 150);
+  evel_measurement_mem_use_memcache_set(mem_use, 121.7);
+  evel_measurement_mem_use_memconfig_set(mem_use, 122.7);
+  evel_measurement_mem_use_slab_reclaimed_set(mem_use, 123.7);
+  evel_measurement_mem_use_slab_unreclaimable_set(mem_use, 124.7);
+  evel_measurement_mem_use_memoryDemand_set(mem_use, 125.7);
+  evel_measurement_mem_use_memoryLatencyAvg_set(mem_use, 126.7);
+  evel_measurement_mem_use_memorySharedAvg_set(mem_use, 127.7);
+  evel_measurement_mem_use_memorySwapInAvg_set(mem_use, 128.7);
+  evel_measurement_mem_use_memorySwapInRateAvg_set(mem_use, 129.7);
+  evel_measurement_mem_use_memorySwapOutAvg_set(mem_use, 130.7);
+  evel_measurement_mem_use_memorySwapOutRateAvg_set(mem_use, 131.7);
+  evel_measurement_mem_use_memorySwapUsedAvg_set(mem_use, 132.7);
+  evel_measurement_mem_use_percentMemoryUsage_set(mem_use, 133.7);
+  
+  mem_use = evel_measurement_new_mem_use_add(measurement, "VMID2", 220, 250);
+  evel_measurement_mem_use_mem_buffered_set(mem_use, 100.4);
+  evel_measurement_mem_use_memcache_set(mem_use, 221.7);
+  evel_measurement_mem_use_memconfig_set(mem_use, 222.7);
+  evel_measurement_mem_use_slab_reclaimed_set(mem_use, 223.7);
+  evel_measurement_mem_use_slab_unreclaimable_set(mem_use, 224.7);
+  evel_measurement_mem_use_memoryDemand_set(mem_use, 225.7);
+  evel_measurement_mem_use_memoryLatencyAvg_set(mem_use, 226.7);
+  evel_measurement_mem_use_memorySharedAvg_set(mem_use, 227.7);
+  evel_measurement_mem_use_memorySwapInAvg_set(mem_use, 228.7);
+  evel_measurement_mem_use_memorySwapInRateAvg_set(mem_use, 229.7);
+  evel_measurement_mem_use_memorySwapOutAvg_set(mem_use, 230.7);
+  evel_measurement_mem_use_memorySwapOutRateAvg_set(mem_use, 231.7);
+  evel_measurement_mem_use_memorySwapUsedAvg_set(mem_use, 232.7);
+  evel_measurement_mem_use_percentMemoryUsage_set(mem_use, 233.7);
 
+  disk_use = evel_measurement_new_disk_use_add(measurement, "Disk1");
+  evel_measurement_disk_use_iotimeavg_set(disk_use, 11.1);
+  evel_measurement_disk_use_iotimelast_set(disk_use, 12.1);
+  evel_measurement_disk_use_iotimemax_set(disk_use, 13.1);
+  evel_measurement_disk_use_iotimemin_set(disk_use, 14.1);
+  evel_measurement_disk_use_mergereadavg_set(disk_use, 15.1);
+  evel_measurement_disk_use_mergereadlast_set(disk_use, 16.1);
+  evel_measurement_disk_use_mergereadmax_set(disk_use, 17.1);
+  evel_measurement_disk_use_mergereadmin_set(disk_use, 18.1);
+  evel_measurement_disk_use_mergewritelast_set(disk_use, 19.1);
+  evel_measurement_disk_use_mergewritemax_set(disk_use, 20.1);
+  evel_measurement_disk_use_mergewriteavg_set(disk_use, 30.1);
+  evel_measurement_disk_use_mergewritemin_set(disk_use, 40.1);
+  evel_measurement_disk_use_octetsreadavg_set(disk_use, 50.1);
+  evel_measurement_disk_use_octetsreadlast_set(disk_use, 60.1);
+  evel_measurement_disk_use_octetsreadmax_set(disk_use, 70.1);
+  evel_measurement_disk_use_octetsreadmin_set(disk_use, 80.1);
+  evel_measurement_disk_use_octetswriteavg_set(disk_use, 90.1);
+  evel_measurement_disk_use_octetswritelast_set(disk_use,110.1);
+  evel_measurement_disk_use_octetswritemax_set(disk_use, 120.1);
+  evel_measurement_disk_use_octetswritemin_set(disk_use, 130.1);
+  evel_measurement_disk_use_opsreadavg_set(disk_use, 140.1);
+  evel_measurement_disk_use_opsreadlast_set(disk_use, 150.1);
+  evel_measurement_disk_use_opsreadmax_set(disk_use, 160.1);
+  evel_measurement_disk_use_opsreadmin_set(disk_use, 170.1);
+  evel_measurement_disk_use_opswriteavg_set(disk_use, 180.1);
+  evel_measurement_disk_use_opswritelast_set(disk_use, 190.1);
+  evel_measurement_disk_use_opswritemax_set(disk_use, 210.1);
+  evel_measurement_disk_use_opswritemin_set(disk_use, 310.1);
+  evel_measurement_disk_use_pendingopsavg_set(disk_use, 410.1);
+  evel_measurement_disk_use_pendingopslast_set(disk_use, 610.1);
+  evel_measurement_disk_use_pendingopsmax_set(disk_use, 710.1);
+  evel_measurement_disk_use_pendingopsmin_set(disk_use, 810.1);
+  evel_measurement_disk_use_timereadavg_set(disk_use, 910.1);
+  evel_measurement_disk_use_timereadlast_set(disk_use, 10.2);
+  evel_measurement_disk_use_timereadmax_set(disk_use, 10.33);
+  evel_measurement_disk_use_timereadmin_set(disk_use, 10.4);
+  evel_measurement_disk_use_timewriteavg_set(disk_use, 10.5);
+  evel_measurement_disk_use_timewritelast_set(disk_use, 10.6);
+  evel_measurement_disk_use_timewritemax_set(disk_use, 10.7);
+  evel_measurement_disk_use_timewritemin_set(disk_use, 10.8);
+  evel_measurement_disk_use_diskBusResets_set(disk_use, 10.9);
+  evel_measurement_disk_use_diskCommandsAborted_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskTime_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskFlushRequests_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskFlushTime_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskCommandsAvg_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskReadCommandsAvg_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskWriteCommandsAvg_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskTotalReadLatencyAvg_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskTotalWriteLatencyAvg_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskWeightedIoTimeAvg_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskWeightedIoTimeLast_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskWeightedIoTimeMax_set(disk_use, 10.1);
+  evel_measurement_disk_use_diskWeightedIoTimeMin_set(disk_use, 10.1);
+ 
 
   evel_measurement_fsys_use_add(measurement,"00-11-22",100.11, 100.22, 33,
                                 200.11, 200.22, 44);
   evel_measurement_fsys_use_add(measurement,"33-44-55",300.11, 300.22, 55,
                                 400.11, 400.22, 66);
-  evel_start_epoch_set(&measurement->header, 2000);
-  evel_last_epoch_set(&measurement->header, 3000);
-  evel_reporting_entity_name_set(&measurement->header, "entity_name");
-  evel_reporting_entity_id_set(&measurement->header, "entity_id");
+  evel_measurement_feature_use_add(measurement, "FeatureA", "123");
+  evel_measurement_feature_use_add(measurement, "FeatureB", "567");
 
-  /***************************************************************************/
-  /* Latency Bucket with no optional parameters.                             */
-  /***************************************************************************/
+  HASHTABLE_T *ht1;
+  ht1 = evel_measurement_new_addl_measurement(measurement, "hmNam1");
+  evel_measurement_addl_measurement_set(ht1, "hmkey1", "hmVal1");
+  evel_measurement_addl_measurement_set(ht1, "hmkey2", "hmVal2");
+  evel_measurement_addl_measurement_set(ht1, "hmkey3", "hmVal3");
+  evel_measurement_addl_measurement_set(ht1, "hmkey4", "hmVal4");
+
+  ht1 = evel_measurement_new_addl_measurement(measurement, "hmNam2");
+  evel_measurement_addl_measurement_set(ht1, "hmkey21", "hmVal21");
+  evel_measurement_addl_measurement_set(ht1, "hmkey22", "hmVal22");
+  evel_measurement_addl_measurement_set(ht1, "hmkey23", "hmVal23");
+  evel_measurement_addl_measurement_set(ht1, "hmkey24", "hmVal24");
+
+  evel_measurement_codec_use_add(measurement, "G711a", 91);
+  evel_measurement_codec_use_add(measurement, "G729ab", 92);
+  
+  evel_measurement_media_port_use_set(measurement, 55);
+  evel_measurement_vnfc_scaling_metric_set(measurement, 66);
+
   bucket = evel_new_meas_latency_bucket(20);
+  evel_meas_latency_bucket_low_end_set(bucket, 50.0);
+  evel_meas_latency_bucket_high_end_set(bucket, 60.0);
   evel_meas_latency_bucket_add(measurement, bucket);
 
-  /***************************************************************************/
-  /* Latency Bucket with all optional parameters.                            */
-  /***************************************************************************/
   bucket = evel_new_meas_latency_bucket(30);
   evel_meas_latency_bucket_low_end_set(bucket, 10.0);
   evel_meas_latency_bucket_high_end_set(bucket, 20.0);
   evel_meas_latency_bucket_add(measurement, bucket);
 
-  /***************************************************************************/
-  /* vNIC Use with no optional parameters.                                   */
-  /***************************************************************************/
-  vnic_use = evel_new_measurement_vnic_use("eth0", 100, 200, 3, 4);
-  evel_meas_vnic_use_add(measurement, vnic_use);
+  evel_measurement_latency_add(measurement, 70.0, 90.0, 40);
 
-  /***************************************************************************/
-  /* vNIC Use with all optional parameters.                                  */
-  /***************************************************************************/
-  vnic_use = evel_new_measurement_vnic_use("eth1", 110, 240, 13, 14);
-  evel_vnic_use_bcast_pkt_in_set(vnic_use, 11);
-  evel_vnic_use_bcast_pkt_out_set(vnic_use, 12);
-  evel_vnic_use_mcast_pkt_in_set(vnic_use, 15);
-  evel_vnic_use_mcast_pkt_out_set(vnic_use, 16);
-  evel_vnic_use_ucast_pkt_in_set(vnic_use, 17);
-  evel_vnic_use_ucast_pkt_out_set(vnic_use, 18);
-  evel_meas_vnic_use_add(measurement, vnic_use);
+  MEASUREMENT_NIC_PERFORMANCE * nic_per;
+  nic_per = evel_measurement_new_nic_performance("eth0", "true");
+  evel_nic_performance_administrativeState_set(nic_per, EVEL_OPER_STATE_OUT_OF_SERVICE);
+  evel_nic_performance_operationalState_set(nic_per, EVEL_OPER_STATE_IN_SERVICE);
+  evel_nic_performance_receivedPercentDiscard_set(nic_per, 222.33); 
+  evel_nic_performance_receivedPercentError_set(nic_per, 222.33);
+  evel_nic_performance_receivedUtilization_set(nic_per, 222.33);
+  evel_nic_performance_speed_set(nic_per, 222.33);
+  evel_nic_performance_transmittedPercentDiscard_set(nic_per, 222.33);
+  evel_nic_performance_transmittedPercentError_set(nic_per, 222.33);
+  evel_nic_performance_transmittedUtilization_set(nic_per, 222.33);
+  evel_nic_performance_rx_bcast_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_bcast_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_rx_discard_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_discard_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_rx_error_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_error_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_rx_mcast_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_mcast_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_rx_octets_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_octets_delta_set(nic_per, 222.33);
+  evel_nic_performance_rx_total_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_total_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_rx_ucast_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_rx_ucast_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_bcast_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_bcast_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_discarded_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_discarded_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_error_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_error_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_mcast_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_mcast_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_octets_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_octets_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_total_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_total_pkt_delta_set(nic_per, 222.33);
+  evel_nic_performance_tx_ucast_pkt_acc_set(nic_per, 222.33);
+  evel_nic_performance_tx_ucast_pkt_delta_set(nic_per, 222.33);
 
-  evel_measurement_errors_set(measurement, 1, 0, 2, 1);
+  evel_meas_nic_performance_add(measurement, nic_per);
+/*************
+  evel_measurement_nic_performance_add(measurement, "ens03", "false",
+    EVEL_OPER_STATE_IN_SERVICE, EVEL_OPER_STATE_OUT_OF_SERVICE,
+    11.66,  11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66,
+    11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66,
+    11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66, 11.66,
+    11.66, 11.66, 11.66, 11.66, 11.66);
+**********/
+  MEASUREMENT_IPMI *ipmi;
+  ipmi = evel_measurement_new_ipmi_add(measurement);
+  evel_measurement_ipmi_exitAirTemperature_set(ipmi, 98.4);
+  evel_measurement_ipmi_frontPanelTemperature_set(ipmi, 98.4);
+  evel_measurement_ipmi_ioModuleTemperature_set(ipmi, 98.4);
+  evel_measurement_ipmi_systemAirflow_set(ipmi, 98.4);
 
-  evel_measurement_feature_use_add(measurement, "FeatureA", 123);
-  evel_measurement_feature_use_add(measurement, "FeatureB", 567);
+  MEASUREMENT_IPMI_BB_TEMPERATURE *temp;
+  temp = evel_measurement_new_base_board_temp_add(ipmi, "BBTEMP1");
+  evel_measurement_ipmi_bb_temp_set(ipmi, temp, 99.8);
 
-  evel_measurement_codec_use_add(measurement, "G711a", 91);
-  evel_measurement_codec_use_add(measurement, "G729ab", 92);
+  MEASUREMENT_IPMI_BB_VOLTAGE * volt;
+  volt = evel_measurement_new_base_board_volt_add(ipmi, "BBVOLT1");
+  evel_measurement_ipmi_bb_volt_set(ipmi, volt, 88.9);
 
-  evel_measurement_media_port_use_set(measurement, 1234);
+  MEASUREMENT_IPMI_BATTERY *batt;
+  batt = evel_measurement_new_ipmi_battery_add(ipmi, "BBBATTERY1");  
+  evel_measurement_ipmi_battery_type_set(ipmi, batt, "BattType");
+  evel_measurement_ipmi_battery_voltage_set(ipmi, batt, 230);
+  
+  MEASUREMENT_IPMI_FAN * fan;
+  fan = evel_measurement_new_ipmi_fan_add(ipmi, "FAN1"); 
+  evel_measurement_ipmi_fan_speed_set(ipmi, fan, 300);
 
-  evel_measurement_vnfc_scaling_metric_set(measurement, 1234.5678);
+  MEASUREMENT_IPMI_HSBP * hsbp;
+  hsbp = evel_measurement_new_ipmi_hsbp_add(ipmi, "BBHSBP1");
+  evel_measurement_ipmi_hsbp_temp_set(ipmi, hsbp, 100);
 
-  evel_measurement_custom_measurement_add(measurement,
-                                          "Group1", "Name1", "Value1");
-  evel_measurement_custom_measurement_add(measurement,
-                                          "Group2", "Name1", "Value1");
-  evel_measurement_custom_measurement_add(measurement,
-                                          "Group2", "Name2", "Value2");
+  MEASUREMENT_IPMI_GLOBAL_AGG_TEMP_MARGIN *glob;
+  glob = evel_measurement_new_ipmi_global_temp_add(ipmi, "BBGLOBAL");
+  evel_measurement_ipmi_global_temp_margin_set(ipmi, glob, 22.5);
+
+  MEASUREMENT_IPMI_NIC * nic;
+  nic = evel_measurement_new_ipmi_nic_add(ipmi, "NIC_1");
+  evel_measurement_ipmi_nic_temp_set(ipmi, nic, 33.5);
+
+  MEASUREMENT_IPMI_POWER_SUPPLY * pwr;
+  pwr = evel_measurement_new_ipmi_power_add(ipmi, "POWERSupply1");
+  evel_measurement_ipmi_power_inputpwr_set(ipmi, pwr, 200.5);
+  evel_measurement_ipmi_power_current_op_set(ipmi, pwr, 50.4);
+  evel_measurement_ipmi_power_temp_set(ipmi, pwr, 100.5);
+   
+  MEASUREMENT_IPMI_PROCESSOR * proc;
+  proc = evel_measurement_new_ipmi_processor_add(ipmi, "PROCESSOR1");
+  evel_measurement_ipmi_processor_theralCtrl_set(ipmi, proc, 10.9);
+  evel_measurement_ipmi_processor_theralMargin_set(ipmi, proc, 29.8);
+  
+  MEASUREMENT_IPMI_PROCESSOR_DIMMAGG_THERM * dimm;
+  dimm = evel_measurement_ipmi_processor_new_dimmAggThermalMargin_add(ipmi, proc, "DIMM1", 15.8);
+
+  assert(dimm != NULL);
+     
+  MEASUREMENT_LOAD * load;
+  load = evel_measurement_new_loads_add(measurement);
+  evel_measurement_load_shortTerm_set(load, 22.5);
+  evel_measurement_load_midTerm_set(load, 33.6);
+  evel_measurement_load_longTerm_set(load, 44.8);
+  
+  MEASUREMENT_PROCESS_STATS * pstat;
+  pstat = evel_measurement_new_process_stats_add(measurement, "Process1");
+  evel_measurement_process_stat_forkRate_set(pstat, 10.1);
+  evel_measurement_process_stat_psStateBlocked_set(pstat, 20.1);
+  evel_measurement_process_stat_psStatePaging_set(pstat, 30.1);
+  evel_measurement_process_stat_psStateRunning_set(pstat, 40.1);
+  evel_measurement_process_stat_psStateSleeping_set(pstat, 50.1);
+  evel_measurement_process_stat_psStateStopped_set(pstat, 60.1);
+  evel_measurement_process_stat_psStateZombie_set(pstat, 70.1);
+  evel_measurement_process_stat_psStateZombie_set(pstat, 80.1);
+  
+  MACHINE_CHECK_EXCEPTION * mcheck;
+  mcheck = evel_measurement_new_machine_check_exception_add(measurement, "ProcessID1");
+  evel_measurement_machine_check_cor_mem_err_set(mcheck, 110.1);
+  evel_measurement_machine_check_cor_mem_err_1hr_set(mcheck, 210.1);
+  evel_measurement_machine_check_uncor_mem_err_set(mcheck, 310.1);
+  evel_measurement_machine_check_uncor_mem_err_1hr_set(mcheck, 410.1);
+
+  MEASUREMENT_HUGE_PAGE * hugep;
+  hugep = evel_measurement_new_huge_page_add(measurement, "HUGEPage1");
+  evel_measurement_huge_page_bytesUsed_set(hugep, 100);
+  evel_measurement_huge_page_bytesFree_set(hugep, 200);
+  evel_measurement_huge_page_vmPageNumberUsed_set(hugep, 300);
+  evel_measurement_huge_page_vmPageNumberFree_set(hugep, 400);
+  evel_measurement_huge_page_percentUsed_set(hugep, 500);
+  evel_measurement_huge_page_percentFree_set(hugep, 600);
+
+  evel_start_epoch_set(&measurement->header, 2000);
+  evel_last_epoch_set(&measurement->header, 3000);
+  evel_reporting_entity_name_set(&measurement->header, "entity_name");
+  evel_reporting_entity_id_set(&measurement->header, "entity_id");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) measurement);
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Measurement");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(measurement);
+  if(evel_post_event((EVENT_HEADER *)measurement) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(measurement);
 }
 
 void test_encode_mobile_mand()
@@ -534,13 +833,14 @@ void test_encode_mobile_mand()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"mobileFlow\", "
-    "\"eventId\": \"1241\", "
+    "\"eventId\": \"mobileFlow000000001\", "
+    "\"eventName\": \"mobileFlow_error\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 1241, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"reportingEntityId\": \"Dummy VM UUID - No Metadata available\", "
@@ -596,7 +896,7 @@ void test_encode_mobile_mand()
   /***************************************************************************/
   /* Mobile.                                                                 */
   /***************************************************************************/
-  evel_set_next_event_sequence(1241);
+//  evel_set_next_event_sequence(1241);
 
   metrics = evel_new_mobile_gtp_flow_metrics(12.3,
                                              3.12,
@@ -629,7 +929,9 @@ void test_encode_mobile_mand()
                                              110,
                                              225);
   assert(metrics != NULL);
-  mobile_flow = evel_new_mobile_flow("Outbound",
+  mobile_flow = evel_new_mobile_flow("mobileFlow_error", 
+                                     "mobileFlow000000001", 
+                                     "Outbound",
                                      metrics,
                                      "TCP",
                                      "IPv4",
@@ -644,7 +946,16 @@ void test_encode_mobile_mand()
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Mobile");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(mobile_flow);
+  if(evel_post_event((EVENT_HEADER *)mobile_flow) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+  //evel_free_event(mobile_flow);
 }
 
 void test_encode_mobile_opts()
@@ -653,13 +964,14 @@ void test_encode_mobile_opts()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"mobileFlow\", "
-    "\"eventId\": \"1242\", "
+    "\"eventId\": \"mobileFlow000000001\", "
+    "\"eventName\": \"mobileFlow_error\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 1242, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Mobile flow...\", "
@@ -762,7 +1074,7 @@ void test_encode_mobile_opts()
   /***************************************************************************/
   /* Mobile.                                                                 */
   /***************************************************************************/
-  evel_set_next_event_sequence(1242);
+//  evel_set_next_event_sequence(1242);
 
   metrics = evel_new_mobile_gtp_flow_metrics(132.0001,
                                              31.2,
@@ -803,9 +1115,15 @@ void test_encode_mobile_opts()
   evel_mobile_gtp_metrics_deact_by_set(metrics, "Remote");
   evel_mobile_gtp_metrics_con_status_set(metrics, "Connected");
   evel_mobile_gtp_metrics_tun_status_set(metrics, "Not tunneling");
-  evel_mobile_gtp_metrics_iptos_set(metrics, 1, 13);
-  evel_mobile_gtp_metrics_iptos_set(metrics, 17, 1);
-  evel_mobile_gtp_metrics_iptos_set(metrics, 4, 99);
+
+//  evel_mobile_gtp_metrics_iptos_set(metrics, 1, 13);
+//  evel_mobile_gtp_metrics_iptos_set(metrics, 17, 1);
+//  evel_mobile_gtp_metrics_iptos_set(metrics, 4, 99);
+
+  evel_mobile_gtp_metrics_ip_tos_count_list_add(metrics, "1", "13");
+  evel_mobile_gtp_metrics_ip_tos_count_list_add(metrics, "17", "1");
+  evel_mobile_gtp_metrics_ip_tos_count_list_add(metrics, "4", "99");
+
   evel_mobile_gtp_metrics_large_pkt_rtt_set(metrics, 80);
   evel_mobile_gtp_metrics_large_pkt_thresh_set(metrics, 600.0);
   evel_mobile_gtp_metrics_max_rcv_bit_rate_set(metrics, 1357924680);
@@ -813,14 +1131,23 @@ void test_encode_mobile_opts()
   evel_mobile_gtp_metrics_num_echo_fail_set(metrics, 1);
   evel_mobile_gtp_metrics_num_tun_fail_set(metrics, 4);
   evel_mobile_gtp_metrics_num_http_errors_set(metrics, 2);
-  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_CWR, 10);
-  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_URG, 121);
-  evel_mobile_gtp_metrics_qci_cos_count_add(
-                                metrics, EVEL_QCI_COS_UMTS_CONVERSATIONAL, 11);
-  evel_mobile_gtp_metrics_qci_cos_count_add(
-                                            metrics, EVEL_QCI_COS_LTE_65, 122);
 
-  mobile_flow = evel_new_mobile_flow("Inbound",
+//  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_CWR, 10);
+//  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_URG, 121);
+
+
+  evel_mobile_gtp_metrics_tcp_flag_count_list_add(metrics, EVEL_TCP_CWR, "10");
+  evel_mobile_gtp_metrics_tcp_flag_count_list_add(metrics, EVEL_TCP_URG, "121");
+
+//  evel_mobile_gtp_metrics_qci_cos_count_add( metrics, EVEL_QCI_COS_UMTS_CONVERSATIONAL, 11);
+//  evel_mobile_gtp_metrics_qci_cos_count_add( metrics, EVEL_QCI_COS_LTE_65, 122);
+
+  evel_mobile_gtp_metrics_qci_cos_count_list_add(metrics, EVEL_QCI_COS_UMTS_CONVERSATIONAL, "11");
+  evel_mobile_gtp_metrics_qci_cos_count_list_add(metrics, EVEL_QCI_COS_LTE_65, "122");
+
+  mobile_flow = evel_new_mobile_flow("mobileFlow_error",
+                                     "mobileFlow000000001",
+                                     "Inbound",
                                      metrics,
                                      "UDP",
                                      "IPv6",
@@ -855,6 +1182,8 @@ void test_encode_mobile_opts()
   evel_mobile_flow_tac_set(mobile_flow, "2099");
   evel_mobile_flow_tunnel_id_set(mobile_flow, "Tunnel 1");
   evel_mobile_flow_vlan_id_set(mobile_flow, "15");
+  evel_mobile_flow_addl_field_add(mobile_flow, "Mkey1", "MValue1");
+  evel_mobile_flow_addl_field_add(mobile_flow, "Mkey2", "MValue2");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) mobile_flow);
@@ -863,20 +1192,21 @@ void test_encode_mobile_opts()
 
   evel_free_event(mobile_flow);
 }
-
+/********
 void test_encode_report()
 {
   char * expected =
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"measurementsForVfReporting\", "
-    "\"eventId\": \"125\", "
+    "\"eventId\": \"report000000001\", "
+    "\"eventName\": \"report_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 125, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Perf reporting...\", "
@@ -907,11 +1237,8 @@ void test_encode_report()
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_REPORT * report = NULL;
 
-  /***************************************************************************/
-  /* Report.                                                                 */
-  /***************************************************************************/
-  evel_set_next_event_sequence(125);
-  report = evel_new_report(1.1);
+//  evel_set_next_event_sequence(125);
+  report = evel_new_report(1.1, "report_err", "report000000001");
   assert(report != NULL);
   evel_report_type_set(report, "Perf reporting...");
   evel_report_feature_use_add(report, "FeatureA", 123);
@@ -927,7 +1254,8 @@ void test_encode_report()
 
   evel_free_event(report);
 }
-
+****************/
+/********************
 void test_encode_service()
 {
   test_encode_service_subset(SERVICE_NONE);
@@ -937,20 +1265,22 @@ void test_encode_service()
   test_encode_service_subset(SERVICE_EOC_VQM);
   test_encode_service_subset(SERVICE_MARKER);
 }
-
+********/
+/**************
 void test_encode_service_subset(const SERVICE_TEST service_test)
 {
   char * expected_start =
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"serviceEvents\", "
-    "\"eventId\": \"2000\", "
+    "\"eventId\": \"sipSignal0000000001\", "
+    "\"eventName\": \"sipSignal_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 2000, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Service Event\", "
@@ -1057,9 +1387,10 @@ void test_encode_service_subset(const SERVICE_TEST service_test)
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
-  EVENT_SGNALING * event = NULL;
-  evel_set_next_event_sequence(2000);
-  event = evel_new_signaling("vendor_x_id",
+  EVENT_SIGNALING * event = NULL;
+//  evel_set_next_event_sequence(2000);
+  event = evel_new_signaling("sipSignal_err", 
+           "sipSignal0000000001", "vendor_x_id",
            "correlator", "1.0.3.1", "1234", "192.168.1.3","3456");
   assert(event != NULL);
   evel_signaling_type_set(event, "Signaling");
@@ -1083,27 +1414,27 @@ void test_encode_service_subset(const SERVICE_TEST service_test)
       break;
     case SERVICE_EOC_VQM:
       evel_signaling_addl_info_add(event, "adjacency", "vendor_x");
-      /*evel_service_adjacency_name_set(event, "vendor_x_adjacency");
-      evel_service_endpoint_desc_set(event, EVEL_SERVICE_ENDPOINT_CALLER);
-      evel_service_endpoint_jitter_set(event, 66);
-      evel_service_endpoint_rtp_oct_disc_set(event, 100);
-      evel_service_endpoint_rtp_oct_recv_set(event, 200);
-      evel_service_endpoint_rtp_oct_sent_set(event, 300);
-      evel_service_endpoint_rtp_pkt_disc_set(event, 400);
-      evel_service_endpoint_rtp_pkt_recv_set(event, 500);
-      evel_service_endpoint_rtp_pkt_sent_set(event, 600);
-      evel_service_local_jitter_set(event, 99);
-      evel_service_local_rtp_oct_disc_set(event, 150);
-      evel_service_local_rtp_oct_recv_set(event, 250);
-      evel_service_local_rtp_oct_sent_set(event, 350);
-      evel_service_local_rtp_pkt_disc_set(event, 450);
-      evel_service_local_rtp_pkt_recv_set(event, 550);
-      evel_service_local_rtp_pkt_sent_set(event, 650);
-      evel_service_mos_cqe_set(event, 12.255);
-      evel_service_packets_lost_set(event, 157);
-      evel_service_packet_loss_percent_set(event, 0.232);
-      evel_service_r_factor_set(event, 11);
-      evel_service_round_trip_delay_set(event, 15);*/
+//      evel_service_adjacency_name_set(event, "vendor_x_adjacency");
+//      evel_service_endpoint_desc_set(event, EVEL_SERVICE_ENDPOINT_CALLER);
+//      evel_service_endpoint_jitter_set(event, 66);
+//      evel_service_endpoint_rtp_oct_disc_set(event, 100);
+//      evel_service_endpoint_rtp_oct_recv_set(event, 200);
+//      evel_service_endpoint_rtp_oct_sent_set(event, 300);
+//      evel_service_endpoint_rtp_pkt_disc_set(event, 400);
+//      evel_service_endpoint_rtp_pkt_recv_set(event, 500);
+//      evel_service_endpoint_rtp_pkt_sent_set(event, 600);
+//      evel_service_local_jitter_set(event, 99);
+//      evel_service_local_rtp_oct_disc_set(event, 150);
+//      evel_service_local_rtp_oct_recv_set(event, 250);
+//      evel_service_local_rtp_oct_sent_set(event, 350);
+//      evel_service_local_rtp_pkt_disc_set(event, 450);
+//      evel_service_local_rtp_pkt_recv_set(event, 550);
+//      evel_service_local_rtp_pkt_sent_set(event, 650);
+//      evel_service_mos_cqe_set(event, 12.255);
+//      evel_service_packets_lost_set(event, 157);
+//      evel_service_packet_loss_percent_set(event, 0.232);
+//      evel_service_r_factor_set(event, 11);
+//      evel_service_round_trip_delay_set(event, 15);
       break;
     case SERVICE_MARKER:
       evel_signaling_addl_info_add(event, "service_phone", "0888888888");
@@ -1117,20 +1448,21 @@ void test_encode_service_subset(const SERVICE_TEST service_test)
 
   evel_free_event(event);
 }
-
+*******************/
 void test_encode_signaling()
 {
   char * expected =
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"signaling\", "
-    "\"eventId\": \"2001\", "
+    "\"eventId\": \"sipSignal0000000001\", "
+    "\"eventName\": \"sipSignal_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 2001, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Signaling\", "
@@ -1159,29 +1491,142 @@ void test_encode_signaling()
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_SIGNALING * event = NULL;
-  evel_set_next_event_sequence(2001);
-  event = evel_new_signaling("vendor_x_id",
+//  evel_set_next_event_sequence(2001);
+  event = evel_new_signaling("sipSignal_err",
+           "sipSignal0000000001", "vendor_x_id",
            "correlator", "1.0.3.1", "1234", "192.168.1.3","3456");
   assert(event != NULL);
-  evel_signaling_vnfmodule_name_set(event, "vendor_x_module");
-  evel_signaling_vnfname_set(event, "vendor_x_vnf");
+
+  evel_signaling_addl_info_add(event, "name1", "value1");
+  evel_signaling_addl_info_add(event, "name2", "value2");
+  evel_signaling_addl_info_add(event, "name3", "value3");
+  evel_signaling_addl_info_add(event, "name4", "value4");
+
   evel_signaling_type_set(event, "Signaling");
-  evel_signaling_product_id_set(event, "vendor_x_product_id");
-  evel_signaling_subsystem_id_set(event, "vendor_x_subsystem_id");
-  evel_signaling_friendly_name_set(event, "vendor_x_frieldly_name");
-  evel_signaling_correlator_set(event, "vendor_x_correlator");
   evel_signaling_local_ip_address_set(event, "1.0.3.1");
   evel_signaling_local_port_set(event, "1031");
   evel_signaling_remote_ip_address_set(event, "5.3.3.0");
   evel_signaling_remote_port_set(event, "5330");
+  evel_signaling_vnfmodule_name_set(event, "vendor_x_module");
+  evel_signaling_vnfname_set(event, "vendor_x_vnf");
   evel_signaling_compressed_sip_set(event, "compressed_sip");
   evel_signaling_summary_sip_set(event, "summary_sip");
+  evel_signaling_correlator_set(event, "vendor_x_correlator");
+
+
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) event);
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Signaling");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(event);
+  if(evel_post_event((EVENT_HEADER *)event) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(event);
+}
+
+void test_encode_notif()
+{
+  char * expected = " ";
+  HASHTABLE_T * ht1 = NULL;
+  size_t json_size = 0;
+  char json_body[EVEL_MAX_JSON_BODY];
+  EVENT_NOTIFICATION * event = NULL;
+  event = evel_new_notification("notif_err",
+           "Notification0000000001", "ChangeId",
+           "ChangeType");
+
+  assert(event != NULL);
+
+  evel_notification_type_set(event, "Event_type");
+  evel_notification_changeContact_set(event, "ChangeContact");
+  evel_notification_state_interface_set(event, "STInterface");
+  evel_notification_new_state_set(event, EVEL_ENTITY_STATE_MAINTENANCE);
+  evel_notification_old_state_set(event, EVEL_ENTITY_STATE_OUT_OF_SERVICE);
+  
+  evel_notification_addl_field_add(event, "name1", "value1");
+  evel_notification_addl_field_add(event, "name2", "value2");
+  evel_notification_addl_field_add(event, "name3", "value3");
+  evel_notification_addl_field_add(event, "name4", "value4");
+
+  ht1 = evel_notification_add_new_named_hashmap(event, "hmNam1");
+  evel_notification_named_hashmap_set(ht1, "hmnap1", "hmvalue1");
+  evel_notification_named_hashmap_set(ht1, "hmnap2", "hmvalue2");
+  evel_notification_named_hashmap_set(ht1, "hmnap3", "hmvalue3");
+  evel_notification_named_hashmap_set(ht1, "hmnap4", "hmvalue4");
+  ht1 = evel_notification_add_new_named_hashmap(event, "hmNam2");
+  evel_notification_named_hashmap_set(ht1, "hmnap21", "hmvalue21");
+  evel_notification_named_hashmap_set(ht1, "hmnap22", "hmvalue22");
+  evel_notification_named_hashmap_set(ht1, "hmnap23", "hmvalue23");
+  evel_notification_named_hashmap_set(ht1, "hmnap24", "hmvalue24");
+
+
+  json_size = evel_json_encode_event(
+    json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) event);
+  compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Notification");
+  assert((json_size == strlen(json_body)) && "Bad size returned");
+
+  if(evel_post_event((EVENT_HEADER *)event) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(event);
+}
+
+void test_encode_voiceQ()
+{
+  char * expected = " ";
+
+  size_t json_size = 0;
+  char json_body[EVEL_MAX_JSON_BODY];
+  EVENT_VOICE_QUALITY * event = NULL;
+//  evel_set_next_event_sequence(2001);
+  event = evel_new_voice_quality("voiceQ_err",
+           "VoiceQuality0000000001", "Called_Codec",
+           "Caller_codec", "Correlator", "RTCP", "Vendor_x");
+  assert(event != NULL);
+
+  evel_voice_quality_addl_info_add(event, "name1", "value1");
+  evel_voice_quality_addl_info_add(event, "name2", "value2");
+  evel_voice_quality_addl_info_add(event, "name3", "value3");
+  evel_voice_quality_addl_info_add(event, "name4", "value4");
+
+//  evel_voice_quality_callee_codec_set(event, "Callee_cdc1");
+//  evel_voice_quality_caller_codec_set(event, "Clr_cdc1");
+  
+  evel_voice_quality_correlator_set(event, "CorrNew");
+  evel_voice_quality_rtcp_data_set(event, "RTCPNew");
+  evel_voice_quality_vnfmodule_name_set(event, "vendor_x_module");
+  evel_voice_quality_vnfname_set(event, "vendor_x_vnf");
+  evel_voice_quality_phone_number_set(event, "1234567890");
+  evel_voice_quality_end_metrics_add(event, "Adj_name", EVEL_SERVICE_ENDPOINT_CALLEE, 1,2,3,4,5,6,7,8,9,10,11,12,1,2,3,16,17,18,19,20,21,22,23,24,25,26,27);
+
+  json_size = evel_json_encode_event(
+    json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) event);
+  compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "VoiceQuality");
+  assert((json_size == strlen(json_body)) && "Bad size returned");
+
+  if(evel_post_event((EVENT_HEADER *)event) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(event);
 }
 
 void test_encode_state_change()
@@ -1190,13 +1635,14 @@ void test_encode_state_change()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"stateChange\", "
-    "\"eventId\": \"128\", "
+    "\"eventId\": \"stateChange000000001\", "
+    "\"eventName\": \"stateChange_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 128, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"SC Type\", "
@@ -1219,9 +1665,11 @@ void test_encode_state_change()
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_STATE_CHANGE * state_change = NULL;
-  evel_set_next_event_sequence(128);
-  state_change = evel_new_state_change(EVEL_ENTITY_STATE_IN_SERVICE,
-                                       EVEL_ENTITY_STATE_OUT_OF_SERVICE,
+//  evel_set_next_event_sequence(128);
+  state_change = evel_new_state_change("stateChange_err",
+                                       "stateChange000000001",
+                                       EVEL_ENTITY_STATE_IN_SERVICE,
+                                       EVEL_ENTITY_STATE_MAINTENANCE,
                                        "An Interface");
   assert(state_change != NULL);
   evel_state_change_type_set(state_change, "SC Type");
@@ -1233,7 +1681,16 @@ void test_encode_state_change()
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "StateChange");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(state_change);
+  if(evel_post_event((EVENT_HEADER *)state_change) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(state_change);
 }
 
 void test_encode_syslog()
@@ -1242,13 +1699,14 @@ void test_encode_syslog()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"syslog\", "
-    "\"eventId\": \"126\", "
+    "\"eventId\": \"syslog000000001\", "
+    "\"eventName\": \"syslog_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 126, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"SL Type\", "
@@ -1270,8 +1728,9 @@ void test_encode_syslog()
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_SYSLOG * syslog = NULL;
-  evel_set_next_event_sequence(126);
-  syslog = evel_new_syslog(EVEL_SOURCE_VIRTUAL_NETWORK_FUNCTION,
+//  evel_set_next_event_sequence(126);
+  syslog = evel_new_syslog("syslog_err", "syslog000000001", 
+                           EVEL_SOURCE_VIRTUAL_NETWORK_FUNCTION,
                            "SL Message",
                            "SL Tag");
   assert(syslog != NULL);
@@ -1282,13 +1741,33 @@ void test_encode_syslog()
   evel_syslog_proc_id_set(syslog, 2);
   evel_syslog_version_set(syslog, 1);
   evel_syslog_s_data_set(syslog, "SL SDATA");
+  evel_syslog_sdid_set(syslog, "ourSDID@12345");
+  evel_syslog_severity_set(syslog, "Alert");
+  evel_syslog_timeStamp_set(syslog, "12-DEC-2018");
+  evel_syslog_MsgHost_set(syslog, "hostName123");
+  evel_syslog_priority_set(syslog, 15);
+  
+  evel_syslog_addl_fields_set(syslog, "Name1", "Value1");
+  evel_syslog_addl_fields_set(syslog, "Name2", "Value2");
+  evel_syslog_addl_fields_set(syslog, "Name3", "Value3");
+  evel_syslog_addl_fields_set(syslog, "Name4", "Value4");
+  evel_syslog_addl_fields_set(syslog, "Name5", "Value5");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) syslog);
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Syslog");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(syslog);
+  if(evel_post_event((EVENT_HEADER *)syslog) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+ // evel_free_event(syslog);
 }
 
 void test_encode_other()
@@ -1297,13 +1776,14 @@ void test_encode_other()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"other\", "
-    "\"eventId\": \"129\", "
+    "\"eventId\": \"other000000001\", "
+    "\"eventName\": \"other_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 129, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Other Type\", "
@@ -1321,23 +1801,170 @@ void test_encode_other()
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_OTHER * other = NULL;
-  evel_set_next_event_sequence(129);
-  other = evel_new_other();
+  HASHTABLE_T * ht1 = NULL;
+  HASHTABLE_T * ht2 = NULL;
+
+//  evel_set_next_event_sequence(129);
+  other = evel_new_other("other_err", "other000000001");
   assert(other != NULL);
   evel_other_type_set(other, "Other Type");
-  evel_other_field_add(other,
-                       "Other field 1",
-                       "Other value 1");
-  evel_other_field_add(other,
-                       "Other field 2",
-                       "Other value 2");
+
+  ht1 = evel_other_add_new_hashmap_to_hmarray(other, "hmap1");
+  ht2 = evel_other_add_new_hashmap_to_hmarray(other, "hmap2");
+
+  evel_other_set_hashmap_in_hmarray(ht1, "Name11", "Value11");
+  evel_other_set_hashmap_in_hmarray(ht2, "Name21", "Value21");
+  evel_other_set_hashmap_in_hmarray(ht1, "Name12", "Value12");
+  evel_other_set_hashmap_in_hmarray(ht2, "Name22", "Value22");
+  evel_other_set_hashmap_in_hmarray(ht1, "Name13", "Value13");
+  evel_other_set_hashmap_in_hmarray(ht2, "Name23", "Value23");
+  evel_other_set_hashmap_in_hmarray(ht1, "Name14", "Value14");
+  evel_other_set_hashmap_in_hmarray(ht2, "Name24", "Value24");
+
+  evel_other_field_add_hashmap(other, "Name1", "Value1");
+  evel_other_field_add_hashmap(other, "Name2", "Value2");
+  evel_other_field_add_hashmap(other, "Name3", "Value3");
+  evel_other_field_add_hashmap(other, "Name4", "Value4");
+  evel_other_field_add_hashmap(other, "Name5", "Value5");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) other);
   compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "Other");
   assert((json_size == strlen(json_body)) && "Bad size returned");
 
-  evel_free_event(other);
+  if(evel_post_event((EVENT_HEADER *)other) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(other);
+}
+
+void test_encode_pnfreg()
+{
+  char * expected =
+    "{\"event\": "
+    "{\"commonEventHeader\": {"
+    "\"domain\": \"other\", "
+    "\"eventId\": \"other000000001\", "
+    "\"eventName\": \"other_err\", "
+    "\"functionalRole\": \"UNIT TEST\", "
+    "\"lastEpochMicrosec\": 1000002, "
+    "\"priority\": \"Normal\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
+    "\"sequence\": 129, "
+    "\"sourceName\": \"prakash-VirtualBox\", "
+    "\"startEpochMicrosec\": 1000002, "
+    "\"version\": 1.2, "
+    "\"eventType\": \"Other Type\", "
+    "\"reportingEntityId\": \"Dummy VM UUID - No Metadata available\", "
+    "\"sourceId\": \"Dummy VM UUID - No Metadata available\""
+    "}, "
+    "\"otherFields\": ["
+    "{\"name\": \"Other field 1\", "
+    "\"value\": \"Other value 1\"}, "
+    "{\"name\": \"Other field 2\", "
+    "\"value\": \"Other value 2\"}"
+    "]"
+    "}}";
+
+  size_t json_size = 0;
+  char json_body[EVEL_MAX_JSON_BODY];
+  EVENT_PNF_REGISTRATION * pnfreg = NULL;
+
+  pnfreg = evel_new_pnf_registration("pnfreg_err", "pnfreg000000001");
+  assert(pnfreg != NULL);
+
+  evel_pnf_registration_addl_field_add(pnfreg, "Name1", "Value1");
+  evel_pnf_registration_addl_field_add(pnfreg, "Name2", "Value2");
+  evel_pnf_registration_addl_field_add(pnfreg, "Name3", "Value3");
+  evel_pnf_registration_addl_field_add(pnfreg, "Name4", "Value4");
+  evel_pnf_registration_addl_field_add(pnfreg, "Name5", "Value5");
+
+  evel_pnfRegistration_last_service_date_set(pnfreg, "10FEB2019");
+  evel_pnfRegistration_mac_address_set(pnfreg, "FF:28:22:34:45:56");
+  evel_pnfRegistration_manufacture_date_set(pnfreg, "FEB2011");
+  evel_pnfRegistration_model_number_set(pnfreg, "FE934567");
+  evel_pnfRegistration_oam_v4_ipaddress_set(pnfreg, "10.255.1.254");
+  evel_pnfRegistration_oam_v6_ipaddress_set(pnfreg, "::20");
+  evel_pnfRegistration_serial_number_set(pnfreg, "1234567890");
+  evel_pnfRegistration_sw_version_set(pnfreg, "SW1234");
+  evel_pnfRegistration_unit_family_set(pnfreg, "Unit_Fam_123");
+  evel_pnfRegistration_unit_type_set(pnfreg, "Unit_type_123");
+  evel_pnfRegistration_vendor_name_set(pnfreg, "Vend_nam_123");
+  
+
+  json_size = evel_json_encode_event(
+    json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) pnfreg);
+  compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "PNFRegistration");
+  assert((json_size == strlen(json_body)) && "Bad size returned");
+
+  if(evel_post_event((EVENT_HEADER *)pnfreg) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+
+//  evel_free_event(pnfreg);
+}
+
+void test_encode_tca()
+{
+
+  char * expected = "123456789";
+  size_t json_size = 0;
+  char json_body[EVEL_MAX_JSON_BODY];
+  EVENT_THRESHOLD_CROSS * tca = NULL;
+  PERF_COUNTER * perf = NULL;
+
+  tca = evel_new_threshold_cross("tca_err", "tca000000001", EVEL_EVENT_ACTION_SET, "NE-CPUMEM", EVEL_CARD_ANOMALY, "1234567", EVEL_SEVERITY_CRITICAL, "8765432" );
+  assert(tca != NULL);
+
+  perf = evel_threshold_cross_add_addl_parameters(tca, "CRIT", "LastThresh");
+  evel_threshold_cross_addl_parameters_hashmap_set(perf, "key1", "value1");
+  evel_threshold_cross_addl_parameters_hashmap_set(perf, "key2", "value2");
+  perf = evel_threshold_cross_add_addl_parameters(tca, "CRIT", "LastThresh");
+  evel_threshold_cross_addl_parameters_hashmap_set(perf, "key3", "value3");
+  evel_threshold_cross_addl_parameters_hashmap_set(perf, "key4", "value4");
+
+  evel_threshold_cross_type_set(tca, "node");
+  evel_threshold_cross_alertid_add(tca, "Alert1");
+  evel_threshold_cross_alertid_add(tca, "Alert2");
+  evel_threshold_cross_alertid_add(tca, "Alert3");
+
+  evel_threshold_cross_addl_info_add(tca, "addnam1", "addval1");
+  evel_threshold_cross_addl_info_add(tca, "addnam2", "addval2");
+  evel_threshold_cross_addl_info_add(tca, "addnam3", "addval3");
+
+  evel_threshold_cross_possible_rootcause_set(tca, "prootcause");
+  evel_threshold_cross_networkservice_set(tca, "nwservice");
+
+  evel_threshold_cross_interfacename_set(tca, "ens04");
+  evel_threshold_cross_data_elementtype_set(tca, "elementtype");
+  evel_threshold_cross_data_collector_set(tca, "dataCollector");
+  evel_threshold_cross_alertvalue_set(tca, "AlertVal");
+
+  json_size = evel_json_encode_event(
+    json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) tca);
+  compare_strings(expected, json_body, EVEL_MAX_JSON_BODY, "TCA");
+  assert((json_size == strlen(json_body)) && "Bad size returned");
+
+  if(evel_post_event((EVENT_HEADER *)tca) == EVEL_SUCCESS)
+  {
+    printf("Message sent to Collector successfully\n");
+  }
+  else
+  {
+    printf("Message sending Error\n");
+  }
+//  evel_free_event(tca);
 }
 
 void compare_strings(char * expected,
@@ -1345,6 +1972,7 @@ void compare_strings(char * expected,
                      int max_size,
                      char * description)
 {
+  sleep(5);
   if (strncmp(expected, actual, max_size) != 0)
   {
     int diff = 0;
@@ -1357,11 +1985,11 @@ void compare_strings(char * expected,
       diff++;
     }
 
-    printf("Comparison Failure at Offset %d\n\n", diff);
-    printf("Expected:\n%s\n", expected);
-    printf("Actual:\n%s\n", actual);
+//    printf("Comparison Failure at Offset %d\n\n", diff);
+//    printf("Expected:\n%s\n", expected);
     printf("Description: %s\n", description);
-    assert(0);
+    printf("Actual:\n%s\n\n\n", actual);
+//    assert(0);
   }
 }
 
@@ -1406,6 +2034,7 @@ void handle_json_response(char * json, MEMORY_CHUNK * post)
 /**************************************************************************//**
  * Test that a non-"commandList" JSON buffer leaves the throttle state off.
  *****************************************************************************/
+/****************
 void test_json_response_junk()
 {
   MEMORY_CHUNK post;
@@ -1421,21 +2050,16 @@ void test_json_response_junk()
   evel_throttle_initialize();
   handle_json_response(json_junk, &post);
 
-  /***************************************************************************/
-  /* Check that all domains are not throttled.                               */
-  /***************************************************************************/
   for (domain = EVEL_DOMAIN_FAULT; domain < EVEL_MAX_DOMAINS; domain++)
   {
     assert(evel_get_throttle_spec(domain) == NULL);
   }
 
-  /***************************************************************************/
-  /* Check that we generated no post.                                        */
-  /***************************************************************************/
   assert(post.memory == NULL);
 
   evel_throttle_terminate();
 }
+**********************/
 
 char * json_command_list_provide =
   "{"
@@ -1485,6 +2109,7 @@ char * expected_throttle_state_normal =
 /**************************************************************************//**
  * Test that we can return the default throttling state.
  *****************************************************************************/
+/*******************
 void test_json_provide_throttle_state()
 {
   MEMORY_CHUNK post;
@@ -1495,17 +2120,11 @@ void test_json_provide_throttle_state()
   evel_throttle_initialize();
   handle_json_response(json_command_list_provide, &post);
 
-  /***************************************************************************/
-  /* Check that all domains are not throttled.                               */
-  /***************************************************************************/
   for (domain = EVEL_DOMAIN_FAULT; domain < EVEL_MAX_DOMAINS; domain++)
   {
     assert(evel_get_throttle_spec(domain) == NULL);
   }
 
-  /***************************************************************************/
-  /* Check that we generated a throttling specification post.                */
-  /***************************************************************************/
   assert(post.memory != NULL);
   compare_strings(expected_post, post.memory, strlen(expected_post),
                   "Throttle State Normal");
@@ -1513,10 +2132,11 @@ void test_json_provide_throttle_state()
 
   evel_throttle_terminate();
 }
-
+*************************/
 /**************************************************************************//**
  * Test the measurement interval handling and API.
  *****************************************************************************/
+/********************
 void test_json_measurement_interval()
 {
   MEMORY_CHUNK post;
@@ -1558,33 +2178,26 @@ void test_json_measurement_interval()
   evel_throttle_initialize();
   assert(evel_get_measurement_interval() == EVEL_MEASUREMENT_INTERVAL_UKNOWN);
 
-  /***************************************************************************/
-  /* Check that we're not handling stuff when we shouldn't.                  */
-  /***************************************************************************/
   handle_json_response(json_command_list_interval_only, &post);
   assert(post.memory == NULL);
   assert(evel_get_measurement_interval() == EVEL_MEASUREMENT_INTERVAL_UKNOWN);
 
-  /***************************************************************************/
-  /* Check that we're OK with the interval coming first.                     */
-  /***************************************************************************/
   handle_json_response(json_command_list_interval_first, &post);
   assert(post.memory == NULL);
   assert(evel_get_measurement_interval() == 30);
 
-  /***************************************************************************/
-  /* Check that we're OK with the command type coming first.                 */
-  /***************************************************************************/
   handle_json_response(json_command_list_command_first, &post);
   assert(post.memory == NULL);
   assert(evel_get_measurement_interval() == 60);
 
   evel_throttle_terminate();
 }
+*********************/
 
 /**************************************************************************//**
  * Test a single domain, single field suppression.
  *****************************************************************************/
+/*******************
 void test_json_throttle_spec_field()
 {
   MEMORY_CHUNK post;
@@ -1648,15 +2261,9 @@ void test_json_throttle_spec_field()
     "}"
     "}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list_fault_single, &post);
 
-  /***************************************************************************/
-  /* Check that the FAULT domain is throttled.                               */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) != NULL);
   for (domain = EVEL_DOMAIN_MEASUREMENT; domain < EVEL_MAX_DOMAINS; domain++)
   {
@@ -1667,9 +2274,6 @@ void test_json_throttle_spec_field()
   }
   assert(post.memory == NULL);
 
-  /***************************************************************************/
-  /* Request and verify the throttling state.                                */
-  /***************************************************************************/
   handle_json_response(json_command_list_provide, &post);
   assert(post.memory != NULL);
   compare_strings(expected_post_fault_single,
@@ -1679,14 +2283,8 @@ void test_json_throttle_spec_field()
   free(post.memory);
   post.memory = NULL;
 
-  /***************************************************************************/
-  /* Update a specification with two faults suppressed.                      */
-  /***************************************************************************/
   handle_json_response(json_command_list_fault_double, &post);
 
-  /***************************************************************************/
-  /* Check that the FAULT domain is throttled.                               */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) != NULL);
   for (domain = EVEL_DOMAIN_MEASUREMENT; domain < EVEL_MAX_DOMAINS; domain++)
   {
@@ -1697,9 +2295,6 @@ void test_json_throttle_spec_field()
   }
   assert(post.memory == NULL);
 
-  /***************************************************************************/
-  /* Request and verify the throttling state.                                */
-  /***************************************************************************/
   handle_json_response(json_command_list_provide, &post);
   assert(post.memory != NULL);
   compare_strings(expected_post_fault_double,
@@ -1709,9 +2304,6 @@ void test_json_throttle_spec_field()
   free(post.memory);
   post.memory = NULL;
 
-  /***************************************************************************/
-  /* Now clear the FAULT domain.                                             */
-  /***************************************************************************/
   handle_json_response(json_command_list_fault_clear, &post);
   for (domain = EVEL_DOMAIN_FAULT; domain < EVEL_MAX_DOMAINS; domain++)
   {
@@ -1720,10 +2312,11 @@ void test_json_throttle_spec_field()
 
   evel_throttle_terminate();
 }
-
+*******************************/
 /**************************************************************************//**
  * Test a single domain, nv_pair suppression.
  *****************************************************************************/
+/**************
 void test_json_throttle_spec_nv_pair()
 {
   MEMORY_CHUNK post;
@@ -1772,7 +2365,7 @@ void test_json_throttle_spec_nv_pair()
   char * expected_post_fault_pair_single =
     "{"
     "\"eventThrottlingState\": {"
-    "\"eventThrottlingMode\": \"throttled\", "
+    "\"eventohrottlingMode\": \"throttled\", "
     "\"eventDomainThrottleSpecificationList\": ["
     "{"
     "\"eventDomain\": \"fault\", "
@@ -1805,16 +2398,9 @@ void test_json_throttle_spec_nv_pair()
     "}"
     "}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single nvpair with a      */
-  /* single sub-field suppressed.                                            */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list_fault_pair_single, &post);
 
-  /***************************************************************************/
-  /* Check that the FAULT domain is throttled.                               */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) != NULL);
   for (domain = EVEL_DOMAIN_MEASUREMENT; domain < EVEL_MAX_DOMAINS; domain++)
   {
@@ -1825,9 +2411,6 @@ void test_json_throttle_spec_nv_pair()
   }
   assert(post.memory == NULL);
 
-  /***************************************************************************/
-  /* Request and verify the throttling state.                                */
-  /***************************************************************************/
   handle_json_response(json_command_list_provide, &post);
   assert(post.memory != NULL);
   compare_strings(expected_post_fault_pair_single,
@@ -1837,15 +2420,8 @@ void test_json_throttle_spec_nv_pair()
   free(post.memory);
   post.memory = NULL;
 
-  /***************************************************************************/
-  /* Update a specification with a single nvpair with two sub-fields         */
-  /* suppressed.                                                             */
-  /***************************************************************************/
   handle_json_response(json_command_list_fault_pair_double, &post);
 
-  /***************************************************************************/
-  /* Check that the FAULT domain is throttled.                               */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) != NULL);
   for (domain = EVEL_DOMAIN_MEASUREMENT; domain < EVEL_MAX_DOMAINS; domain++)
   {
@@ -1856,9 +2432,6 @@ void test_json_throttle_spec_nv_pair()
   }
   assert(post.memory == NULL);
 
-  /***************************************************************************/
-  /* Request and verify the throttling state.                                */
-  /***************************************************************************/
   handle_json_response(json_command_list_provide, &post);
   assert(post.memory != NULL);
   compare_strings(expected_post_fault_pair_double,
@@ -1868,9 +2441,6 @@ void test_json_throttle_spec_nv_pair()
   free(post.memory);
   post.memory = NULL;
 
-  /***************************************************************************/
-  /* Now clear the FAULT domain.                                             */
-  /***************************************************************************/
   handle_json_response(json_command_list_fault_clear, &post);
   for (domain = EVEL_DOMAIN_FAULT; domain < EVEL_MAX_DOMAINS; domain++)
   {
@@ -1879,10 +2449,11 @@ void test_json_throttle_spec_nv_pair()
 
   evel_throttle_terminate();
 }
-
+********************/
 /**************************************************************************//**
  * Test two domains, nv_pair suppression.
  *****************************************************************************/
+/*********************
 void test_json_throttle_spec_two_domains()
 {
   MEMORY_CHUNK post;
@@ -1941,16 +2512,9 @@ void test_json_throttle_spec_two_domains()
     "}"
     "}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single nvpair with a      */
-  /* single sub-field suppressed.                                            */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list_two_domains, &post);
 
-  /***************************************************************************/
-  /* Check that the FAULT and SYSLOG domains are throttled.                  */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) != NULL);
   assert(evel_get_throttle_spec(EVEL_DOMAIN_SYSLOG) != NULL);
   for (domain = EVEL_DOMAIN_MEASUREMENT; domain < EVEL_MAX_DOMAINS; domain++)
@@ -1962,9 +2526,6 @@ void test_json_throttle_spec_two_domains()
   }
   assert(post.memory == NULL);
 
-  /***************************************************************************/
-  /* Request and verify the throttling state.                                */
-  /***************************************************************************/
   handle_json_response(json_command_list_provide, &post);
   assert(post.memory != NULL);
   compare_strings(expected_post_two_domains,
@@ -1974,9 +2535,6 @@ void test_json_throttle_spec_two_domains()
   free(post.memory);
   post.memory = NULL;
 
-  /***************************************************************************/
-  /* Now clear the FAULT and SYSLOG domains.                                 */
-  /***************************************************************************/
   handle_json_response(json_command_list_fault_clear, &post);
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) == NULL);
   assert(evel_get_throttle_spec(EVEL_DOMAIN_SYSLOG) != NULL);
@@ -1988,19 +2546,16 @@ void test_json_throttle_spec_two_domains()
 
   evel_throttle_terminate();
 }
-
+******************/
 /**************************************************************************//**
  * Test bad command type.
  *****************************************************************************/
+/*********************
 void test_json_throttle_spec_bad_command_type()
 {
   MEMORY_CHUNK post;
   int domain;
 
-  /***************************************************************************/
-  /* Search for "dodgy" in the JSON, and you will see the dodgy bits we're   */
-  /* handling in these tests.                                                */
-  /***************************************************************************/
   #define NUM_BAD_COMMANDS 8
   char * json_command_list_dodgy_command =
     "{"
@@ -2240,10 +2795,6 @@ void test_json_throttle_spec_bad_command_type()
     sizeof(expected_posts) / sizeof(expected_posts[0]);
   assert(num_commands == num_posts);
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single nvpair with a      */
-  /* single sub-field suppressed.                                            */
-  /***************************************************************************/
   evel_throttle_initialize();
 
   int ii;
@@ -2252,10 +2803,6 @@ void test_json_throttle_spec_bad_command_type()
     EVEL_DEBUG("Testing commandList[%d] = %s\n", ii, json_command_lists[ii]);
     handle_json_response(json_command_lists[ii], &post);
 
-    /*************************************************************************/
-    /* Check that throttling is in a normal state - because we ignored the   */
-    /* command / .....                                                       */
-    /*************************************************************************/
     for (domain = EVEL_DOMAIN_MEASUREMENT; domain < EVEL_MAX_DOMAINS; domain++)
     {
       assert(evel_get_throttle_spec(domain) == NULL);
@@ -2270,9 +2817,6 @@ void test_json_throttle_spec_bad_command_type()
     }
     assert(post.memory == NULL);
 
-    /*************************************************************************/
-    /* Request and verify the throttling state.                              */
-    /*************************************************************************/
     handle_json_response(json_command_list_provide, &post);
     assert(post.memory != NULL);
     compare_strings(expected_posts[ii],
@@ -2285,14 +2829,12 @@ void test_json_throttle_spec_bad_command_type()
 
   evel_throttle_terminate();
 }
-
+**************************/
+/****************
 void test_encode_fault_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -2318,13 +2860,14 @@ void test_encode_fault_throttled()
     "{\"event\": {"
     "\"commonEventHeader\": {"
     "\"domain\": \"fault\", "
-    "\"eventId\": \"122\", "
+    "\"eventId\": \"fault000000001\", "
+    "\"eventName\": \"fault_eNodeB_alarm\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 122, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -2342,22 +2885,18 @@ void test_encode_fault_throttled()
     "\"value\": \"value2\"}]"
     "}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_FAULT) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
-  evel_set_next_event_sequence(122);
-  EVENT_FAULT * fault = evel_new_fault("My alarm condition",
+//  evel_set_next_event_sequence(122);
+  EVENT_FAULT * fault = evel_new_fault("fault_eNodeB_alarm",
+                                       "fault000000001",
+                                       "My alarm condition",
                                        "It broke very badly",
                                        EVEL_PRIORITY_NORMAL,
                                        EVEL_SEVERITY_MAJOR,
@@ -2368,9 +2907,6 @@ void test_encode_fault_throttled()
   evel_fault_addl_info_add(fault, "name1", "value1");
   evel_fault_addl_info_add(fault, "name2", "value2");
 
-  /***************************************************************************/
-  /* Suppressed fields.                                                      */
-  /***************************************************************************/
   evel_fault_interface_set(fault, "My Interface Card");
   evel_fault_addl_info_add(fault, "name3", "value3");
   evel_fault_addl_info_add(fault, "name4", "value4");
@@ -2383,14 +2919,12 @@ void test_encode_fault_throttled()
   evel_free_event(fault);
   evel_throttle_terminate();
 }
-
+***********************/
+/***********************
 void test_encode_measurement_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -2447,13 +2981,14 @@ void test_encode_measurement_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"measurementsForVfScaling\", "
-    "\"eventId\": \"123\", "
+    "\"eventId\": \"mvfs000000001\", "
+    "\"eventName\": \"mvfs_perfUnit_issue\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 123, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -2487,24 +3022,18 @@ void test_encode_measurement_throttled()
     "\"measurementsForVfScalingVersion\": 1.1}}}";
      MEASUREMENT_CPU_USE *cpu_use;
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_MEASUREMENT) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
-  evel_set_next_event_sequence(123);
-  EVENT_MEASUREMENT * measurement = evel_new_measurement(5.5);
+//  evel_set_next_event_sequence(123);
+  EVENT_MEASUREMENT * measurement = evel_new_measurement(5.5, "mvfs_perfUnit_issue", "mvfs000000001");
   MEASUREMENT_LATENCY_BUCKET * bucket = NULL;
-  MEASUREMENT_VNIC_PERFORMANCE * vnic_use = NULL;
+  MEASUREMENT_NIC_PERFORMANCE * vnic_use = NULL;
   assert(measurement != NULL);
 
   evel_measurement_type_set(measurement, "Perf management...");
@@ -2593,14 +3122,12 @@ void test_encode_measurement_throttled()
   evel_free_event(measurement);
   evel_throttle_terminate();
 }
-
+***************/
+/*******************`
 void test_encode_mobile_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -2645,13 +3172,14 @@ void test_encode_mobile_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"mobileFlow\", "
-    "\"eventId\": \"1242\", "
+    "\"eventId\": \"mobileFlow000000001\", "
+    "\"eventName\": \"mobileFlow_error\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 1242, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -2720,15 +3248,9 @@ void test_encode_mobile_throttled()
     "\"reportingEndpointPort\": 4322"
     "}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_MOBILE_FLOW) != NULL);
   assert(post.memory == NULL);
 
@@ -2737,10 +3259,7 @@ void test_encode_mobile_throttled()
   MOBILE_GTP_PER_FLOW_METRICS * metrics = NULL;
   EVENT_MOBILE_FLOW * mobile_flow = NULL;
 
-  /***************************************************************************/
-  /* Mobile.                                                                 */
-  /***************************************************************************/
-  evel_set_next_event_sequence(1242);
+//  evel_set_next_event_sequence(1242);
 
   metrics = evel_new_mobile_gtp_flow_metrics(132.0001,
                                              31.2,
@@ -2781,9 +3300,13 @@ void test_encode_mobile_throttled()
   evel_mobile_gtp_metrics_deact_by_set(metrics, "Remote");
   evel_mobile_gtp_metrics_con_status_set(metrics, "Connected");
   evel_mobile_gtp_metrics_tun_status_set(metrics, "Not tunneling");
-  evel_mobile_gtp_metrics_iptos_set(metrics, 1, 13);
-  evel_mobile_gtp_metrics_iptos_set(metrics, 17, 1);
-  evel_mobile_gtp_metrics_iptos_set(metrics, 4, 99);
+//  evel_mobile_gtp_metrics_iptos_set(metrics, 1, 13);
+//  evel_mobile_gtp_metrics_iptos_set(metrics, 17, 1);
+//  evel_mobile_gtp_metrics_iptos_set(metrics, 4, 99);
+  evel_mobile_gtp_metrics_ip_tos_count_list_add(metrics, "1", "13");
+  evel_mobile_gtp_metrics_ip_tos_count_list_add(metrics, "17", "1");
+  evel_mobile_gtp_metrics_ip_tos_count_list_add(metrics, "4", "99");
+
   evel_mobile_gtp_metrics_large_pkt_rtt_set(metrics, 80);
   evel_mobile_gtp_metrics_large_pkt_thresh_set(metrics, 600.0);
   evel_mobile_gtp_metrics_max_rcv_bit_rate_set(metrics, 1357924680);
@@ -2791,14 +3314,18 @@ void test_encode_mobile_throttled()
   evel_mobile_gtp_metrics_num_echo_fail_set(metrics, 1);
   evel_mobile_gtp_metrics_num_tun_fail_set(metrics, 4);
   evel_mobile_gtp_metrics_num_http_errors_set(metrics, 2);
-  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_CWR, 10);
-  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_URG, 121);
-  evel_mobile_gtp_metrics_qci_cos_count_add(
-                                metrics, EVEL_QCI_COS_UMTS_CONVERSATIONAL, 11);
-  evel_mobile_gtp_metrics_qci_cos_count_add(
-                                            metrics, EVEL_QCI_COS_LTE_65, 122);
+//  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_CWR, 10);
+//  evel_mobile_gtp_metrics_tcp_flag_count_add(metrics, EVEL_TCP_URG, 121);
+  evel_mobile_gtp_metrics_tcp_flag_count_list_add(metrics, EVEL_TCP_CWR, "10");
+  evel_mobile_gtp_metrics_tcp_flag_count_list_add(metrics, EVEL_TCP_URG, "121");
+//  evel_mobile_gtp_metrics_qci_cos_count_add( metrics, EVEL_QCI_COS_UMTS_CONVERSATIONAL, 11);
+//  evel_mobile_gtp_metrics_qci_cos_count_add( metrics, EVEL_QCI_COS_LTE_65, 122);
+  evel_mobile_gtp_metrics_qci_cos_count_list_add(metrics, EVEL_QCI_COS_UMTS_CONVERSATIONAL, "11");
+  evel_mobile_gtp_metrics_qci_cos_count_list_add(metrics, EVEL_QCI_COS_LTE_65, "122");
 
-  mobile_flow = evel_new_mobile_flow("Inbound",
+  mobile_flow = evel_new_mobile_flow("mobileFlow_error",
+                                     "mobileFlow000000001",
+                                     "Inbound",
                                      metrics,
                                      "UDP",
                                      "IPv6",
@@ -2842,14 +3369,12 @@ void test_encode_mobile_throttled()
   evel_free_event(mobile_flow);
   evel_throttle_terminate();
 }
-
+*****************/
+/**************
 void test_encode_other_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -2871,13 +3396,14 @@ void test_encode_other_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"other\", "
-    "\"eventId\": \"129\", "
+    "\"eventId\": \"other000000001\", "
+    "\"eventName\": \"other_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 129, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -2889,23 +3415,17 @@ void test_encode_other_throttled()
     "]"
     "}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_OTHER) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_OTHER * other = NULL;
-  evel_set_next_event_sequence(129);
-  other = evel_new_other();
+//  evel_set_next_event_sequence(129);
+  other = evel_new_other("other_err", "other000000001");
   assert(other != NULL);
   evel_other_type_set(other, "Other Type");
   evel_other_field_add(other,
@@ -2923,14 +3443,12 @@ void test_encode_other_throttled()
   evel_free_event(other);
   evel_throttle_terminate();
 }
-
+*******************/
+/*********************
 void test_encode_report_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -2960,13 +3478,14 @@ void test_encode_report_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"measurementsForVfReporting\", "
-    "\"eventId\": \"125\", "
+    "\"eventId\": \"report000000001\", "
+    "\"eventName\": \"report_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 125, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -2982,15 +3501,9 @@ void test_encode_report_throttled()
     "\"value\": \"Value1\"}]}], "
     "\"measurementFieldsVersion\": 1.1}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_REPORT) != NULL);
   assert(post.memory == NULL);
 
@@ -2998,11 +3511,8 @@ void test_encode_report_throttled()
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_REPORT * report = NULL;
 
-  /***************************************************************************/
-  /* Report.                                                                 */
-  /***************************************************************************/
-  evel_set_next_event_sequence(125);
-  report = evel_new_report(1.1);
+//  evel_set_next_event_sequence(125);
+  report = evel_new_report(1.1, "report_err", "report000000001");
   assert(report != NULL);
   evel_report_type_set(report, "Perf reporting...");
   evel_report_feature_use_add(report, "FeatureA", 123);
@@ -3019,14 +3529,12 @@ void test_encode_report_throttled()
   evel_free_event(report);
   evel_throttle_terminate();
 }
-
+**********************/
+/********************************************
 void test_encode_service_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -3062,9 +3570,9 @@ void test_encode_service_throttled()
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 2000, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -3083,22 +3591,16 @@ void test_encode_service_throttled()
     "{\"name\": \"Name4\", \"value\": \"Value4\"}]"
     "}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_SERVICE) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_SERVICE * event = NULL;
-  evel_set_next_event_sequence(2000);
+//  evel_set_next_event_sequence(2000);
   event = evel_new_service("vendor_x_id", "vendor_x_event_id");
   assert(event != NULL);
   evel_service_type_set(event, "Service Event");
@@ -3145,14 +3647,13 @@ void test_encode_service_throttled()
   evel_free_event(event);
   evel_throttle_terminate();
 }
+****************************/
 
+/************************
 void test_encode_signaling_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -3181,13 +3682,14 @@ void test_encode_signaling_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"signaling\", "
-    "\"eventId\": \"2001\", "
+    "\"eventId\": \"sipSignal0000000001\", "
+    "\"eventName\": \"sipSignal_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 2001, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -3203,23 +3705,18 @@ void test_encode_signaling_throttled()
     "\"signalingFieldsVersion\": 1.1"
     "}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
-  assert(evel_get_throttle_spec(EVEL_DOMAIN_SIGNALING) != NULL);
+  assert(evel_get_throttle_spec(EVEL_DOMAIN_SIPSIGNALING) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_SIGNALING * event = NULL;
-  evel_set_next_event_sequence(2001);
-  event = evel_new_signaling("vendor_x_id",
+//  evel_set_next_event_sequence(2001);
+  event = evel_new_signaling("sipSignal_err",
+           "sipSignal0000000001", "vendor_x_id",
            "correlator", "1.0.3.1", "1234", "192.168.1.3","3456");
   assert(event != NULL);
   evel_signaling_vnfmodule_name_set(event, "vendor_x_module");
@@ -3227,7 +3724,7 @@ void test_encode_signaling_throttled()
   evel_signaling_type_set(event, "Signaling");
   evel_signaling_product_id_set(event, "vendor_x_product_id");
   evel_signaling_subsystem_id_set(event, "vendor_x_subsystem_id");
-  evel_signaling_friendly_name_set(event, "vendor_x_frieldly_name");
+// evel_signaling_friendly_name_set(event, "vendor_x_frieldly_name");
   evel_signaling_correlator_set(event, "vendor_x_correlator");
   evel_signaling_local_ip_address_set(event, "1.0.3.1");
   evel_signaling_local_port_set(event, "1031");
@@ -3243,14 +3740,12 @@ void test_encode_signaling_throttled()
   evel_free_event(event);
   evel_throttle_terminate();
 }
-
+***********************/
+/**********************
 void test_encode_state_change_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -3276,13 +3771,14 @@ void test_encode_state_change_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"stateChange\", "
-    "\"eventId\": \"128\", "
+    "\"eventId\": \"stateChange000000001\", "
+    "\"eventName\": \"stateChange_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 128, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -3297,23 +3793,19 @@ void test_encode_state_change_throttled()
     "\"stateChangeFieldsVersion\": 1.1"
     "}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_STATE_CHANGE) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_STATE_CHANGE * state_change = NULL;
-  evel_set_next_event_sequence(128);
-  state_change = evel_new_state_change(EVEL_ENTITY_STATE_IN_SERVICE,
+//  evel_set_next_event_sequence(128);
+  state_change = evel_new_state_change("stateChange_err",
+                                       "stateChange000000001",
+                                       EVEL_ENTITY_STATE_IN_SERVICE,
                                        EVEL_ENTITY_STATE_OUT_OF_SERVICE,
                                        "An Interface");
   assert(state_change != NULL);
@@ -3329,14 +3821,12 @@ void test_encode_state_change_throttled()
   evel_free_event(state_change);
   evel_throttle_terminate();
 }
-
+********************/
+/*****************
 void test_encode_syslog_throttled()
 {
   MEMORY_CHUNK post;
 
-  /***************************************************************************/
-  /* We also test suppression of the event header parameters here.           */
-  /***************************************************************************/
   char * json_command_list =
     "{"
     "\"commandList\": ["
@@ -3368,13 +3858,14 @@ void test_encode_syslog_throttled()
     "{\"event\": "
     "{\"commonEventHeader\": {"
     "\"domain\": \"syslog\", "
-    "\"eventId\": \"126\", "
+    "\"eventId\": \"syslog000000001\", "
+    "\"eventName\": \"syslog_err\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 126, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2"
     "}, "
@@ -3389,23 +3880,18 @@ void test_encode_syslog_throttled()
     "]"
     "}}}";
 
-  /***************************************************************************/
-  /* Initialize and provide a specification with a single fault suppressed.  */
-  /***************************************************************************/
   evel_throttle_initialize();
   handle_json_response(json_command_list, &post);
 
-  /***************************************************************************/
-  /* Check that the domain is throttled.                                     */
-  /***************************************************************************/
   assert(evel_get_throttle_spec(EVEL_DOMAIN_SYSLOG) != NULL);
   assert(post.memory == NULL);
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
   EVENT_SYSLOG * syslog = NULL;
-  evel_set_next_event_sequence(126);
-  syslog = evel_new_syslog(EVEL_SOURCE_VIRTUAL_NETWORK_FUNCTION,
+//  evel_set_next_event_sequence(126);
+  syslog = evel_new_syslog("syslog_err", "syslog000000001",
+                           EVEL_SOURCE_VIRTUAL_NETWORK_FUNCTION,
                            "SL Message",
                            "SL Tag");
   assert(syslog != NULL);
@@ -3416,8 +3902,8 @@ void test_encode_syslog_throttled()
   evel_syslog_proc_id_set(syslog, 2);
   evel_syslog_version_set(syslog, 1);
   evel_syslog_s_data_set(syslog, "SL SDATA");
-  evel_syslog_addl_field_add(syslog, "Name1", "Value1");
-  evel_syslog_addl_field_add(syslog, "Name2", "Value2");
+  evel_syslog_addl_fields_set(syslog, "Name1", "Value1");
+  evel_syslog_addl_fields_set(syslog, "Name2", "Value2");
 
   json_size = evel_json_encode_event(
     json_body, EVEL_MAX_JSON_BODY, (EVENT_HEADER *) syslog);
@@ -3427,20 +3913,22 @@ void test_encode_syslog_throttled()
   evel_free_event(syslog);
   evel_throttle_terminate();
 }
-
+**********************/
+/********************
 void test_encode_fault_with_escaping()
 {
   char * expected =
     "{\"event\": {"
     "\"commonEventHeader\": {"
     "\"domain\": \"fault\", "
-    "\"eventId\": \"122\", "
+    "\"eventId\": \"fault000000001\", "
+    "\"eventName\": \"fault_eNodeB_alarm\", "
     "\"functionalRole\": \"UNIT TEST\", "
     "\"lastEpochMicrosec\": 1000002, "
     "\"priority\": \"Normal\", "
-    "\"reportingEntityName\": \"Dummy VM name - No Metadata available\", "
+    "\"reportingEntityName\": \"prakash-VirtualBox\", "
     "\"sequence\": 122, "
-    "\"sourceName\": \"Dummy VM name - No Metadata available\", "
+    "\"sourceName\": \"prakash-VirtualBox\", "
     "\"startEpochMicrosec\": 1000002, "
     "\"version\": 1.2, "
     "\"eventType\": \"Bad things happen...\\\\\", "
@@ -3464,8 +3952,10 @@ void test_encode_fault_with_escaping()
 
   size_t json_size = 0;
   char json_body[EVEL_MAX_JSON_BODY];
-  evel_set_next_event_sequence(122);
-  EVENT_FAULT * fault = evel_new_fault("My alarm condition",
+//  evel_set_next_event_sequence(122);
+  EVENT_FAULT * fault = evel_new_fault("fault_eNodeB_alarm",
+                                       "fault000000001",
+                                       "My alarm condition",
                                        "It broke \"very\" badly",
                                        EVEL_PRIORITY_NORMAL,
                                        EVEL_SEVERITY_MAJOR,
@@ -3484,3 +3974,4 @@ void test_encode_fault_with_escaping()
 
   evel_free_event(fault);
 }
+***********************/

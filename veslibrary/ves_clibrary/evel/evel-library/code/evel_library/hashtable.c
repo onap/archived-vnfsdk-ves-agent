@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "hashtable.h"
+#include "evel.h"
 
 /**************************************************************************//**
  * Hashtable initialization.
@@ -42,22 +43,28 @@
  * @returns Hashtable pointer
 ******************************************************************************/
 /* Create a new hashtable. */
-HASHTABLE_T *ht_create( size_t size ) {
+HASHTABLE_T *ht_sizecreate( size_t size ) {
 
-	HASHTABLE_T *hashtable = NULL;
+	HASHTABLE_T *hashtable=NULL;
 	size_t i;
 
-	if( size < 1 ) return NULL;
+	assert( size >= 1 );
 
 	/* Allocate the table itself. */
-	if( ( hashtable = malloc( sizeof( HASHTABLE_T ) ) ) == NULL ) {
+	if( ( hashtable = malloc( sizeof( *hashtable ) ) ) == NULL ) {
+	       assert( hashtable != NULL );
 		return NULL;
 	}
+
+        memset(hashtable, 0, sizeof(*hashtable));
+
+        hashtable->n = 0;
 
 	/* Allocate pointers to the head nodes. */
 	if( ( hashtable->table = malloc( sizeof( ENTRY_T * ) * size ) ) == NULL ) {
 		return NULL;
 	}
+
 	for( i = 0; i < size; i++ ) {
 		hashtable->table[i] = NULL;
 	}
@@ -65,6 +72,34 @@ HASHTABLE_T *ht_create( size_t size ) {
 	hashtable->size = size;
 
 	return hashtable;	
+}
+
+/**************************************************************************//**
+ * Hashtable initialization.
+ *
+ * Initialize hashtable default finction
+ * @returns Hashtable
+******************************************************************************/
+HASHTABLE_T *ht_create(void)
+{
+   return  ht_sizecreate( INITIAL_SIZE );
+}
+
+/**************************************************************************//**
+ * Named Hashtable initialization.
+ *
+ * Initialize hashtable default finction
+ * @returns Hashtable
+******************************************************************************/
+HASHTABLE_T *nht_create(char * hashtable_name)
+{
+   HASHTABLE_T *hashtable=NULL;
+   hashtable = ht_sizecreate( INITIAL_SIZE );
+   if (hashtable != NULL)
+   {
+     hashtable->hmName = hashtable_name;
+   }
+   return (hashtable);
 }
 
 /**************************************************************************//**
@@ -106,7 +141,7 @@ size_t ht_hash( HASHTABLE_T *hashtable, char *key )
 ******************************************************************************/
 ENTRY_T *ht_newpair( char *key, void *value )
 {
-	ENTRY_T *newpair;
+	ENTRY_T *newpair = NULL;
 
 	if( ( newpair = malloc( sizeof( ENTRY_T ) ) ) == NULL ) {
 		return NULL;
@@ -116,7 +151,7 @@ ENTRY_T *ht_newpair( char *key, void *value )
 		return NULL;
 	}
 
-	if( ( newpair->value =  value ) == NULL ) {
+	if( ( newpair->value = strdup( value )) == NULL ) {
 		return NULL;
 	}
 
@@ -126,6 +161,46 @@ ENTRY_T *ht_newpair( char *key, void *value )
 }
 
 /**************************************************************************//**
+ * Grow hash table to bigger size
+ *
+ * @param   key     key string
+ * @param   value   value string
+ *
+ * @returns hashtable entry
+******************************************************************************/
+static void ht_growtable(HASHTABLE_T *d)
+{
+     HASHTABLE_T * d2;            /* new dictionary we'll create */
+     HASHTABLE_T swap;
+     size_t i;
+     ENTRY_T *e;
+
+     d2 = ht_sizecreate(d->size * GROWTH_FACTOR);
+
+     if (d->hmName != NULL)
+     {
+        d2->hmName = strdup (d->hmName);
+     } 
+
+     for(i = 0; i < d->size; i++) {
+          for(e = d->table[i]; e != 0; e = e->next) {
+              /* note: this recopies everything */
+              ht_insert(d2, e->key, e->value);
+          }
+     }
+ 
+     /* the hideous part */
+     /* We'll swap the guts of d and d2 */
+     /* then call Destroy on d2 */
+     swap = *d;
+     *d = *d2;
+     *d2 = swap;
+  
+     ht_destroy(d2);
+}
+
+
+/**************************************************************************//**
  * Insert a key-value pair into a hash table.
  *
  * @param   key     key string
@@ -133,7 +208,7 @@ ENTRY_T *ht_newpair( char *key, void *value )
  *
  * @returns Nothing
 ******************************************************************************/
-void ht_set( HASHTABLE_T *hashtable, char *key, void *value ) {
+void ht_insert( HASHTABLE_T *hashtable, char *key, void *value ) {
 	size_t bin = 0;
 	ENTRY_T *newpair = NULL;
 	ENTRY_T *next = NULL;
@@ -152,7 +227,8 @@ void ht_set( HASHTABLE_T *hashtable, char *key, void *value ) {
 	if( next != NULL && next->key != NULL && strcmp( key, next->key ) == 0 ) {
 
 		free( next->value );
-		next->value = value ;
+		next->value = strdup( value ) ;
+	        EVEL_WARN("Duplicate key entries in Hashtable.Overwritten");
 
 	/* Nope, could't find it.  Time to grow a pair. */
 	} else {
@@ -162,7 +238,6 @@ void ht_set( HASHTABLE_T *hashtable, char *key, void *value ) {
 		if( next == hashtable->table[ bin ] ) {
 			newpair->next = next;
 			hashtable->table[ bin ] = newpair;
-	
 		/* We're at the end of the linked list in this bin. */
 		} else if ( next == NULL ) {
 			last->next = newpair;
@@ -172,6 +247,12 @@ void ht_set( HASHTABLE_T *hashtable, char *key, void *value ) {
 			newpair->next = next;
 			last->next = newpair;
 		}
+                hashtable->n++;
+
+                if( hashtable->n >= (hashtable->size*MAX_LOAD_FACTOR))
+                {
+                   ht_growtable(hashtable);
+                }
 	}
 }
 
@@ -182,7 +263,7 @@ void ht_set( HASHTABLE_T *hashtable, char *key, void *value ) {
  *
  * @returns  value string
 ******************************************************************************/
-void *ht_get( HASHTABLE_T *hashtable, char *key ) {
+void *ht_search( HASHTABLE_T *hashtable, char *key ) {
 	size_t bin = 0;
 	ENTRY_T *pair;
 
@@ -204,21 +285,33 @@ void *ht_get( HASHTABLE_T *hashtable, char *key ) {
 	
 }
 
-/*
-int main( int argc, char **argv ) {
 
-	HASHTABLE_T *hashtable = ht_create( 65536 );
+/**************************************************************************//**
+ * Hashtable destroy
+ *
+******************************************************************************/
+void ht_destroy(HASHTABLE_T *d)
+{
+     size_t i;
+     ENTRY_T *e;
+     ENTRY_T *next;
+ 
+     for(i = 0; i < d->size; i++) {
+         for(e = d->table[i]; e != NULL; e = next) {
+           next = e->next;
+ 
+           free(e->key);
+           free(e->value);
+           free(e);
+         }
+     }
 
-	ht_set( hashtable, "key1", "inky" );
-	ht_set( hashtable, "key2", "pinky" );
-	ht_set( hashtable, "key3", "blinky" );
-	ht_set( hashtable, "key4", "floyd" );
+     free(d->table);
+     if (d->hmName != NULL)
+     {
+       free(d->hmName);
+     }
+     free(d);
 
-	printf( "%s\n", ht_get( hashtable, "key1" ) );
-	printf( "%s\n", ht_get( hashtable, "key2" ) );
-	printf( "%s\n", ht_get( hashtable, "key3" ) );
-	printf( "%s\n", ht_get( hashtable, "key4" ) );
-
-	return 0;
 }
-*/
+

@@ -129,6 +129,113 @@ void evel_force_option_string(EVEL_OPTION_STRING * const option,
 
   EVEL_EXIT();
 }
+/**************************************************************************//**
+ * Initialize an ::EVEL_OPTION_STATE to a not-set state.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_INT.
+ *****************************************************************************/
+void evel_init_option_state(EVEL_OPTION_STATE * const option)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(option != NULL);
+
+  option->state = 0;
+  option->is_set = EVEL_FALSE;
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Initialize an ::EVEL_OPTION_OP_STATE to a not-set state.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_INT.
+ *****************************************************************************/
+void evel_init_option_op_state(EVEL_OPTION_OP_STATE * const option)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(option != NULL);
+
+  option->state = 0;
+  option->is_set = EVEL_FALSE;
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the value of an ::EVEL_OPTION_STATE.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_STATE.
+ * @param value         The value to set.
+ * @param description   Description to be used in logging.
+ *****************************************************************************/
+void evel_set_option_state(EVEL_OPTION_STATE * const option,
+                         const int value,
+                         const char * const description)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(option != NULL);
+  assert(description != NULL);
+
+  if (option->is_set)
+  {
+    EVEL_ERROR("Ignoring attempt to update %s to %d. %s already set to %d",
+               description, value, description, option->state);
+  }
+  else
+  {
+    EVEL_DEBUG("Setting %s to %d", description, value);
+    option->state = value;
+    option->is_set = EVEL_TRUE;
+  }
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the value of an ::EVEL_OPTION_OP_STATE.
+ *
+ * @param option        Pointer to the ::EVEL_OPTION_OP_STATE.
+ * @param value         The value to set.
+ * @param description   Description to be used in logging.
+ *****************************************************************************/
+void evel_set_option_op_state(EVEL_OPTION_OP_STATE * const option,
+                         const int value,
+                         const char * const description)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(option != NULL);
+  assert(description != NULL);
+
+  if (option->is_set)
+  {
+    EVEL_ERROR("Ignoring attempt to update %s to %d. %s already set to %d",
+               description, value, description, option->state);
+  }
+  else
+  {
+    EVEL_DEBUG("Setting %s to %d", description, value);
+    option->state = value;
+    option->is_set = EVEL_TRUE;
+  }
+
+  EVEL_EXIT();
+}
 
 /**************************************************************************//**
  * Initialize an ::EVEL_OPTION_INT to a not-set state.
@@ -380,8 +487,8 @@ void evel_init_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option)
  * @param option        Pointer to the ::EVEL_OPTION_INTHEADER_FIELDS.
  * @param value         The value to set.
  *****************************************************************************/
-void evel_force_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
-                           const void* value)
+void evel_force_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * option,
+                           void* value)
 {
   EVEL_ENTER();
 
@@ -403,8 +510,8 @@ void evel_force_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
  * @param value         The value to set.
  * @param description   Description to be used in logging.
  *****************************************************************************/
-void evel_set_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * const option,
-                         const void * value,
+void evel_set_option_intheader(EVEL_OPTION_INTHEADER_FIELDS * option,
+                         void * value,
                          const char * const description)
 {
   EVEL_ENTER();

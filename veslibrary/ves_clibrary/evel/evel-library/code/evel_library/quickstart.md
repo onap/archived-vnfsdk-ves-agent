@@ -253,16 +253,30 @@ point the `evel_initialize()` function is called:
 ```C
   #include "evel.h"
   ...
-  if (evel_initialize(api_fqdn,
-                      api_port,
-                      api_path,
-                      api_topic,
-                      api_secure,
-                      "Alice",
-                      "This isn't very secure!",
-                      EVEL_SOURCE_VIRTUAL_MACHINE,
-                      "EVEL demo client",
-                      verbose_mode))
+  if(evel_initialize(fqdn,                         /* FQDN                  */
+                     port,                         /* Port                  */
+                     NULL,                         /* Backup FQDN           */
+                     0,                            /* Backup port           */
+                     NULL,                         /* optional path         */
+                     NULL,                         /* optional topic        */
+                     100,                          /* Ring Buffer size      */
+                     0,                            /* HTTPS?                */
+                     0,                            /* active mode?          */
+                     NULL,                         /* cert file             */
+                     NULL,                         /* key  file             */
+                     NULL,                         /* ca   info             */
+                     NULL,                         /* ca   file             */
+                     0,                            /* verify peer           */
+                     0,                            /* verify host           */
+                     "",                           /* Username              */
+                     "",                           /* Password              */
+                     "",                           /* Username2             */
+                     "",                           /* Password2             */
+                     NULL,                         /* Source ip             */
+                     NULL,                         /* Source ip2            */
+                     EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
+                     "EVEL demo client",           /* Role                  */
+                     verbose_mode))                /* Verbosity             */
   {
     fprintf(stderr, "Failed to initialize the EVEL library!!!");
     exit(-1);
@@ -303,10 +317,15 @@ In practice this looks like:
   /***************************************************************************/
   /* Create a new Fault object, setting mandatory fields as we do so...      */
   /***************************************************************************/
-  fault = evel_new_fault("My alarm condition",
+  fault = evel_new_fault("fault_eNodeB_alarm",
+                         "fault000000001",
+                         "My alarm condition",
                          "It broke very badly",
                          EVEL_PRIORITY_NORMAL,
-                         EVEL_SEVERITY_MAJOR);
+                         EVEL_SEVERITY_MAJOR,
+                         EVEL_SOURCE_HOST,
+                         EVEL_VF_STATUS_READY_TERMINATE);
+
   if (fault != NULL)
   {
     /*************************************************************************/
@@ -316,7 +335,8 @@ In practice this looks like:
     evel_fault_interface_set(fault, "My Interface Card");
     evel_fault_addl_info_add(fault, "name1", "value1");
     evel_fault_addl_info_add(fault, "name2", "value2");
-    
+    evel_fault_category_set(fault, "link");
+  
     /*************************************************************************/
     /* Finally, post the Fault.  In practice this will only ever fail if     */
     /* local ring-buffer is full because of event overload.                  */
@@ -339,15 +359,11 @@ The _EVEL Library_ supports the following types of events:
       
   2.  Measurements
   
-      These represent the **measurementsForVfScaling** domain in the event
-      schema.
+      These represent the **measurement** domain in the event schema.
       
-  3.  Reports
+  3.  Notification
   
-      This is an experimental type, designed to allow VNFs to report 
-      application-level statistics unencumbered with platform measurements.
-      The formal AT&T schema has been updated to include this experimental
-      type as **measurementsForVfReporting**. 
+      These represent the **notification** domain in the event schema.
 
   4.  Mobile Flow
 
@@ -357,13 +373,13 @@ The _EVEL Library_ supports the following types of events:
 
       These represent the **other** domain in the event schema.
 
-  6.  Service Events
+  6.  PNF Registration
 
-      These represent the **serviceEvents** domain in the event schema.
+      These represent the **pnfRegistration** domain in the event schema.
 
-  7.  Signaling
+  7.  SIP Signaling
 
-      These represent the **signaling** domain in the event schema.
+      These represent the **sipSignaling** domain in the event schema.
 
   8.  State Change
 
@@ -373,26 +389,14 @@ The _EVEL Library_ supports the following types of events:
 
       These represent the **syslog** domain in the event schema.
 
-### Throttling {#qs_throttling}
+  10. Threshold Crossing Alert
 
-The _EVEL library_ supports the following command types as defined in the JSON API:
+      These represent the **thresholdCrossingAlert** domain in the event schema.
 
-  1.  commandType: throttlingSpecification
+  11.  Voice Quality
 
-    This is handled internally by the EVEL library, which stores the provided
-    throttling specification internally and applies it to all subsequent events.
+      These represent the **voiceQuality** domain in the event schema.
 
-  2. commandType: provideThrottlingState
-
-    This is handled internally by the EVEL library, which returns the current
-    throttling specification for each domain.
-
-  3. commandType: measurementIntervalChange
-
-    This is handled by the EVEL library, which makes the latest measurement
-    interval available via the ::evel_get_measurement_interval function.
-    The application is responsible for checking and adhering to the latest
-    provided interval.
 
 ### Termination {#qs_termination}
 

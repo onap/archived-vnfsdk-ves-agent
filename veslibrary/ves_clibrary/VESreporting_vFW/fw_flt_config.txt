@@ -1,0 +1,3 @@
+eventName Fault_vFirewall-AT&T_linkDownError
+faultCheckInterval 30
+lowWaterMark 100

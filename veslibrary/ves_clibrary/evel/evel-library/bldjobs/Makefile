@@ -29,6 +29,7 @@ ARCH=$(shell getconf LONG_BIT)
 CODE_ROOT=$(CURDIR)/..
 EVELLIB_ROOT=$(CODE_ROOT)/code/evel_library
 EVELUNIT_ROOT=$(CODE_ROOT)/code/evel_unit
+EVELTRAINING_ROOT=$(CODE_ROOT)/code
 LIBS_DIR=$(CODE_ROOT)/libs/x86_$(ARCH)
 OUTPUT_DIR=$(CODE_ROOT)/output/x86_$(ARCH)
 DOCS_ROOT=$(CODE_ROOT)/docs
@@ -80,7 +81,7 @@ DOCS_SERVER_PATH=/var/www/html/evel
 
 #******************************************************************************
 # Implicit rule to make dependency files.  Recipe copied from Gnu docs at:    *
-# https://www.gnu.org/software/make/manual/html_node/Automatic-Prerequisites.html                                      *
+# https://www.gnu.org/software/make/manual/html_node/Automatic-Prerequisites.html *
 #******************************************************************************
 %.d: %.c
 	@echo Making dependency file $(notdir $@) for $(notdir $<)
@@ -104,14 +105,13 @@ DOCS_SERVER_PATH=/var/www/html/evel
 	$(JAVA) -jar $(PLANTUML) $(PLANTFLAGS) $<
 
 all:     api_library \
+         vnf_reporting
 
 clean:   api_library_clean \
-         evel_unit_clean \
+         vnf_reporting_clean \
+         evel_unit_clean
 
-install: api_library
-	@echo Copying $(LIBS_DIR)/libevel.so
-	sudo cp $(LIBS_DIR)/libevel.so /usr/lib
-	sudo ldconfig -n -v /usr/lib
+install: evel_install_centos evel_install_ubuntu
 
 test: evel_test_centos evel_test_ubuntu
 
@@ -126,7 +126,6 @@ API_SOURCES=$(EVELLIB_ROOT)/evel.c \
             $(EVELLIB_ROOT)/ring_buffer.c \
             $(EVELLIB_ROOT)/double_list.c \
             $(EVELLIB_ROOT)/hashtable.c \
-            $(EVELLIB_ROOT)/evel_batch.c \
             $(EVELLIB_ROOT)/evel_event.c \
             $(EVELLIB_ROOT)/evel_fault.c \
             $(EVELLIB_ROOT)/evel_mobile_flow.c \
@@ -139,6 +138,8 @@ API_SOURCES=$(EVELLIB_ROOT)/evel.c \
             $(EVELLIB_ROOT)/evel_sipsignaling.c \
             $(EVELLIB_ROOT)/evel_scaling_measurement.c \
             $(EVELLIB_ROOT)/evel_state_change.c \
+            $(EVELLIB_ROOT)/evel_notification.c \
+            $(EVELLIB_ROOT)/evel_pnf_registration.c \
             $(EVELLIB_ROOT)/evel_strings.c \
             $(EVELLIB_ROOT)/evel_syslog.c \
             $(EVELLIB_ROOT)/evel_throttle.c \
@@ -147,6 +148,7 @@ API_SOURCES=$(EVELLIB_ROOT)/evel.c \
             $(EVELLIB_ROOT)/evel_threshold_cross.c \
             $(EVELLIB_ROOT)/evel_voicequality.c \
             $(EVELLIB_ROOT)/evel_logging.c \
+            $(EVELLIB_ROOT)/evel_batch.c \
             $(EVELLIB_ROOT)/jsmn.c
 API_OBJECTS=$(API_SOURCES:.c=.o)
 -include $(API_SOURCES:.c=.d)
@@ -194,6 +196,17 @@ evel_unit_clean:
 	@$(RM) $(UNIT_OBJECTS)
 	@$(RM) $(EVELLIB_ROOT)/*.d
 	@$(RM) $(EVELUNIT_ROOT)/*.d
+
+#******************************************************************************
+# Build the VNF VES Reporting code                                            *
+#******************************************************************************
+vnf_reporting:
+	@echo   Making VNF Reporting
+	@$(MAKE) -s -C $(EVELTRAINING_ROOT)/VESreporting
+
+vnf_reporting_clean:
+	@echo   Cleaning VNF Reporting
+	@$(RM) $(EVELTRAINING_ROOT)/VESreporting/vpp_measurement_reporter
 
 #******************************************************************************
 # Copy the EVEL demo onto the CentOS testbed as a package and build it.       *

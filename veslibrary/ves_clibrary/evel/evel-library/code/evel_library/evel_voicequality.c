@@ -57,9 +57,9 @@ EVENT_VOICE_QUALITY * evel_new_voice_quality(const char* ev_name, const char *ev
     EVENT_VOICE_QUALITY *voiceQuality = NULL;
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+    /**************************************************************************/
+    /* Check preconditions.                                                   */
+    /**************************************************************************/
     assert(calleeSideCodec != NULL);
     assert(callerSideCodec != NULL);
     assert(correlator != NULL);
@@ -82,10 +82,10 @@ EVENT_VOICE_QUALITY * evel_new_voice_quality(const char* ev_name, const char *ev
         memset(voiceQuality, 0, sizeof(EVENT_VOICE_QUALITY));
         EVEL_DEBUG("New Voice Quality is at %lp", voiceQuality);
 
-        /***************************************************************************/
-        /* Initialize the header & the fault fields.  Optional integer values are   */
-        /* initialized as 0.                                                        */
-        /***************************************************************************/
+  /***************************************************************************/
+  /* Initialize the header & the fault fields. Optional integer values are   */
+  /* initialized as 0.                                                       */
+  /***************************************************************************/
         evel_init_header_nameid(&voiceQuality->header,ev_name,ev_id);
         voiceQuality->header.event_domain = EVEL_DOMAIN_VOICE_QUALITY;
         voiceQuality->major_version = EVEL_VOICEQ_MAJOR_VERSION;
@@ -96,7 +96,7 @@ EVENT_VOICE_QUALITY * evel_new_voice_quality(const char* ev_name, const char *ev
         voiceQuality->correlator = strdup(correlator);
         voiceQuality->midCallRtcp = strdup(midCallRtcp);
         evel_init_vendor_field(&voiceQuality->vendorVnfNameFields, vendorName);
-        dlist_initialize(&voiceQuality->additionalInformation);
+        voiceQuality->additionalInformation = ht_create();
         voiceQuality->endOfCallVqmSummaries = NULL;
         evel_init_option_string(&voiceQuality->phoneNumber);
     }
@@ -122,27 +122,26 @@ EVENT_VOICE_QUALITY * evel_new_voice_quality(const char* ev_name, const char *ev
  *                  returns.
  *****************************************************************************/
 void evel_voice_quality_addl_info_add(EVENT_VOICE_QUALITY * voiceQ, char * name, char * value) {
-    VOICE_QUALITY_ADDL_INFO * addlInfo = NULL;
+
+    char *nam=NULL;
+    char *val=NULL;
+
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQ != NULL);
     assert(voiceQ->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(name != NULL);
     assert(value != NULL);
 
     EVEL_DEBUG("Adding name=%s value=%s", name, value);
-    addlInfo = malloc(sizeof(VOICE_QUALITY_ADDL_INFO));
-    assert(addlInfo != NULL);
-    memset(addlInfo, 0, sizeof(VOICE_QUALITY_ADDL_INFO));
-    addlInfo->name = strdup(name);
-    addlInfo->value = strdup(value);
-    assert(addlInfo->name != NULL);
-    assert(addlInfo->value != NULL);
 
-    dlist_push_last(&voiceQ->additionalInformation, addlInfo);
+    nam = strdup(name);
+    val = strdup(value);
+
+    ht_insert(voiceQ->additionalInformation, nam, val);
 
     EVEL_EXIT();
 }
@@ -164,9 +163,9 @@ void evel_voice_quality_callee_codec_set(EVENT_VOICE_QUALITY * voiceQuality,
     const char * const calleeCodecForCall) {
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(calleeCodecForCall != NULL);
@@ -193,9 +192,9 @@ void evel_voice_quality_caller_codec_set(EVENT_VOICE_QUALITY * voiceQuality,
     const char * const callerCodecForCall) {
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(callerCodecForCall != NULL);
@@ -222,9 +221,9 @@ void evel_voice_quality_correlator_set(EVENT_VOICE_QUALITY * voiceQuality,
     const char * const vCorrelator) {
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(vCorrelator != NULL);
@@ -251,9 +250,9 @@ void evel_voice_quality_rtcp_data_set(EVENT_VOICE_QUALITY * voiceQuality,
     const char * const rtcpCallData) {
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(rtcpCallData != NULL);
@@ -277,12 +276,13 @@ void evel_voice_quality_rtcp_data_set(EVENT_VOICE_QUALITY * voiceQuality,
  *                                  returns.
  *****************************************************************************/
 void evel_voice_quality_vnfmodule_name_set(EVENT_VOICE_QUALITY * voiceQuality,
-    const char * const module_name) {
+    const char * const module_name) 
+{
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(module_name != NULL);
@@ -306,12 +306,13 @@ void evel_voice_quality_vnfmodule_name_set(EVENT_VOICE_QUALITY * voiceQuality,
  *                                  returns.
  *****************************************************************************/
 void evel_voice_quality_vnfname_set(EVENT_VOICE_QUALITY * voiceQuality,
-    const char * const vnfname) {
+    const char * const vnfname) 
+{
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(vnfname != NULL);
@@ -335,12 +336,13 @@ void evel_voice_quality_vnfname_set(EVENT_VOICE_QUALITY * voiceQuality,
  *                                  returns.
  *****************************************************************************/
 void evel_voice_quality_phone_number_set(EVENT_VOICE_QUALITY * voiceQuality,
-    const char * const phoneNumber) {
+    const char * const phoneNumber) 
+{
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check preconditions.                                                    */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Check preconditions.                                                    */
+   /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(phoneNumber != NULL);
@@ -360,14 +362,14 @@ void evel_voice_quality_phone_number_set(EVENT_VOICE_QUALITY * voiceQuality,
  * @param voiceQuality     Pointer to the measurement.
  * @param adjacencyName                     Adjacency name
  * @param endpointDescription               Enumeration: ‘Caller’, ‘Callee’.
- * @param endpointJitter                    Endpoint jitter
+ * @param localRtpOctetsLost                Local RTP Octets Lost
  * @param endpointRtpOctetsDiscarded        Endpoint RTP octets discarded.
  * @param endpointRtpOctetsReceived         Endpoint RTP octets received.
  * @param endpointRtpOctetsSent             Endpoint RTP octets sent
  * @param endpointRtpPacketsDiscarded       Endpoint RTP packets discarded.
  * @param endpointRtpPacketsReceived        Endpoint RTP packets received.
  * @param endpointRtpPacketsSent            Endpoint RTP packets sent.
- * @param localJitter                       Local jitter.
+ * @param localMaxJitterBufferDelay         Local max jitter buffer Delay.
  * @param localRtpOctetsDiscarded           Local RTP octets discarded.
  * @param localRtpOctetsReceived            Local RTP octets received.
  * @param localRtpOctetsSent                Local RTP octets sent.
@@ -376,21 +378,29 @@ void evel_voice_quality_phone_number_set(EVENT_VOICE_QUALITY * voiceQuality,
  * @param localRtpPacketsSent               Local RTP packets sent.
  * @param mosCqe                            Decimal range from 1 to 5
  *                                          (1 decimal place)
- * @param packetsLost                       No  Packets lost
+ * @param localRtpPacketsLost               Local RTP Packets lost
  * @param packetLossPercent                 Calculated percentage packet loss 
  * @param rFactor                           rFactor from 0 to 100
  * @param roundTripDelay                    Round trip delay in milliseconds
+ * @param endpointAverageJitter            Endpoint average jitter
+ * @param endpointMaxJitter		    Endpoint maximum jitter
+ * @param endpointRtpOctetsLost            Endpoint RTP octets lost
+ * @param endpointRtpPacketsLost           Endpoint RTP packets lost
+ * @param localAverageJitter               Local average jitter
+ * @param localAverageJitterBufferDelay    Local average jitter buffer delay
+ * @param localMaxJitter                   Local maximum jitter
+ * @param oneWayDelay                      one-way path delay in milliseconds
  *****************************************************************************/
 void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
     const char * adjacencyName, EVEL_SERVICE_ENDPOINT_DESC endpointDescription,
-    int endpointJitter,
+    int localRtpOctetsLost,
     int endpointRtpOctetsDiscarded,
     int endpointRtpOctetsReceived,
     int endpointRtpOctetsSent,
     int endpointRtpPacketsDiscarded,
     int endpointRtpPacketsReceived,
     int endpointRtpPacketsSent,
-    int localJitter,
+    int localMaxJitterBufferDelay,
     int localRtpOctetsDiscarded,
     int localRtpOctetsReceived,
     int localRtpOctetsSent,
@@ -398,17 +408,26 @@ void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
     int localRtpPacketsReceived,
     int localRtpPacketsSent,
     int mosCqe,
-    int packetsLost,
+    int localRtpPacketsLost,
     int packetLossPercent,
     int rFactor,
-    int roundTripDelay) {
+    int roundTripDelay,
+    int endpointAverageJitter,
+    int endpointMaxJitter,
+    int endpointRtpOctetsLost,
+    int endpointRtpPacketsLost,
+    int localAverageJitter,
+    int localAverageJitterBufferDelay,
+    int localMaxJitter,
+    int oneWayDelay) 
+{
     
     END_OF_CALL_VOICE_QUALITY_METRICS * vQMetrices = NULL;
     EVEL_ENTER();
 
-    /***************************************************************************/
-    /* Check assumptions.                                                      */
-    /***************************************************************************/
+  /***************************************************************************/
+  /* Check assumptions.                                                      */
+  /***************************************************************************/
     assert(voiceQuality != NULL);
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(adjacencyName != NULL);
@@ -417,9 +436,9 @@ void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
     assert(rFactor >= 0 && rFactor <= 100);
     assert(voiceQuality->endOfCallVqmSummaries == NULL);
     
-    /***************************************************************************/
-    /* Allocate a container for the value and push onto the list.              */
-    /***************************************************************************/
+   /***************************************************************************/
+   /* Allocate a container for the value and push onto the list.              */
+   /***************************************************************************/
     EVEL_DEBUG("Adding adjacencyName=%s endpointDescription=%d", adjacencyName, endpointDescription);
     vQMetrices = malloc(sizeof(END_OF_CALL_VOICE_QUALITY_METRICS));
     assert(vQMetrices != NULL);
@@ -428,14 +447,14 @@ void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
     vQMetrices->adjacencyName = strdup(adjacencyName);
     vQMetrices->endpointDescription = evel_service_endpoint_desc(endpointDescription);
 
-    evel_set_option_int(&vQMetrices->endpointJitter, endpointJitter, "Endpoint jitter");
+    evel_set_option_int(&vQMetrices->localRtpOctetsLost, localRtpOctetsLost, "local RTP Octets Lost");
     evel_set_option_int(&vQMetrices->endpointRtpOctetsDiscarded, endpointRtpOctetsDiscarded, "Endpoint RTP octets discarded");
     evel_set_option_int(&vQMetrices->endpointRtpOctetsReceived, endpointRtpOctetsReceived, "Endpoint RTP octets received");
     evel_set_option_int(&vQMetrices->endpointRtpOctetsSent, endpointRtpOctetsSent, "Endpoint RTP octets sent");
     evel_set_option_int(&vQMetrices->endpointRtpPacketsDiscarded, endpointRtpPacketsDiscarded, "Endpoint RTP packets discarded");
     evel_set_option_int(&vQMetrices->endpointRtpPacketsReceived, endpointRtpPacketsReceived, "Endpoint RTP packets received");
     evel_set_option_int(&vQMetrices->endpointRtpPacketsSent, endpointRtpPacketsSent, "Endpoint RTP packets sent");
-    evel_set_option_int(&vQMetrices->localJitter, localJitter, "Local jitter");
+    evel_set_option_int(&vQMetrices->localMaxJitterBufferDelay, localMaxJitterBufferDelay, "Local Max jitter buffer delay");
     evel_set_option_int(&vQMetrices->localRtpOctetsDiscarded, localRtpOctetsDiscarded, "Local RTP octets discarded");
     evel_set_option_int(&vQMetrices->localRtpOctetsReceived, localRtpOctetsReceived, "Local RTP octets received");
     evel_set_option_int(&vQMetrices->localRtpOctetsSent, localRtpOctetsSent, "Local RTP octets sent");
@@ -443,10 +462,18 @@ void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
     evel_set_option_int(&vQMetrices->localRtpPacketsReceived, localRtpPacketsReceived, "Local RTP packets received");
     evel_set_option_int(&vQMetrices->localRtpPacketsSent, localRtpPacketsSent, "Local RTP packets sent");
     evel_set_option_int(&vQMetrices->mosCqe, mosCqe, "Decimal range from 1 to 5 (1 decimal place)");
-    evel_set_option_int(&vQMetrices->packetsLost, packetsLost, "Packets lost");
+    evel_set_option_int(&vQMetrices->localRtpPacketsLost, localRtpPacketsLost, "Local RTP Packets lost");
     evel_set_option_int(&vQMetrices->packetLossPercent, packetLossPercent, "Calculated percentage packet loss");
     evel_set_option_int(&vQMetrices->rFactor, rFactor, "rFactor ");
     evel_set_option_int(&vQMetrices->roundTripDelay, roundTripDelay, "Round trip delay in milliseconds ");
+    evel_set_option_int(&vQMetrices->endpointAverageJitter, endpointAverageJitter, "Endpoint average jitter");
+    evel_set_option_int(&vQMetrices->endpointMaxJitter, endpointMaxJitter, "Endpoint maximum jitter");
+    evel_set_option_int(&vQMetrices->endpointRtpOctetsLost, endpointRtpOctetsLost, "Endpoint RTP octets lost");
+    evel_set_option_int(&vQMetrices->endpointRtpPacketsLost, endpointRtpPacketsLost, "Endpoint RTP packets lost");
+    evel_set_option_int(&vQMetrices->localAverageJitter, localAverageJitter, "Local average jitter");
+    evel_set_option_int(&vQMetrices->localAverageJitterBufferDelay, localAverageJitterBufferDelay, "Local average jitter buffer delay");
+    evel_set_option_int(&vQMetrices->localMaxJitter, localMaxJitter, "Local maximum jitter");
+    evel_set_option_int(&vQMetrices->oneWayDelay, oneWayDelay, "one-way path delay in milliseconds");
 
     voiceQuality->endOfCallVqmSummaries = vQMetrices;
 
@@ -463,8 +490,8 @@ void evel_voice_quality_end_metrics_add(EVENT_VOICE_QUALITY * voiceQuality,
 void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
                             EVENT_VOICE_QUALITY * event)
 {
-  VOICE_QUALITY_ADDL_INFO * addlInfo = NULL;
-  DLIST_ITEM * addlInfoItem = NULL;
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
 
   END_OF_CALL_VOICE_QUALITY_METRICS * vQMetrics = NULL;
 
@@ -498,35 +525,49 @@ void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
   /* Checkpoint, so that we can wind back if all fields are suppressed.      */
   /***************************************************************************/
   //additionalInformation for Voice Quality
-  bool item_added = false;
- 
+
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalInformation"))
+  ht = event->additionalInformation;
+  if( ht != NULL )
   {
-
-    addlInfoItem = dlist_get_first(&event->additionalInformation);
-    while (addlInfoItem != NULL)
+    bool added = false;
+    if( ht->size > 0)
     {
-      addlInfo = (VOICE_QUALITY_ADDL_INFO*)addlInfoItem->item;
-      assert(addlInfo != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalInformation",
-                                          addlInfo->name))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalInformation"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", addlInfo->name);
-        evel_enc_kv_string(jbuf, "value", addlInfo->value);
-        evel_json_close_object(jbuf);
-        item_added = true;
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding Voice Quality Fields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalInformation",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      addlInfoItem = dlist_get_next(addlInfoItem);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
+
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
     /*************************************************************************/
-    if (!item_added)
+    if (!added)
     {
       evel_json_rewind(jbuf);
     }
@@ -544,14 +585,14 @@ void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
             {
                 evel_enc_kv_string(jbuf, "adjacencyName", vQMetrics->adjacencyName);
                 evel_enc_kv_string(jbuf, "endpointDescription", vQMetrics->endpointDescription);
-                evel_enc_kv_opt_int(jbuf, "endpointJitter", &vQMetrics->endpointJitter);
+                evel_enc_kv_opt_int(jbuf, "localRtpOctetsLost", &vQMetrics->localRtpOctetsLost);
                 evel_enc_kv_opt_int(jbuf, "endpointRtpOctetsDiscarded", &vQMetrics->endpointRtpOctetsDiscarded);
                 evel_enc_kv_opt_int(jbuf, "endpointRtpOctetsReceived", &vQMetrics->endpointRtpOctetsReceived);
                 evel_enc_kv_opt_int(jbuf, "endpointRtpOctetsSent", &vQMetrics->endpointRtpOctetsSent);
                 evel_enc_kv_opt_int(jbuf, "endpointRtpPacketsDiscarded", &vQMetrics->endpointRtpPacketsDiscarded);
                 evel_enc_kv_opt_int(jbuf, "endpointRtpPacketsReceived", &vQMetrics->endpointRtpPacketsReceived);
                 evel_enc_kv_opt_int(jbuf, "endpointRtpPacketsSent", &vQMetrics->endpointRtpPacketsSent);
-                evel_enc_kv_opt_int(jbuf, "localJitter", &vQMetrics->localJitter);
+                evel_enc_kv_opt_int(jbuf, "localMaxJitterBufferDelay", &vQMetrics->localMaxJitterBufferDelay);
                 evel_enc_kv_opt_int(jbuf, "localRtpOctetsDiscarded", &vQMetrics->localRtpOctetsDiscarded);
                 evel_enc_kv_opt_int(jbuf, "localRtpOctetsReceived", &vQMetrics->localRtpOctetsReceived);
                 evel_enc_kv_opt_int(jbuf, "localRtpOctetsSent", &vQMetrics->localRtpOctetsSent);
@@ -559,10 +600,18 @@ void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
                 evel_enc_kv_opt_int(jbuf, "localRtpPacketsReceived", &vQMetrics->localRtpPacketsReceived);
                 evel_enc_kv_opt_int(jbuf, "localRtpPacketsSent", &vQMetrics->localRtpPacketsSent);
                 evel_enc_kv_opt_int(jbuf, "mosCqe", &vQMetrics->mosCqe);
-                evel_enc_kv_opt_int(jbuf, "packetsLost", &vQMetrics->packetsLost);
+                evel_enc_kv_opt_int(jbuf, "localRtpPacketsLost", &vQMetrics->localRtpPacketsLost);
                 evel_enc_kv_opt_int(jbuf, "packetLossPercent", &vQMetrics->packetLossPercent);
                 evel_enc_kv_opt_int(jbuf, "rFactor", &vQMetrics->rFactor);
                 evel_enc_kv_opt_int(jbuf, "roundTripDelay", &vQMetrics->roundTripDelay);
+                evel_enc_kv_opt_int(jbuf, "endpointAverageJitter", &vQMetrics->endpointAverageJitter);
+                evel_enc_kv_opt_int(jbuf, "endpointMaxJitter", &vQMetrics->endpointMaxJitter);
+                evel_enc_kv_opt_int(jbuf, "endpointRtpOctetsLost", &vQMetrics->endpointRtpOctetsLost);
+                evel_enc_kv_opt_int(jbuf, "endpointRtpPacketsLost", &vQMetrics->endpointRtpPacketsLost);
+                evel_enc_kv_opt_int(jbuf, "localAverageJitter", &vQMetrics->localAverageJitter);
+                evel_enc_kv_opt_int(jbuf, "localAverageJitterBufferDelay", &vQMetrics->localAverageJitterBufferDelay);
+                evel_enc_kv_opt_int(jbuf, "localMaxJitter", &vQMetrics->localMaxJitter);
+                evel_enc_kv_opt_int(jbuf, "oneWayDelay", &vQMetrics->oneWayDelay);
 
             }
 
@@ -585,7 +634,8 @@ void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
  *****************************************************************************/
 void evel_free_voice_quality(EVENT_VOICE_QUALITY * voiceQuality) {
     END_OF_CALL_VOICE_QUALITY_METRICS * vQMetrices = NULL;
-    VOICE_QUALITY_ADDL_INFO * addlInfo = NULL;
+
+    HASHTABLE_T *ht;
 
     EVEL_ENTER();
 
@@ -601,16 +651,10 @@ void evel_free_voice_quality(EVENT_VOICE_QUALITY * voiceQuality) {
     /***************************************************************************/
     
     //Additional Information
-    addlInfo = dlist_pop_last(&voiceQuality->additionalInformation);
-    while (addlInfo != NULL)
+    ht = voiceQuality->additionalInformation;
+    if( ht != NULL )
     {
-        EVEL_DEBUG("Freeing Additional Info (%s, %s)",
-            addlInfo->name,
-            addlInfo->value);
-        free(addlInfo->name);
-        free(addlInfo->value);
-        free(addlInfo);
-        addlInfo = dlist_pop_last(&voiceQuality->additionalInformation);
+       ht_destroy(ht);
     }
 
     //Summary Information

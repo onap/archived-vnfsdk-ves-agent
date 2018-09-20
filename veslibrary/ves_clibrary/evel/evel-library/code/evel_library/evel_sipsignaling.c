@@ -27,6 +27,7 @@
 #include <stdlib.h>
 
 #include "evel_throttle.h"
+#include "evel_internal.h"
 
 /**************************************************************************//**
  * Create a new Signaling event.
@@ -89,7 +90,7 @@ EVENT_SIGNALING * evel_new_signaling(const char* ev_name, const char *ev_id,
   evel_set_option_string(&event->remote_port,remote_port,"Init remote port");
   evel_init_option_string(&event->compressed_sip);
   evel_init_option_string(&event->summary_sip);
-  dlist_initialize(&event->additional_info);
+  event->additional_info = ht_create();
 
 exit_label:
 
@@ -114,7 +115,9 @@ exit_label:
  *****************************************************************************/
 void evel_signaling_addl_info_add(EVENT_SIGNALING * event, char * name, char * value)
 {
-  FAULT_ADDL_INFO * addl_info = NULL;
+  char *nam=NULL;
+  char *val=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -126,15 +129,11 @@ void evel_signaling_addl_info_add(EVENT_SIGNALING * event, char * name, char * v
   assert(value != NULL);
 
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  addl_info = malloc(sizeof(SIGNALING_ADDL_FIELD));
-  assert(addl_info != NULL);
-  memset(addl_info, 0, sizeof(SIGNALING_ADDL_FIELD));
-  addl_info->name = strdup(name);
-  addl_info->value = strdup(value);
-  assert(addl_info->name != NULL);
-  assert(addl_info->value != NULL);
 
-  dlist_push_last(&event->additional_info, addl_info);
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(event->additional_info, nam, val);
 
   EVEL_EXIT();
 }
@@ -453,8 +452,8 @@ void evel_signaling_correlator_set(EVENT_SIGNALING * const event,
 void evel_json_encode_signaling(EVEL_JSON_BUFFER * const jbuf,
                                 EVENT_SIGNALING * const event)
 {
-  SIGNALING_ADDL_FIELD * addl_info = NULL;
-  DLIST_ITEM * addl_info_item = NULL;
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
 
   EVEL_ENTER();
 
@@ -465,7 +464,7 @@ void evel_json_encode_signaling(EVEL_JSON_BUFFER * const jbuf,
   assert(event->header.event_domain == EVEL_DOMAIN_SIPSIGNALING);
 
   evel_json_encode_header(jbuf, &event->header);
-  evel_json_open_named_object(jbuf, "signalingFields");
+  evel_json_open_named_object(jbuf, "sipSignalingFields");
 
   /***************************************************************************/
   /* Mandatory fields                                                        */
@@ -480,7 +479,7 @@ void evel_json_encode_signaling(EVEL_JSON_BUFFER * const jbuf,
   evel_enc_kv_opt_string(jbuf, "localPort", &event->local_port);
   evel_enc_kv_opt_string(jbuf, "remoteIpAddress", &event->remote_ip_address);
   evel_enc_kv_opt_string(jbuf, "remotePort", &event->remote_port);
-  evel_enc_version(jbuf, "signalingFieldsVersion", event->major_version,event->minor_version);
+  evel_enc_version(jbuf, "sipSignalingFieldsVersion", event->major_version,event->minor_version);
   evel_enc_kv_opt_string(jbuf, "summarySip", &event->summary_sip);
   evel_json_encode_vendor_field(jbuf, &event->vnfname_field);
 
@@ -489,34 +488,48 @@ void evel_json_encode_signaling(EVEL_JSON_BUFFER * const jbuf,
   /* Checkpoint, so that we can wind back if all fields are suppressed.      */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalInformation"))
+
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    bool item_added = false;
-
-    addl_info_item = dlist_get_first(&event->additional_info);
-    while (addl_info_item != NULL)
-    { 
-      addl_info = (SIGNALING_ADDL_FIELD*) addl_info_item->item;
-      assert(addl_info != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalInformation",
-                                          addl_info->name))
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalInformation"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", addl_info->name);
-        evel_enc_kv_string(jbuf, "value", addl_info->value);
-        evel_json_close_object(jbuf);
-        item_added = true;
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalInformation",
+                                              entry->key))
+            {
+
+             // evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+             // evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      addl_info_item = dlist_get_next(addl_info_item);
     }
-    evel_json_close_list(jbuf);
-    
+    evel_json_close_object(jbuf);
+
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
     /*************************************************************************/
-    if (!item_added)
+    if (!added)
     {
       evel_json_rewind(jbuf);
     }
@@ -537,7 +550,8 @@ void evel_json_encode_signaling(EVEL_JSON_BUFFER * const jbuf,
  *****************************************************************************/
 void evel_free_signaling(EVENT_SIGNALING * const event)
 {
-  SIGNALING_ADDL_FIELD * addl_info = NULL;
+  HASHTABLE_T *ht;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -550,16 +564,10 @@ void evel_free_signaling(EVENT_SIGNALING * const event)
  /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  addl_info = dlist_pop_last(&event->additional_info);
-  while (addl_info != NULL)
+  ht = event->additional_info;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Additional Info (%s, %s)",
-               addl_info->name,
-               addl_info->value);
-    free(addl_info->name);
-    free(addl_info->value);
-    free(addl_info);
-    addl_info = dlist_pop_last(&event->additional_info);
+     ht_destroy(ht);
   }
 
   evel_free_event_vendor_field(&event->vnfname_field);

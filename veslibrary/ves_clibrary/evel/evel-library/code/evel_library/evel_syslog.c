@@ -83,14 +83,17 @@ EVENT_SYSLOG * evel_new_syslog(const char* ev_name, const char *ev_id,
   syslog->syslog_msg = strdup(syslog_msg);
   syslog->syslog_tag = strdup(syslog_tag);
   evel_init_option_int(&syslog->syslog_facility);
+  evel_init_option_int(&syslog->syslog_priority);
   evel_init_option_int(&syslog->syslog_proc_id);
   evel_init_option_int(&syslog->syslog_ver);
-  evel_init_option_string(&syslog->additional_filters);
+  syslog->additional_fields = ht_create();
   evel_init_option_string(&syslog->event_source_host);
   evel_init_option_string(&syslog->syslog_proc);
   evel_init_option_string(&syslog->syslog_s_data);
   evel_init_option_string(&syslog->syslog_sdid);
   evel_init_option_string(&syslog->syslog_severity);
+  evel_init_option_string(&syslog->syslog_timeStamp);
+  evel_init_option_string(&syslog->syslog_msgHost);
 
 exit_label:
   EVEL_EXIT();
@@ -139,9 +142,13 @@ void evel_syslog_type_set(EVENT_SYSLOG * syslog,
  *                  does not need to preserve the value once the function
  *                  returns.
  *****************************************************************************/
-void evel_syslog_addl_filter_set(EVENT_SYSLOG * syslog,
-                                char * filter)
+void evel_syslog_addl_fields_set(EVENT_SYSLOG * syslog,
+                                 const char * const name,
+                                 const char * const value)
 {
+  char *nam=NULL;
+  char *val=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -149,11 +156,15 @@ void evel_syslog_addl_filter_set(EVENT_SYSLOG * syslog,
   /***************************************************************************/
   assert(syslog != NULL);
   assert(syslog->header.event_domain == EVEL_DOMAIN_SYSLOG);
-  assert(filter != NULL);
+  assert(name != NULL);
+  assert(value != NULL);
 
-  evel_set_option_string(&syslog->additional_filters,
-                         filter,
-                         "Syslog filter string");
+  EVEL_DEBUG("Adding name=%s value=%s", name, value);
+
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(syslog->additional_fields, nam, val);
 
   EVEL_EXIT();
 }
@@ -215,6 +226,35 @@ void evel_syslog_facility_set(EVENT_SYSLOG * syslog,
   evel_set_option_int(&syslog->syslog_facility,
                       facility,
                       "Facility");
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Set the priority of the Syslog.
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param syslog      Pointer to the Syslog.
+ * @param priority    The Syslog priority to be set.  ASCIIZ string. The caller
+ *                    does not need to preserve the value once the function
+ *                    returns.
+ *****************************************************************************/
+void evel_syslog_priority_set(EVENT_SYSLOG * syslog,
+                              const int priority)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(syslog != NULL);
+  assert(syslog->header.event_domain == EVEL_DOMAIN_SYSLOG);
+
+  evel_set_option_int(&syslog->syslog_priority,
+                      priority,
+                      "priority");
   EVEL_EXIT();
 }
 
@@ -391,6 +431,56 @@ void evel_syslog_severity_set(EVENT_SYSLOG * syslog, const char * const severty)
   }
   EVEL_EXIT();
 }
+/**************************************************************************//**
+ * Set the timestamp parsed from non-VES syslog message
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param syslog     Pointer to the Syslog.
+ * @param time_stamp The timestamp to be set. ASCIIZ string. The caller does
+ *                   not need to preserve the value once the function returns.
+ *****************************************************************************/
+void evel_syslog_timeStamp_set(EVENT_SYSLOG * syslog, const char * const time_stamp)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(syslog != NULL);
+  assert(syslog->header.event_domain == EVEL_DOMAIN_SYSLOG);
+  assert(time_stamp != NULL);
+
+  evel_set_option_string(&syslog->syslog_timeStamp, time_stamp, "Timestamp");
+  EVEL_EXIT();
+}
+/**************************************************************************//**
+ * Set the hostname parsed from non-VES syslog message
+ *
+ * @note  The property is treated as immutable: it is only valid to call
+ *        the setter once.  However, we don't assert if the caller tries to
+ *        overwrite, just ignoring the update instead.
+ *
+ * @param syslog     Pointer to the Syslog.
+ * @param msg_host   The hostname to be set. ASCIIZ string. The caller does
+ *                   not need to preserve the value once the function returns.
+ *****************************************************************************/
+void evel_syslog_MsgHost_set(EVENT_SYSLOG * syslog, const char * const msg_host)
+{
+  EVEL_ENTER();
+
+  /***************************************************************************/
+  /* Check preconditions.                                                    */
+  /***************************************************************************/
+  assert(syslog != NULL);
+  assert(syslog->header.event_domain == EVEL_DOMAIN_SYSLOG);
+  assert(msg_host != NULL);
+
+  evel_set_option_string(&syslog->syslog_msgHost, msg_host, "Hostname");
+  EVEL_EXIT();
+}
 
 /**************************************************************************//**
  * Encode the Syslog in JSON according to AT&T's schema for the event type.
@@ -402,6 +492,8 @@ void evel_json_encode_syslog(EVEL_JSON_BUFFER * jbuf,
                              EVENT_SYSLOG * event)
 {
   char * event_source_type;
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
 
   EVEL_ENTER();
 
@@ -416,7 +508,60 @@ void evel_json_encode_syslog(EVEL_JSON_BUFFER * jbuf,
   evel_json_encode_header(jbuf, &event->header);
   evel_json_open_named_object(jbuf, "syslogFields");
 
-  evel_enc_kv_opt_string(jbuf, "additionalFields", &event->additional_filters);
+  /***************************************************************************/
+  /* Checkpoint, so that we can wind back if all fields are suppressed.      */
+  /***************************************************************************/
+  evel_json_checkpoint(jbuf);
+
+  /***************************************************************************/
+  /* Go through the Hashmap of additional information and encode key / Value */
+  /***************************************************************************/
+  ht = event->additional_fields;
+  if( ht != NULL )
+  {
+    bool added = false;
+    if( ht->size > 0)
+    {
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
+      {
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding syslog additionalFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalFields",
+                                              entry->key))
+            {
+
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
+      }
+    }
+    evel_json_close_object(jbuf);
+
+    /*************************************************************************/
+    /* If we've not written anything, rewind to before we opened the list.   */
+    /*************************************************************************/
+    if (!added)
+    {
+      evel_json_rewind(jbuf);
+    }
+  }
+
   /***************************************************************************/
   /* Mandatory fields                                                        */
   /***************************************************************************/
@@ -438,6 +583,8 @@ void evel_json_encode_syslog(EVEL_JSON_BUFFER * jbuf,
   evel_enc_kv_opt_string(jbuf, "syslogSdId", &event->syslog_sdid);
   evel_enc_kv_opt_string(jbuf, "syslogSev", &event->syslog_severity);
   evel_enc_kv_opt_int(jbuf, "syslogVer", &event->syslog_ver);
+  evel_enc_kv_opt_string(jbuf, "syslogMsgHost", &event->syslog_msgHost);
+  evel_enc_kv_opt_string(jbuf, "syslogTs", &event->syslog_timeStamp);
   evel_json_close_object(jbuf);
 
   EVEL_CT_ASSERT(EVEL_SYSLOG_FACILITY_KERNEL == 0);
@@ -478,6 +625,7 @@ void evel_json_encode_syslog(EVEL_JSON_BUFFER * jbuf,
  *****************************************************************************/
 void evel_free_syslog(EVENT_SYSLOG * event)
 {
+  HASHTABLE_T *ht;
 
   EVEL_ENTER();
 
@@ -491,14 +639,20 @@ void evel_free_syslog(EVENT_SYSLOG * event)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
+  ht = event->additional_fields;
+  if( ht != NULL )
+  {
+     ht_destroy(ht);
+  }
 
-  evel_free_option_string(&event->additional_filters);
   evel_free_option_string(&event->event_source_host);
   free(event->syslog_msg);
   evel_free_option_string(&event->syslog_proc);
   evel_free_option_string(&event->syslog_s_data);
   evel_free_option_string(&event->syslog_sdid);
   evel_free_option_string(&event->syslog_severity);
+  evel_free_option_string(&event->syslog_msgHost);
+  evel_free_option_string(&event->syslog_timeStamp);
   free(event->syslog_tag);
   evel_free_header(&event->header);
 

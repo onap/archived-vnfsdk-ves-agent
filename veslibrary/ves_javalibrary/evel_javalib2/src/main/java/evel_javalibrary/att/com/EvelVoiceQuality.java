@@ -41,7 +41,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	
 	int major_version = 1;
 	int minor_version = 0;
-
+	
 	/**************************************************************************//**
 	 * Vendor VNF Name fields.
 	 * JSON equivalent field: vendorVnfNameFields
@@ -51,7 +51,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	  EvelOptionString vfmodule;
 	  EvelOptionString vnfname;
 	}
-	
+	  
 	/**************************************************************************//**
 	 * Service Event endpoint description
 	 * JSON equivalent field: endpointDesc
@@ -95,6 +95,25 @@ public class EvelVoiceQuality extends EvelHeader {
 		EvelOptionDouble packetLossPercent;
 		EvelOptionDouble rFactor;
 		EvelOptionDouble roundTripDelay;
+		
+		/*
+		 * Ves6.0 Added Fields 15/07/2018
+		 */
+		
+		EvelOptionDouble endpointAverageJitter;
+		EvelOptionDouble endpointMaxJitter;
+		EvelOptionDouble endpointRtpOctetsLost;
+		EvelOptionDouble endpointRtpPacketsLost;
+		EvelOptionDouble localAverageJitter;
+		EvelOptionDouble localMaxJitter;
+		EvelOptionDouble localAverageJitterBufferDelay;
+		EvelOptionDouble localMaxJitterBufferDelay;
+		EvelOptionDouble localRtpOctetsLost;
+		EvelOptionDouble localRtpPacketsLost;
+		EvelOptionDouble oneWayDelay;
+		
+
+		
 	}
 
 	/***************************************************************************/
@@ -459,14 +478,14 @@ public class EvelVoiceQuality extends EvelHeader {
 	   *****************************************************************************/
 	  public void evel_voice_quality_end_metrics_set(
 	      String adjacencyName, String endpointDescr,
-	      double endpointJitter,
+	      //double endpointJitter,
 	      double endpointRtpOctetsDiscarded,
 	      double endpointRtpOctetsReceived,
 	      double endpointRtpOctetsSent,
 	      double endpointRtpPacketsDiscarded,
 	      double endpointRtpPacketsReceived,
 	      double endpointRtpPacketsSent,
-	      double localJitter,
+	     // double localJitter,
 	      double localRtpOctetsDiscarded,
 	      double localRtpOctetsReceived,
 	      double localRtpOctetsSent,
@@ -474,10 +493,25 @@ public class EvelVoiceQuality extends EvelHeader {
 	      double localRtpPacketsReceived,
 	      double localRtpPacketsSent,
 	      double mosCqe,
-	      double packetsLost,
+	     // double packetsLost,
 	      double packetLossPercent,
 	      double rFactor,
-	      double roundTripDelay) {
+	      double roundTripDelay,
+	      /*
+	      * Ves6.0 AddedFields 15/07/2018
+	      */
+	      double endpointAverageJitter,
+	      double endpointMaxJitter,
+	      double endpointRtpOctetsLost,
+	      double endpointRtpPacketsLost,
+	      double localAverageJitter,
+	      double localMaxJitter,
+	      double localAverageJitterBufferDelay,
+	      double localMaxJitterBufferDelay,
+	      double localRtpOctetsLost,
+	      double localRtpPacketsLost,
+	      double oneWayDelay
+	      ) {
 	      
 	      END_OF_CALL_VOICE_QUALITY_METRICS vQMetrices = null;
 	      EVEL_ENTER();
@@ -520,15 +554,46 @@ public class EvelVoiceQuality extends EvelHeader {
 	      vQMetrices.packetLossPercent= new EvelOptionDouble();
 	      vQMetrices.rFactor= new EvelOptionDouble();
 	      vQMetrices.roundTripDelay= new EvelOptionDouble();
+	      /*
+	       * Ves6.0 AddedFields 15/07/2018
+	       * */
+	      
+	      vQMetrices.endpointAverageJitter = new EvelOptionDouble();
+	      vQMetrices.endpointMaxJitter = new EvelOptionDouble();
+	      vQMetrices.endpointRtpOctetsLost= new EvelOptionDouble();
+	      vQMetrices.endpointRtpPacketsLost = new EvelOptionDouble();
+	      vQMetrices.localAverageJitter=new EvelOptionDouble();
+	      vQMetrices.localMaxJitter=new EvelOptionDouble();
+	      vQMetrices.localAverageJitterBufferDelay=new EvelOptionDouble();
+	      vQMetrices.localMaxJitterBufferDelay=new EvelOptionDouble();
+	      vQMetrices.localRtpOctetsLost=new EvelOptionDouble();
+	      vQMetrices.localRtpPacketsLost=new EvelOptionDouble();
+	      vQMetrices.oneWayDelay=new EvelOptionDouble();
+	      
+	      /*
+	       * Ves6.0 AddedFields 15/07/2018
+	       * */
+	      
+	      vQMetrices.endpointMaxJitter.SetValuePr(endpointMaxJitter, "EndpointMax jitter");
+	      vQMetrices.endpointAverageJitter.SetValuePr(endpointAverageJitter, "Endpoint Average Jitter");
+	      vQMetrices.endpointRtpOctetsLost.SetValuePr(endpointRtpOctetsLost, "End point RtpOctets Lost");
+	      vQMetrices.endpointRtpPacketsLost.SetValuePr(endpointRtpPacketsLost,"End point Rtp Packets Lost");
+	      vQMetrices.localAverageJitter.SetValuePr(localAverageJitter,"Local Average Jitter");
+	      vQMetrices.localMaxJitter.SetValuePr(localMaxJitter, "Local Max Jitter");
+	      vQMetrices.localMaxJitterBufferDelay.SetValuePr(localMaxJitterBufferDelay, "Local Max Jitter Buffer Delay");
+	      vQMetrices.localRtpOctetsLost.SetValuePr(localRtpOctetsLost, "Local RtpOctets Lost");
+	      vQMetrices.localRtpPacketsLost.SetValuePr(localRtpPacketsLost, "Local RtpPackets Lost");
+	      vQMetrices.oneWayDelay.SetValuePr(oneWayDelay, "OneWay Delay");
+	      
 
-	      vQMetrices.endpointJitter.SetValuePr(endpointJitter, "Endpoint jitter");
+//	      vQMetrices.endpointJitter.SetValuePr(endpointJitter, "Endpoint jitter");
 	      vQMetrices.endpointRtpOctetsDiscarded.SetValuePr(endpointRtpOctetsDiscarded, "Endpoint RTP octets discarded");
 	      vQMetrices.endpointRtpOctetsReceived.SetValuePr(endpointRtpOctetsReceived, "Endpoint RTP octets received");
 	      vQMetrices.endpointRtpOctetsSent.SetValuePr(endpointRtpOctetsSent, "Endpoint RTP octets sent");
 	      vQMetrices.endpointRtpPacketsDiscarded.SetValuePr(endpointRtpPacketsDiscarded, "Endpoint RTP packets discarded");
 	      vQMetrices.endpointRtpPacketsReceived.SetValuePr(endpointRtpPacketsReceived, "Endpoint RTP packets received");
 	      vQMetrices.endpointRtpPacketsSent.SetValuePr(endpointRtpPacketsSent, "Endpoint RTP packets sent");
-	      vQMetrices.localJitter.SetValuePr( localJitter, "Local jitter");
+//	      vQMetrices.localJitter.SetValuePr( localJitter, "Local jitter");
 	      vQMetrices.localRtpOctetsDiscarded.SetValuePr(localRtpOctetsDiscarded, "Local RTP octets discarded");
 	      vQMetrices.localRtpOctetsReceived.SetValuePr(localRtpOctetsReceived, "Local RTP octets received");
 	      vQMetrices.localRtpOctetsSent.SetValuePr(localRtpOctetsSent, "Local RTP octets sent");
@@ -536,7 +601,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	      vQMetrices.localRtpPacketsReceived.SetValuePr(localRtpPacketsReceived, "Local RTP packets received");
 	      vQMetrices.localRtpPacketsSent.SetValuePr(localRtpPacketsSent, "Local RTP packets sent");
 	      vQMetrices.mosCqe.SetValuePr(mosCqe, "Decimal range from 1 to 5 (1 decimal place)");
-	      vQMetrices.packetsLost.SetValuePr(packetsLost, "Packets lost");
+//	      vQMetrices.packetsLost.SetValuePr(packetsLost, "Packets lost");
 	      vQMetrices.packetLossPercent.SetValuePr(packetLossPercent, "Calculated percentage packet loss");
 	      vQMetrices.rFactor.SetValuePr(rFactor, "rFactor ");
 	      vQMetrices.roundTripDelay.SetValuePr(roundTripDelay, "Round trip delay in milliseconds ");
@@ -554,7 +619,8 @@ public class EvelVoiceQuality extends EvelHeader {
 	  JsonObjectBuilder evelVoiceQualityObject()
 	  {
 
-	    double version = major_version+(double)minor_version/10;
+	    //double version = major_version+(double)minor_version/10;
+		  String version = "4.0";
 
 	    EVEL_ENTER();
 
@@ -569,8 +635,8 @@ public class EvelVoiceQuality extends EvelHeader {
 	    
         JsonObjectBuilder vnfnamedobj =  Json.createObjectBuilder()
                 .add( "vendorName",vnfname_field.vendorname);
-            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"vfModuleName");
-            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"vnfName");
+            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"nfModuleName");
+            vnfname_field.vfmodule.encJsonValue(vnfnamedobj,"nfName");
 	    
 	    JsonObjectBuilder evelvq = Json.createObjectBuilder()
 	   	                          .add("correlator", correlator)
@@ -578,7 +644,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	   	                          .add("callerSideCodec", callerSideCodec)
                                   .add("midCallRtcp", midCallRtcp)
                                   .add("voiceQualityFieldsVersion", version)
-                                  .add("vendorVnfNameFields", vnfnamedobj);
+                                  .add("vendorNfNameFields", vnfnamedobj);
 	    
 	    /***************************************************************************/
 	    /* Optional fields.                                                        */
@@ -589,15 +655,16 @@ public class EvelVoiceQuality extends EvelHeader {
 	    // additional fields
 		  if( additional_info != null )
 		  {
-		    JsonArrayBuilder builder = Json.createArrayBuilder();
+		    //JsonArrayBuilder builder = Json.createArrayBuilder();
+		    JsonObjectBuilder builder = Json.createObjectBuilder();
 		    for(int i=0;i<additional_info.size();i++) {
 			  String[] addl_info = additional_info.get(i);
-			  JsonObject obj = Json.createObjectBuilder()
-			    	     .add("name", addl_info[0])
-			    	     .add("value", addl_info[1]).build();
-			  builder.add(obj);
+//			  JsonObject obj = Json.createObjectBuilder()
+//			    	     .add("name", addl_info[0])
+//			    	     .add("value", addl_info[1]).build();
+			  builder.add(addl_info[0], addl_info[1]);
 		    }
-			evelvq.add("additionalFields", builder);
+			evelvq.add("additionalInformation", builder);
 		  }
 		  
 		  
@@ -630,8 +697,30 @@ public class EvelVoiceQuality extends EvelHeader {
 			  vQMetrics.packetLossPercent.encJsonValue(obj,"packetLossPercent");
 			  vQMetrics.rFactor.encJsonValue(obj,"rFactor");
 			  vQMetrics.roundTripDelay.encJsonValue(obj,"roundTripDelay");
+			  
+			  /*
+		       * Ves6.0 AddedFields 15/07/2018
+		       * */
+			  
+			  vQMetrics.endpointAverageJitter.encJsonValue(obj, "endpointAverageJitter");
+			  vQMetrics.endpointMaxJitter.encJsonValue(obj, "endpointMaxJitter");
+			  vQMetrics.endpointRtpOctetsLost.encJsonValue(obj, "endpointRtpOctetsLost");
+			  vQMetrics.endpointRtpPacketsLost.encJsonValue(obj, "endpointRtpPacketsLost");
+			  vQMetrics.localAverageJitter.encJsonValue(obj, "localAverageJitter");
+			  vQMetrics.localMaxJitter.encJsonValue(obj, "endpointRtpOctetsLost");
+			  System.out.println("local aveg jitter buffer delay...");
+			  vQMetrics.localAverageJitterBufferDelay.encJsonValue(obj, "localAverageJitterBufferDelay");
+			  
+			  vQMetrics.localMaxJitterBufferDelay.encJsonValue(obj, "localMaxJitterBufferDelay");
+			  vQMetrics.localRtpOctetsLost.encJsonValue(obj, "localRtpOctetsLost");
+			  vQMetrics.localRtpPacketsLost.encJsonValue(obj, "localRtpPacketsLost");
+			  vQMetrics.oneWayDelay.encJsonValue(obj, "oneWayDelay");
+			  
+			  
 
 			  evelvq.add("endOfCallVqmSummaries", obj);
+			  System.out.println("local aveg jitter buffer delay...2"+ obj);
+			  System.out.println("local aveg jitter buffer delay..."+ evelvq);
 		  }
 	    
 

@@ -2,13 +2,13 @@
 PROJECT DESCRIPTION
 
 ---
-This project contains the source code and scripts for the periodic generation of network measurement reports. The folder contains:
+This project contains the source code and scripts for the periodic generation of network measurement reports and heartbeat events. It also generates fault event if the packets/bytes transferred are below the low water mark for the network interface. The folder contains:
 
  - README.md: this file.
 
  - LICENSE.TXT: the license text.
 
- - vpp_measurement_reporter.c: source code that uses the ECOMP Vendor Event Listener Library (VES) to read metrics from the network interface and send periodic measurement reports to the VES collector in DCAE. The VES library used here has been cloned from the GitHub repository at https://github.com/att/evel-library on February 1, 2017.
+ - vpp_measurement_reporter.c: source code that uses the ECOMP Vendor Event Listener Library (VES) to read metrics from the network interface and send periodic measurement reports to the VES collector in DCAE. It generates the periodic hertbeat events. It also generates fault event if the packets/bytes transferred are below the low water mark for the network interface. The VES library used here has been cloned from the GitHub repository at https://github.com/att/evel-library on February 1, 2017.
 
  - Makefile: makefile that compiles vpp_measurement_reporter.c and generates vpp_measurement_reporter binary.
 
@@ -16,7 +16,10 @@ This project contains the source code and scripts for the periodic generation of
 
 
 USAGE
----
+-----
+
+Update the configuration files with proper parameters values so that events generated would contain those values
+
 To run the vpp_measurement_reporter, please execute the following steps:
 
  - Make the go-client.sh script executable

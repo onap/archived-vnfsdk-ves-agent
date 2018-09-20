@@ -24,6 +24,10 @@ package evel_javalibrary.att.com;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -58,11 +62,13 @@ public class EvelStateChange extends EvelHeader {
 	  EVEL_ENTITY_STATE new_state;
 	  EVEL_ENTITY_STATE old_state;
 	  String state_interface;
+	  
 
 	/***************************************************************************/
 	/* Optional fields                                                         */
 	/***************************************************************************/
-	  ArrayList<String[]> additional_info;
+	//  ArrayList<String[]> additional_info;
+	  HashMap<String, String > additional_inf;
 	
 	  private static final Logger LOGGER = Logger.getLogger( EvelStateChange.class.getName() );
 
@@ -94,7 +100,7 @@ public class EvelStateChange extends EvelHeader {
 		old_state = oldstate;
 		state_interface = interfce;
 
-		additional_info = null;		
+		additional_inf = null;		
 	}
 	
 	/**************************************************************************//**
@@ -123,18 +129,18 @@ public class EvelStateChange extends EvelHeader {
 	  assert(name != null);
 	  assert(value != null);
 	  
-	  if( additional_info == null )
+	  if( additional_inf == null )
 	  {
-		  additional_info = new ArrayList<String[]>();
+		  additional_inf = new HashMap<>();
 	  }
 
 	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-	  addl_info = new String[2];
-	  assert(addl_info != null);
-	  addl_info[0] = name;
-	  addl_info[1] = value;
-
-	  additional_info.add(addl_info);
+	//  addl_info = new String[2];
+	 // assert(addl_info != null);
+	// addl_info[0] = name;
+	//  addl_info[1] = value;
+	  additional_inf.put(name,  value);
+	//  additional_info.add(addl_info);
 
 	  EVEL_EXIT();
 	}
@@ -185,8 +191,8 @@ public class EvelStateChange extends EvelHeader {
 	 {
 	  String nstate;
 	  String ostate;
-	  double version = major_version+(double)minor_version/10;
-
+	  //double version = major_version+(double)minor_version/10;
+      String version = "4.0";
 	  EVEL_ENTER();
 	  
 
@@ -213,7 +219,7 @@ public class EvelStateChange extends EvelHeader {
 	  /***************************************************************************/
 	  /* Optional additional information      */
 	  /***************************************************************************/
-	  if( additional_info != null )
+	/*  if( additional_info != null )
 	  {
 	    JsonArrayBuilder builder = Json.createArrayBuilder();
 	    for(int i=0;i<additional_info.size();i++) {
@@ -224,6 +230,23 @@ public class EvelStateChange extends EvelHeader {
 		  builder.add(obj);
 	    }
 		evelstate.add("additionalFields", builder);
+	  }   */
+	  
+	  
+	  if(additional_inf != null) {
+		  //JsonArrayBuilder builder = Json.createArrayBuilder();
+		  JsonObjectBuilder builder = Json.createObjectBuilder();
+		  Iterator<Entry<String, String>> it = additional_inf.entrySet().iterator();
+		  while(it.hasNext()) {
+			  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
+			  String addl_info_key = add_inf.getKey();
+			  String addl_info_value = add_inf.getValue();
+//			  JsonObject obj1 = Json.createObjectBuilder()
+//			    	     .add("name", addl_info_key)
+//			    	     .add("value", addl_info_value).build();
+			  builder.add(addl_info_key, addl_info_value);
+		  }
+		  evelstate.add("additionalFields", builder);
 	  }
 
 	  EVEL_EXIT();

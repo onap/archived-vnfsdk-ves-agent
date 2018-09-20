@@ -85,7 +85,7 @@ EVENT_STATE_CHANGE * evel_new_state_change(const char* ev_name,
   state_change->new_state = new_state;
   state_change->old_state = old_state;
   state_change->state_interface = strdup(interface);
-  dlist_initialize(&state_change->additional_fields);
+  state_change->additional_fields = ht_create();
 
 exit_label:
   EVEL_EXIT();
@@ -103,7 +103,7 @@ exit_label:
  *****************************************************************************/
 void evel_free_state_change(EVENT_STATE_CHANGE * const state_change)
 {
-  STATE_CHANGE_ADDL_FIELD * addl_field = NULL;
+  HASHTABLE_T *ht;
 
   EVEL_ENTER();
 
@@ -117,17 +117,12 @@ void evel_free_state_change(EVENT_STATE_CHANGE * const state_change)
   /***************************************************************************/
   /* Free all internal strings then the header itself.                       */
   /***************************************************************************/
-  addl_field = dlist_pop_last(&state_change->additional_fields);
-  while (addl_field != NULL)
+  ht = state_change->additional_fields;
+  if( ht != NULL )
   {
-    EVEL_DEBUG("Freeing Additional Field (%s, %s)",
-               addl_field->name,
-               addl_field->value);
-    free(addl_field->name);
-    free(addl_field->value);
-    free(addl_field);
-    addl_field = dlist_pop_last(&state_change->additional_fields);
+     ht_destroy(ht);
   }
+
   free(state_change->state_interface);
   evel_free_header(&state_change->header);
 
@@ -180,7 +175,9 @@ void evel_state_change_addl_field_add(EVENT_STATE_CHANGE * const state_change,
                                       const char * const name,
                                       const char * const value)
 {
-  STATE_CHANGE_ADDL_FIELD * addl_field = NULL;
+  char *nam=NULL;
+  char *val=NULL;
+
   EVEL_ENTER();
 
   /***************************************************************************/
@@ -192,15 +189,11 @@ void evel_state_change_addl_field_add(EVENT_STATE_CHANGE * const state_change,
   assert(value != NULL);
 
   EVEL_DEBUG("Adding name=%s value=%s", name, value);
-  addl_field = malloc(sizeof(STATE_CHANGE_ADDL_FIELD));
-  assert(addl_field != NULL);
-  memset(addl_field, 0, sizeof(STATE_CHANGE_ADDL_FIELD));
-  addl_field->name = strdup(name);
-  addl_field->value = strdup(value);
-  assert(addl_field->name != NULL);
-  assert(addl_field->value != NULL);
 
-  dlist_push_last(&state_change->additional_fields, addl_field);
+  nam = strdup(name);
+  val = strdup(value);
+
+  ht_insert(state_change->additional_fields, nam, val);
 
   EVEL_EXIT();
 }
@@ -214,8 +207,9 @@ void evel_state_change_addl_field_add(EVENT_STATE_CHANGE * const state_change,
 void evel_json_encode_state_change(EVEL_JSON_BUFFER * jbuf,
                                    EVENT_STATE_CHANGE * state_change)
 {
-  STATE_CHANGE_ADDL_FIELD * addl_field = NULL;
-  DLIST_ITEM * addl_field_item = NULL;
+  HASHTABLE_T *ht;
+  ENTRY_T *entry;
+
   char * new_state;
   char * old_state;
 
@@ -244,34 +238,46 @@ void evel_json_encode_state_change(EVEL_JSON_BUFFER * jbuf,
   /* Optional fields.                                                        */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "additionalFields"))
+  ht = state_change->additional_fields;
+  if( ht != NULL )
   {
-    bool item_added = false;
-
-    addl_field_item = dlist_get_first(&state_change->additional_fields);
-    while (addl_field_item != NULL)
+    bool added = false;
+    if( ht->size > 0)
     {
-      addl_field = (STATE_CHANGE_ADDL_FIELD *) addl_field_item->item;
-      assert(addl_field != NULL);
-
-      if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
-                                          "additionalFields",
-                                          addl_field->name))
+      evel_json_checkpoint(jbuf);
+      if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
       {
-        evel_json_open_object(jbuf);
-        evel_enc_kv_string(jbuf, "name", addl_field->name);
-        evel_enc_kv_string(jbuf, "value", addl_field->value);
-        evel_json_close_object(jbuf);
-        item_added = true;
+
+        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        {
+          /*****************************************************************/
+          /* Get the first entry of a particular Key and loop through the  */
+          /* remaining if any. Then proceed to next key.                   */
+          /*****************************************************************/
+          entry =  ht->table[idx];
+          while( entry != NULL && entry->key != NULL)
+          {
+            EVEL_DEBUG("Encoding heartBeatFields %s %s",(char *) (entry->key), entry->value);
+            if (!evel_throttle_suppress_nv_pair(jbuf->throttle_spec,
+                                              "additionalFields",
+                                              entry->key))
+            {
+              //evel_json_open_object(jbuf);
+              evel_enc_kv_string(jbuf, entry->key, entry->value);
+              //evel_json_close_object(jbuf);
+              added = true;
+            }
+            entry = entry->next;
+          }
+        }
       }
-      addl_field_item = dlist_get_next(addl_field_item);
     }
-    evel_json_close_list(jbuf);
+    evel_json_close_object(jbuf);
 
     /*************************************************************************/
     /* If we've not written anything, rewind to before we opened the list.   */
     /*************************************************************************/
-    if (!item_added)
+    if (!added)
     {
       evel_json_rewind(jbuf);
     }

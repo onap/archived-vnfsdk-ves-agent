@@ -131,11 +131,13 @@ static const char * evel_domain_strings[EVEL_MAX_DOMAINS] = {
   "measurementsForVfScaling",
   "mobileFlow",
   "report",
-  "serviceEvents",
-  "signaling",
+  "sipSignaling",
   "stateChange",
   "syslog",
   "other",
+  "thresholdCrossingAlert",
+  "notification",
+  "pnfRegistration",
   "voiceQuality",
   "maxDomain"
 };
@@ -1937,6 +1939,7 @@ EVEL_EVENT_DOMAINS evel_decode_domain(char * domain_value)
     if (strcmp(evel_domain_strings[ii], domain_value) == 0)
     {
       result = ii;
+      break;
     }
   }
 

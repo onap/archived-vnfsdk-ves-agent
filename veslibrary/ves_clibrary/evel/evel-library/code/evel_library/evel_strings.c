@@ -145,7 +145,7 @@ char * evel_alert_action(const EVEL_ALERT_ACTIONS alert_action)
  * @param alert_type    The alert_type to convert.
  * @returns The equivalent string.
  *****************************************************************************/
-char * evel_alert_type(const EVEL_ALERT_TYPES alert_type)
+char * evel_alert_type(const EVEL_ALERT_TYPE alert_type)
 {
   char * result;
 
@@ -202,7 +202,7 @@ char * evel_event_domain(const EVEL_EVENT_DOMAINS domain)
       break;
 
     case EVEL_DOMAIN_MEASUREMENT:
-      result = "measurementsForVfScaling";
+      result = "measurement";
       break;
 
     case EVEL_DOMAIN_REPORT:
@@ -239,6 +239,14 @@ char * evel_event_domain(const EVEL_EVENT_DOMAINS domain)
 
     case EVEL_DOMAIN_THRESHOLD_CROSS:
       result = "thresholdCrossingAlert";
+      break;
+
+    case EVEL_DOMAIN_NOTIFICATION:
+      result = "notification";
+      break;
+
+    case EVEL_DOMAIN_PNF_REGISTRATION:
+      result = "pnfRegistration";
       break;
 
     default:
@@ -433,6 +441,104 @@ char * evel_entity_state(const EVEL_ENTITY_STATE state)
     default:
       EVEL_ERROR("Unexpected entity state %d", state);
       assert(0);
+  }
+
+  EVEL_EXIT();
+
+  return result;
+}
+
+/**************************************************************************//**
+ * Convert a ::EVEL_OPTION_STATE to it's string form for JSON encoding.
+ *
+ * @param state         The entity state to encode.
+ *
+ * @returns the corresponding string
+ *****************************************************************************/
+char * evel_entity_opt_state (EVEL_OPTION_STATE * const state)
+{
+  char * result;
+
+  EVEL_ENTER();
+ 
+  if (state != NULL)
+  { 
+    if (state->is_set)
+    {
+      switch (state->state)
+      {
+        case EVEL_ENTITY_STATE_IN_SERVICE:
+          result = "inService";
+          break;
+
+        case EVEL_ENTITY_STATE_MAINTENANCE:
+          result = "maintenance";
+          break;
+
+        case EVEL_ENTITY_STATE_OUT_OF_SERVICE:
+          result = "outOfService";
+          break;
+  
+        default:
+          EVEL_ERROR("Unexpected entity state %d", state);
+          assert(0);
+      }
+    }
+    else
+    {
+      result = NULL;
+    }
+  }
+  else
+  {
+    result = NULL;
+  }
+
+  EVEL_EXIT();
+
+  return result;
+}
+
+/**************************************************************************//**
+ * Convert a ::EVEL_OPTION_OP_STATE to it's string form for JSON encoding.
+ *
+ * @param state         The entity state to encode.
+ *
+ * @returns the corresponding string
+ *****************************************************************************/
+char * evel_entity_opt_op_state (EVEL_OPTION_OP_STATE * const state)
+{
+  char * result;
+
+  EVEL_ENTER();
+ 
+  if (state != NULL)
+  { 
+    if (state->is_set)
+    {
+      switch (state->state)
+      {
+        case EVEL_OPER_STATE_IN_SERVICE:
+          result = "inService";
+          break;
+
+        case EVEL_OPER_STATE_OUT_OF_SERVICE:
+          result = "outOfService";
+          break;
+  
+        default:
+          EVEL_ERROR("Unexpected entity state %d", state);
+          assert(0);
+      }
+    }
+    else
+    {
+      result = NULL;
+    }
+  }
+  else
+  {
+    result = NULL;
   }
 
   EVEL_EXIT();
