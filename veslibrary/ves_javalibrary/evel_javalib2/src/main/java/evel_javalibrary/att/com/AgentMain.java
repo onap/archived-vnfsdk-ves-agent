@@ -31,7 +31,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -43,9 +42,7 @@ import java.security.KeyStore;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.net.ssl.TrustManagerFactory;
@@ -124,7 +121,6 @@ public class AgentMain {
                         Thread.currentThread().interrupt();
                         logger.trace("Interrupted on "+url);
                         System.out.println("Interrupted on "+url);
-                        //e.printStackTrace();
                     }
                 }
             }//end while
@@ -142,7 +138,7 @@ public class AgentMain {
         }//end run
     }//end AgentDispatcher
 
-    public static int doPost(HttpURLConnection con, String dataToSend) throws IOException, UnsupportedEncodingException {
+    public static int doPost(HttpURLConnection con, String dataToSend) throws IOException {
               OutputStream os = con.getOutputStream();
               BufferedWriter writer = new BufferedWriter(
                   new OutputStreamWriter(os, "UTF-8"));
@@ -165,7 +161,6 @@ public class AgentMain {
             in.close();
         }
         logger.error("Resp: " + builder.toString());
-        //System.out.println("Resp: " + builder.toString());
         return builder.toString();
     }
 
@@ -192,7 +187,7 @@ public class AgentMain {
 
         try {
 
-            if( tosend.type == false)
+            if(!tosend.type)
                 con = (HttpURLConnection) vesurl.openConnection();
             else
                 con = (HttpURLConnection) vesbatchurl.openConnection();
@@ -223,19 +218,14 @@ public class AgentMain {
                         // Init the SSLContext with a TrustManager[] and SecureRandom()
                         sc.init(null, trustAllCerts, new java.security.SecureRandom());
                     }
-                    httpsConnection.setDefaultHostnameVerifier(new HostnameVerifier()
-                            {
-                                public boolean verify(String hostname, SSLSession session)
-                    {
-                        return true;
-                    }
-                    });
+                    HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
                     httpsConnection.setSSLSocketFactory(sc.getSocketFactory());
                     con  = httpsConnection;
 
                 }
                 catch (final Exception exc) {
-                    exc.printStackTrace();
+                    //exc.printStackTrace();
+                    logger.error(exc);
                     logger.error("SSL/TLS connection error");
                 }
             }
@@ -290,7 +280,7 @@ public class AgentMain {
     // Validate URL
     public static boolean isValidURL(String urlStr) {
         try {
-            URL url = new URL(urlStr);
+            new URL(urlStr);
             return true;
         }
         catch (MalformedURLException e) {
@@ -309,7 +299,6 @@ public class AgentMain {
      * @param   event_api_url    The API's URL.
      * @param   port    The API's port.
      * @param   path    The optional path (may be NULL).
-     * @param   topic   The optional topic part of the URL (may be NULL).
      * @param   username  Username for Basic Authentication of requests.
      * @param   password  Password for Basic Authentication of requests.
      * @param   Level     Java Log levels.
@@ -322,7 +311,6 @@ public class AgentMain {
             String event_api_url,
             int port,
             String path,
-            String topic,
             String username,
             String password,
             String keystore_path,
@@ -368,7 +356,7 @@ public class AgentMain {
             vesurl = new URL(url);
             vesbatchurl = new URL(url+"/eventBatch");
         } catch (MalformedURLException e) {
-            logger.info("Error in url input");
+            logger.error("Error in url input");
             e.printStackTrace();
             System.exit(1);
         }
