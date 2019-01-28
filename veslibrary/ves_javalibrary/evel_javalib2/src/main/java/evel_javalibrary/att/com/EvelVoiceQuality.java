@@ -42,6 +42,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	int major_version = 1;
 	int minor_version = 0;
 	
+	
 	/**************************************************************************//**
 	 * Vendor VNF Name fields.
 	 * JSON equivalent field: vendorVnfNameFields
@@ -521,7 +522,7 @@ public class EvelVoiceQuality extends EvelHeader {
 	      /***************************************************************************/
 	      assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_VOICE_QUALITY);
 	      assert(adjacencyName != null);
-	      assert(mosCqe >= 1 && mosCqe <= 5);
+	      assert(mosCqe >= 0 && mosCqe <= 5);
 	      assert(rFactor >= 0 && rFactor <= 100);
 	      assert(endpointDescr != null && (endpointDescr.equals("Caller")||endpointDescr.equals("Callee")) );
 	      
@@ -580,6 +581,9 @@ public class EvelVoiceQuality extends EvelHeader {
 	      vQMetrices.endpointRtpPacketsLost.SetValuePr(endpointRtpPacketsLost,"End point Rtp Packets Lost");
 	      vQMetrices.localAverageJitter.SetValuePr(localAverageJitter,"Local Average Jitter");
 	      vQMetrices.localMaxJitter.SetValuePr(localMaxJitter, "Local Max Jitter");
+	      
+	      vQMetrices.localAverageJitterBufferDelay.SetValuePr(localAverageJitterBufferDelay, "local Average Jitter Buffer Delay");
+	      
 	      vQMetrices.localMaxJitterBufferDelay.SetValuePr(localMaxJitterBufferDelay, "Local Max Jitter Buffer Delay");
 	      vQMetrices.localRtpOctetsLost.SetValuePr(localRtpOctetsLost, "Local RtpOctets Lost");
 	      vQMetrices.localRtpPacketsLost.SetValuePr(localRtpPacketsLost, "Local RtpPackets Lost");
@@ -678,14 +682,14 @@ public class EvelVoiceQuality extends EvelHeader {
 					  .add("adjacencyName", vQMetrics.adjacencyName)
 					  .add("endpointDescription", vQMetrics.endpointDescription);
 					  
-			  vQMetrics.endpointJitter.encJsonValue(obj,"endpointJitter");
+			 // vQMetrics.endpointJitter.encJsonValue(obj,"endpointJitter");
 			  vQMetrics.endpointRtpOctetsDiscarded.encJsonValue(obj,"endpointRtpOctetsDiscarded");
 			  vQMetrics.endpointRtpOctetsReceived.encJsonValue(obj,"endpointRtpOctetsReceived");
 			  vQMetrics.endpointRtpOctetsSent.encJsonValue(obj,"endpointRtpOctetsSent");
 			  vQMetrics.endpointRtpPacketsDiscarded.encJsonValue(obj,"endpointRtpPacketsDiscarded");			  
 			  vQMetrics.endpointRtpPacketsReceived.encJsonValue(obj,"endpointRtpPacketsReceived");
 			  vQMetrics.endpointRtpPacketsSent.encJsonValue(obj,"endpointRtpPacketsSent");
-			  vQMetrics.localJitter.encJsonValue(obj,"localJitter");
+			//  vQMetrics.localJitter.encJsonValue(obj,"localJitter");
 			  vQMetrics.localRtpOctetsDiscarded.encJsonValue(obj,"localRtpOctetsDiscarded");
 			  vQMetrics.localRtpOctetsReceived.encJsonValue(obj,"localRtpOctetsReceived");
 			  vQMetrics.localRtpOctetsSent.encJsonValue(obj,"localRtpOctetsSent");
@@ -693,7 +697,7 @@ public class EvelVoiceQuality extends EvelHeader {
 			  vQMetrics.localRtpPacketsReceived.encJsonValue(obj,"localRtpPacketsReceived");
 			  vQMetrics.localRtpPacketsSent.encJsonValue(obj,"localRtpPacketsSent");
 			  vQMetrics.mosCqe.encJsonValue(obj,"mosCqe");
-			  vQMetrics.packetsLost.encJsonValue(obj,"packetsLost");
+			 // vQMetrics.packetsLost.encJsonValue(obj,"packetsLost");
 			  vQMetrics.packetLossPercent.encJsonValue(obj,"packetLossPercent");
 			  vQMetrics.rFactor.encJsonValue(obj,"rFactor");
 			  vQMetrics.roundTripDelay.encJsonValue(obj,"roundTripDelay");
@@ -707,8 +711,8 @@ public class EvelVoiceQuality extends EvelHeader {
 			  vQMetrics.endpointRtpOctetsLost.encJsonValue(obj, "endpointRtpOctetsLost");
 			  vQMetrics.endpointRtpPacketsLost.encJsonValue(obj, "endpointRtpPacketsLost");
 			  vQMetrics.localAverageJitter.encJsonValue(obj, "localAverageJitter");
-			  vQMetrics.localMaxJitter.encJsonValue(obj, "endpointRtpOctetsLost");
-			  System.out.println("local aveg jitter buffer delay...");
+			  vQMetrics.localMaxJitter.encJsonValue(obj, "localMaxJitter");
+			  
 			  vQMetrics.localAverageJitterBufferDelay.encJsonValue(obj, "localAverageJitterBufferDelay");
 			  
 			  vQMetrics.localMaxJitterBufferDelay.encJsonValue(obj, "localMaxJitterBufferDelay");
@@ -719,8 +723,7 @@ public class EvelVoiceQuality extends EvelHeader {
 			  
 
 			  evelvq.add("endOfCallVqmSummaries", obj);
-			  System.out.println("local aveg jitter buffer delay...2"+ obj);
-			  System.out.println("local aveg jitter buffer delay..."+ evelvq);
+			  
 		  }
 	    
 
@@ -749,6 +752,24 @@ public class EvelVoiceQuality extends EvelHeader {
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "voiceQualityFields",evelVoiceQualityObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_VOICE_QUALITY);
+	        
+	    JsonObject obj = Json.createObjectBuilder()
+	    	  //   .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "voiceQualityFields",evelVoiceQualityObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

@@ -40,6 +40,7 @@ public class EvelSipSignaling extends EvelHeader {
 	int major_version = 1;
 	int minor_version = 0;
 	
+	
 	/**************************************************************************//**
 	 * Vendor VNF Name fields.
 	 * JSON equivalent field: vendorVnfNameFields
@@ -555,5 +556,21 @@ public class EvelSipSignaling extends EvelHeader {
 
 	  }
 
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SIPSIGNALING);
+	    //encode commonheader and sip signaling body fields    
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "sipSignalingFields",evelSipSignalingObject() )
+		    	         .build();
 
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
 }

@@ -103,29 +103,20 @@ public class EvelHeartbeatField extends EvelHeader {
 	  /***************************************************************************/
 	  /* Check preconditions.                                                    */
 	  /***************************************************************************/
-	  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_STATE_CHANGE);
+	  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_HEARTBEAT_FIELD);
 	  assert(name != null);
 	  assert(value != null);
 	  
 	  if( additional_inf == null )
 	  {
-		//  additional_info = new ArrayList<String[]>();
-		  
 		  additional_inf = new HashMap<>();
 	  }
 
 	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-	//  addl_info = new String[2];
-	//  assert(addl_info != null);
-	//  addl_info[0] = name;
-	//  addl_info[1] = value;
-	  
 	  additional_inf.put(name,  value);
-
-	//  additional_info.add(addl_info);
-
 	  EVEL_EXIT();
 	}
+	
 	
 	/**************************************************************************//**
 	 * Set the Interval property of the Heartbeat fields event.
@@ -194,20 +185,22 @@ public class EvelHeartbeatField extends EvelHeader {
 	  }
       */
 	  
-	  if(additional_inf != null) {
-		  JsonArrayBuilder builder = Json.createArrayBuilder();
+	  if(additional_inf != null) {  
+		  //JsonArrayBuilder builder = Json.createArrayBuilder();
+		  JsonObjectBuilder builder = Json.createObjectBuilder();
 		  Iterator<Entry<String, String>> it = additional_inf.entrySet().iterator();
 		  while(it.hasNext()) {
 			  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
 			  String addl_info_key = add_inf.getKey();
 			  String addl_info_value = add_inf.getValue();
-			  JsonObject obj1 = Json.createObjectBuilder()
-			    	     .add("name", addl_info_key)
-			    	     .add("value", addl_info_value).build();
-			  builder.add(obj1);
+			  builder.add("name", addl_info_key);
+			  builder.add("value", addl_info_value);
+			  
+			  
 		  }
-		  evelHeatbeat.add("alarmAdditionalInformation", builder);
+		  evelHeatbeat.add("additionalFields", builder);
 	  }
+	  
 	  
 	  EVEL_EXIT();
 	  
@@ -225,12 +218,29 @@ public class EvelHeartbeatField extends EvelHeader {
 		
 		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_HEARTBEAT_FIELD);
 	    //encode common event header and body    
-	    JsonObject obj = Json.createObjectBuilder()
-	    		
+	    JsonObject obj = Json.createObjectBuilder()	    		
 	    	     .add("event", Json.createObjectBuilder()	    		
 		    	         .add( "commonEventHeader",eventHeaderObject())
 		    	         .add( "heartbeatFields",evelHeartbeatFieldObject())
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_HEARTBEAT_FIELD);
+	    //encode common event header and body    
+	    JsonObject obj = Json.createObjectBuilder()	    		
+	    	    // .add("event", Json.createObjectBuilder()
+		    	             .add( "commonEventHeader",eventHeaderObject())
+		    	             .add( "heartbeatFields",evelHeartbeatFieldObject())
+		    	             .build();
 
 	    EVEL_EXIT();
 	    

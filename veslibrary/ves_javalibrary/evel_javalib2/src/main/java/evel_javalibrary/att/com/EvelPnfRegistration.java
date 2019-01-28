@@ -387,6 +387,22 @@ public class EvelPnfRegistration extends EvelHeader{
 	    return obj;
 
 	  }	
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_PNFREGISTRATION);
+		//encode common event header and body     
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "pnfRegistrationFields",evelPnfRegistrationObject() )
+		    	         .build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }	
 	
 
 

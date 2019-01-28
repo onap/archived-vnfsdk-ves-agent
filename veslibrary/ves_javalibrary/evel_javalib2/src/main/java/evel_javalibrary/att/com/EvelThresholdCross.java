@@ -725,6 +725,24 @@ public class EvelThresholdCross extends EvelHeader {
 	    return obj;
 
 	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_THRESHOLD_CROSSING);
+	        
+	    JsonObject obj = Json.createObjectBuilder()
+	    	   //  .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "thresholdCrossingAlertFields",evelThresholdCrossingObject() )
+		    	         .build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
 	
 
 }

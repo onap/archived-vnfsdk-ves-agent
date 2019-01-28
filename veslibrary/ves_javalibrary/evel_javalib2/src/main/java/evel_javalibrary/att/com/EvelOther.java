@@ -173,7 +173,7 @@ public class EvelOther extends EvelHeader {
 
         } catch( Exception e)
         {
-            e.printStackTrace();
+           
         }
 
 	    EVEL_EXIT();
@@ -352,6 +352,24 @@ public class EvelOther extends EvelHeader {
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "otherFields",evelOtherObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_OTHER);
+		//encode common event header and body for other     
+	    JsonObject obj = Json.createObjectBuilder()
+	    	   //  .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "otherFields",evelOtherObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

@@ -66,6 +66,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	* JSON equivalent field: machineCheckException
 	******************************************************************************/
 	public class MACHINE_CHECK_EXCEPTION{
+		
 		/**
 		 * 
 		 */
@@ -86,11 +87,11 @@ public class EvelScalingMeasurement extends EvelHeader {
 	public class MEASUREMENT_HUGE_PAGE {
 	  String hugePagesIdentifier;
 	  double bytesUsed;
-	  public EvelOptionDouble bytesFree;
-	  public EvelOptionDouble vmPageNumberUsed;
-	  public EvelOptionDouble vmPageNumberFree;
-	  public EvelOptionDouble percentUsed;
-	  public EvelOptionDouble percentFree;
+	  private  EvelOptionDouble bytesFree;
+	  private EvelOptionDouble vmPageNumberUsed;
+	  private EvelOptionDouble vmPageNumberFree;
+	  private EvelOptionDouble percentUsed;
+	  private EvelOptionDouble percentFree;
 	  
 	}
 	
@@ -100,13 +101,13 @@ public class EvelScalingMeasurement extends EvelHeader {
 	 *****************************************************************************/
 	public class MEASUREMENT_PROCESS_STATS {
 	  String processIdentifier;
-	  public EvelOptionDouble forkRate;
-	  public EvelOptionDouble psStateBlocked;
-	  public EvelOptionDouble psStatePaging;
-	  public EvelOptionDouble psStateRunning;
-	  public EvelOptionDouble psStateSleeping;
-	  public EvelOptionDouble psStateStopped;
-	  public EvelOptionDouble psStateZombie;
+	  private EvelOptionDouble forkRate;
+	  private EvelOptionDouble psStateBlocked;
+	  private EvelOptionDouble psStatePaging;
+	  private EvelOptionDouble psStateRunning;
+	  private EvelOptionDouble psStateSleeping;
+	  private EvelOptionDouble psStateStopped;
+	  private EvelOptionDouble psStateZombie;
 	  
 	}
 	
@@ -116,9 +117,9 @@ public class EvelScalingMeasurement extends EvelHeader {
 	 *****************************************************************************/
 	public class MEASUREMENT_LOAD {
 //	  String loadIdentifier;
-	  public EvelOptionDouble shortTerm;
-	  public EvelOptionDouble midTerm;
-	  public EvelOptionDouble longTerm;
+		private EvelOptionDouble shortTerm;
+		private EvelOptionDouble midTerm;
+		private EvelOptionDouble longTerm;
 	  
 	}
 	
@@ -129,24 +130,24 @@ public class EvelScalingMeasurement extends EvelHeader {
 	public class MEASUREMENT_CPU_USE {
 	  String id;
 	  double usage;
-	  public EvelOptionDouble idle;
-	  public EvelOptionDouble intrpt;
-	  public EvelOptionDouble nice;
-	  public EvelOptionDouble softirq;
-	  public EvelOptionDouble steal;
-	  public EvelOptionDouble sys;
-	  public EvelOptionDouble user;
-	  public EvelOptionDouble wait;
+	  private EvelOptionDouble idle;
+	  private EvelOptionDouble intrpt;
+	  private EvelOptionDouble nice;
+	  private EvelOptionDouble softirq;
+	  private EvelOptionDouble steal;
+	  private EvelOptionDouble sys;
+	  private EvelOptionDouble user;
+	  private EvelOptionDouble wait;
 	  /*
 	   * Ves6.0 added fields 14/07/2018
 	   */
 	  private EvelOptionDouble cpuCapacityContention;
-	  public EvelOptionDouble cpuDemandAvg;
-	  public EvelOptionDouble cpuDemandMhz;
-	  public EvelOptionDouble cpuDemandPct;
-	  public EvelOptionDouble cpuLatencyAvg;
-	  public EvelOptionDouble cpuOverheadAvg;
-	  public EvelOptionDouble cpuSwapWaitTime;
+	  private EvelOptionDouble cpuDemandAvg;
+	  private EvelOptionDouble cpuDemandMhz;
+	  private EvelOptionDouble cpuDemandPct;
+	  private EvelOptionDouble cpuLatencyAvg;
+	  private EvelOptionDouble cpuOverheadAvg;
+	  private EvelOptionDouble cpuSwapWaitTime;
 	}
 
 
@@ -156,64 +157,64 @@ public class EvelScalingMeasurement extends EvelHeader {
 	 *****************************************************************************/
 	public class MEASUREMENT_DISK_USE {
 	  String id;
-	  public EvelOptionDouble iotimeavg;
-	  public EvelOptionDouble iotimelast;
-	  public EvelOptionDouble iotimemax;
-	  public EvelOptionDouble iotimemin;
-	  public EvelOptionDouble mergereadavg;
-	  public EvelOptionDouble mergereadlast;
-	  public EvelOptionDouble mergereadmax;
-	  public EvelOptionDouble mergereadmin;
-	  public EvelOptionDouble mergewriteavg;
-	  public EvelOptionDouble mergewritelast;
-	  public EvelOptionDouble mergewritemax;
-	  public EvelOptionDouble mergewritemin;
-	  public EvelOptionDouble octetsreadavg;
-	  public EvelOptionDouble octetsreadlast;
-	  public EvelOptionDouble octetsreadmax;
-	  public EvelOptionDouble octetsreadmin;
-	  public EvelOptionDouble octetswriteavg;
-	  public EvelOptionDouble octetswritelast;
-	  public EvelOptionDouble octetswritemax;
-	  public EvelOptionDouble octetswritemin;
-	  public EvelOptionDouble opsreadavg;
-	  public EvelOptionDouble opsreadlast;
-	  public EvelOptionDouble opsreadmax;
-	  public EvelOptionDouble opsreadmin;
-	  public EvelOptionDouble opswriteavg;
-	  public EvelOptionDouble opswritelast;
-	  public EvelOptionDouble opswritemax;
-	  public EvelOptionDouble opswritemin;
-	  public EvelOptionDouble pendingopsavg;
-	  public EvelOptionDouble pendingopslast;
-	  public EvelOptionDouble pendingopsmax;
-	  public EvelOptionDouble pendingopsmin;
-	  public EvelOptionDouble timereadavg;
-	  public EvelOptionDouble timereadlast;
-	  public EvelOptionDouble timereadmax;
-	  public EvelOptionDouble timereadmin;
-	  public EvelOptionDouble timewriteavg;
-	  public EvelOptionDouble timewritelast;
-	  public EvelOptionDouble timewritemax;
-	  public EvelOptionDouble timewritemin;
+	  private EvelOptionDouble iotimeavg;
+	  private EvelOptionDouble iotimelast;
+	  private EvelOptionDouble iotimemax;
+	  private EvelOptionDouble iotimemin;
+	  private EvelOptionDouble mergereadavg;
+	  private EvelOptionDouble mergereadlast;
+	  private EvelOptionDouble mergereadmax;
+	  private EvelOptionDouble mergereadmin;
+	  private EvelOptionDouble mergewriteavg;
+	  private EvelOptionDouble mergewritelast;
+	  private EvelOptionDouble mergewritemax;
+	  private EvelOptionDouble mergewritemin;
+	  private EvelOptionDouble octetsreadavg;
+	  private EvelOptionDouble octetsreadlast;
+	  private EvelOptionDouble octetsreadmax;
+	  private EvelOptionDouble octetsreadmin;
+	  private EvelOptionDouble octetswriteavg;
+	  private EvelOptionDouble octetswritelast;
+	  private EvelOptionDouble octetswritemax;
+	  private EvelOptionDouble octetswritemin;
+	  private EvelOptionDouble opsreadavg;
+	  private EvelOptionDouble opsreadlast;
+	  private EvelOptionDouble opsreadmax;
+	  private EvelOptionDouble opsreadmin;
+	  private EvelOptionDouble opswriteavg;
+	  private EvelOptionDouble opswritelast;
+	  private EvelOptionDouble opswritemax;
+	  private EvelOptionDouble opswritemin;
+	  private EvelOptionDouble pendingopsavg;
+	  private EvelOptionDouble pendingopslast;
+	  private EvelOptionDouble pendingopsmax;
+	  private EvelOptionDouble pendingopsmin;
+	  private EvelOptionDouble timereadavg;
+	  private EvelOptionDouble timereadlast;
+	  private EvelOptionDouble timereadmax;
+	  private EvelOptionDouble timereadmin;
+	  private EvelOptionDouble timewriteavg;
+	  private EvelOptionDouble timewritelast;
+	  private EvelOptionDouble timewritemax;
+	  private EvelOptionDouble timewritemin;
 	  /*
 	   * VES6.0 Added fields 14/07/2018
 	   */
-	  public EvelOptionDouble diskBusResets;
-	  public EvelOptionDouble diskCommandsAborted;
-	  public EvelOptionDouble diskTime;
-	  public EvelOptionDouble diskFlushRequests;
-	  public EvelOptionDouble diskFlushTime;
-	  public EvelOptionDouble diskCommandsAvg;
-	  public EvelOptionDouble diskReadCommandsAvg;
-	  public EvelOptionDouble diskWriteCommandsAvg;
-	  public EvelOptionDouble diskTotalReadLatencyAvg;
-	  public EvelOptionDouble diskTotalWriteLatencyAvg;
+	  private EvelOptionDouble diskBusResets;
+	  private EvelOptionDouble diskCommandsAborted;
+	  private EvelOptionDouble diskTime;
+	  private EvelOptionDouble diskFlushRequests;
+	  private EvelOptionDouble diskFlushTime;
+	  private EvelOptionDouble diskCommandsAvg;
+	  private EvelOptionDouble diskReadCommandsAvg;
+	  private EvelOptionDouble diskWriteCommandsAvg;
+	  private EvelOptionDouble diskTotalReadLatencyAvg;
+	  private EvelOptionDouble diskTotalWriteLatencyAvg;
 	  
-	  public EvelOptionDouble diskWeightedIoTimeAvg;
-	  public EvelOptionDouble diskWeightedIoTimeLast;
-	  public EvelOptionDouble diskWeightedIoTimeMax;
-	  public EvelOptionDouble diskWeightedIoTimeMin;
+	  private EvelOptionDouble diskWeightedIoTimeAvg;
+	  private EvelOptionDouble diskWeightedIoTimeLast;
+	  private EvelOptionDouble diskWeightedIoTimeMax;
+	  private EvelOptionDouble diskWeightedIoTimeMin;
 	  
 	  
 	}
@@ -240,37 +241,41 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  String id;
 	  String vmid;
 	  double membuffsz;
-	  public EvelOptionDouble memcache;
-	  public EvelOptionDouble memconfig;
-	  public EvelOptionDouble memfree;
-	  public EvelOptionDouble slabrecl;
-	  public EvelOptionDouble slabunrecl;
-	  public EvelOptionDouble memused;
+	  private EvelOptionDouble memcache;
+	  private EvelOptionDouble memconfig;
+	  private EvelOptionDouble memfree;
+	  private EvelOptionDouble slabrecl;
+	  private EvelOptionDouble slabunrecl;
+	  private EvelOptionDouble memused;
 	  
 	  
 	  /*
 	   * VES6.0 Added fields 14/07/2018
 	   */
-	  public EvelOptionDouble memoryDemand;
-	  public EvelOptionDouble memoryLatencyAvg;
-	  public EvelOptionDouble memorySwapUsedAvg;
-	  public EvelOptionDouble memorySwapOutAvg;
-	  public EvelOptionDouble memorySwapInAvg;
-	  public EvelOptionDouble memorySwapInRateAvg;
-	  public EvelOptionDouble memorySwapOutRateAvg;
-	  public EvelOptionDouble memorySharedAvg;
+	  private EvelOptionDouble memoryDemand;
+	  private EvelOptionDouble memoryLatencyAvg;
+	  private EvelOptionDouble memorySwapUsedAvg;
+	  private EvelOptionDouble memorySwapOutAvg;
+	  private EvelOptionDouble memorySwapInAvg;
+	  private EvelOptionDouble memorySwapInRateAvg;
+	  private EvelOptionDouble memorySwapOutRateAvg;
+	  private EvelOptionDouble memorySharedAvg;
+	  
+	  
+	  
+	  
 	}
 
 	/**************************************************************************//**
 	 * myerrors.
 	 * JSON equivalent field: myerrors
 	 *****************************************************************************/
-	public class MEASUREMENT_ERRORS {
-	  int receive_discards;
-	  int receive_myerrors;
-	  int transmit_discards;
-	  int transmit_myerrors;
-	}
+//	public class MEASUREMENT_ERRORS {
+//	  int receive_discards;
+//	  int receive_myerrors;
+//	  int transmit_discards;
+//	  int transmit_myerrors;
+//	}
 	
 	/**************************************************************************//**
 	 * Latency Bucket.
@@ -282,8 +287,8 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  /***************************************************************************/
 	  /* Optional fields                                                         */
 	  /***************************************************************************/
-	  public EvelOptionDouble high_end;
-	  public EvelOptionDouble low_end;
+	  private EvelOptionDouble high_end;
+	  private EvelOptionDouble low_end;
 
 	}
 
@@ -299,74 +304,74 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  /***************************************************************************/
 	  /*Cumulative count of broadcast packets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_bcast_packets_acc;
+       private EvelOptionDouble recvd_bcast_packets_acc;
 	  /*Count of broadcast packets received within the measurement interval*/
-	  public EvelOptionDouble recvd_bcast_packets_delta;
+       private EvelOptionDouble recvd_bcast_packets_delta;
 	  /*Cumulative count of discarded packets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_discarded_packets_acc;
+       private EvelOptionDouble recvd_discarded_packets_acc;
 	  /*Count of discarded packets received within the measurement interval*/
-	  public EvelOptionDouble recvd_discarded_packets_delta;
+       private EvelOptionDouble recvd_discarded_packets_delta;
 	  /*Cumulative count of error packets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_error_packets_acc;
+       private EvelOptionDouble recvd_error_packets_acc;
 	  /*Count of error packets received within the measurement interval*/
-	  public EvelOptionDouble recvd_error_packets_delta;
+       private EvelOptionDouble recvd_error_packets_delta;
 	  /*Cumulative count of multicast packets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_mcast_packets_acc;
+       private EvelOptionDouble recvd_mcast_packets_acc;
 	  /*Count of mcast packets received within the measurement interval*/
-	  public EvelOptionDouble recvd_mcast_packets_delta;
+       private EvelOptionDouble recvd_mcast_packets_delta;
 	  /*Cumulative count of octets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_octets_acc;
+       private EvelOptionDouble recvd_octets_acc;
 	  /*Count of octets received within the measurement interval*/
-	  public EvelOptionDouble recvd_octets_delta;
+       private EvelOptionDouble recvd_octets_delta;
 	  /*Cumulative count of all packets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_total_packets_acc;
+       private EvelOptionDouble recvd_total_packets_acc;
 	  /*Count of all packets received within the measurement interval*/
-	  public EvelOptionDouble recvd_total_packets_delta;
+       private EvelOptionDouble recvd_total_packets_delta;
 	  /*Cumulative count of unicast packets received as read at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble recvd_ucast_packets_acc;
+	  private EvelOptionDouble recvd_ucast_packets_acc;
 	  /*Count of unicast packets received within the measurement interval*/
-	  public EvelOptionDouble recvd_ucast_packets_delta;
+	  private EvelOptionDouble recvd_ucast_packets_delta;
 	  /*Cumulative count of transmitted broadcast packets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_bcast_packets_acc;
+	  private EvelOptionDouble tx_bcast_packets_acc;
 	  /*Count of transmitted broadcast packets within the measurement interval*/
-	  public EvelOptionDouble tx_bcast_packets_delta;
+	  private EvelOptionDouble tx_bcast_packets_delta;
 	  /*Cumulative count of transmit discarded packets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_discarded_packets_acc;
+	  private EvelOptionDouble tx_discarded_packets_acc;
 	  /*Count of transmit discarded packets within the measurement interval*/
-	  public EvelOptionDouble tx_discarded_packets_delta;
+	  private EvelOptionDouble tx_discarded_packets_delta;
 	  /*Cumulative count of transmit error packets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_error_packets_acc;
+	  private EvelOptionDouble tx_error_packets_acc;
 	  /*Count of transmit error packets within the measurement interval*/
-	  public EvelOptionDouble tx_error_packets_delta;
+	  private EvelOptionDouble tx_error_packets_delta;
 	  /*Cumulative count of transmit multicast packets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_mcast_packets_acc;
+	  private EvelOptionDouble tx_mcast_packets_acc;
 	  /*Count of transmit multicast packets within the measurement interval*/
-	  public EvelOptionDouble tx_mcast_packets_delta;
+	  private EvelOptionDouble tx_mcast_packets_delta;
 	  /*Cumulative count of transmit octets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_octets_acc;
+	  private EvelOptionDouble tx_octets_acc;
 	  /*Count of transmit octets received within the measurement interval*/
-	  public EvelOptionDouble tx_octets_delta;
+	  private EvelOptionDouble tx_octets_delta;
 	  /*Cumulative count of all transmit packets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_total_packets_acc;
+	  private EvelOptionDouble tx_total_packets_acc;
 	  /*Count of transmit packets within the measurement interval*/
-	  public EvelOptionDouble tx_total_packets_delta;
+	  private EvelOptionDouble tx_total_packets_delta;
 	  /*Cumulative count of all transmit unicast packets at the end of
 	   the measurement interval*/
-	  public EvelOptionDouble tx_ucast_packets_acc;
+	  private EvelOptionDouble tx_ucast_packets_acc;
 	  /*Count of transmit unicast packets within the measurement interval*/
-	  public EvelOptionDouble tx_ucast_packets_delta;
+	  private EvelOptionDouble tx_ucast_packets_delta;
 	  
 	  /*VES6.0 added field 14July*/
 	  String nicIdentifier;
@@ -374,15 +379,15 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  /*
 	   * VES6.0 added field 19July 
 	   */
-	  public EvelOptionDouble administrativeState;
-	  public EvelOptionDouble operationalState;
-	  public EvelOptionDouble receivedPercentDiscard;
-	  public EvelOptionDouble receivedPercentError;
-	  public EvelOptionDouble receivedUtilization;
-	  public EvelOptionString speed;
-	  public EvelOptionDouble transmittedPercentDiscard;
-	  public EvelOptionDouble transmittedPercentError;
-	  public EvelOptionDouble transmittedUtilization;
+	  private EvelOptionString administrativeState;
+	  private EvelOptionString operationalState;
+	  private EvelOptionDouble receivedPercentDiscard;
+	  private EvelOptionDouble receivedPercentError;
+	  private EvelOptionDouble receivedUtilization;
+	  private EvelOptionDouble speed;
+	  private EvelOptionDouble transmittedPercentDiscard;
+	  private EvelOptionDouble transmittedPercentError;
+	  private EvelOptionDouble transmittedUtilization;
 	  
 	}
 
@@ -439,68 +444,140 @@ public class EvelScalingMeasurement extends EvelHeader {
 	 *****************************************************************************/
 	public class MEASUREMENT_IPMI {
 		
+		
+		
 		/***************************************************************************/
 		  /* Optional fields                                                         */
 		  /***************************************************************************/
-		  public EvelOptionDouble exitAirTemperature;
-		  public EvelOptionDouble ioModuleTemperature;
-		  public EvelOptionDouble frontPanelTemperature;
-		  public EvelOptionDouble systemAirflow;
+		private EvelOptionDouble exitAirTemperature;
+		private EvelOptionDouble ioModuleTemperature;
+		private EvelOptionDouble frontPanelTemperature;
+		private EvelOptionDouble systemAirflow;
+		
+		
+
+		
 		  
+		
+		
+		public void evel_measurement_ipmi_exitAirTemperature_set(MEASUREMENT_IPMI ipmi,
+	             double val)
+		  {
+			  EVEL_ENTER();
+			  ipmi.exitAirTemperature.SetValuePr(val,"exitAir Temperature");
+			  EVEL_EXIT();
+		  }
+		
+		
+
+		
+		
+		
 		  ArrayList<MEASUREMENT_IPMI_PROCESSOR> ipmiprocessor;
 		  
 		  public class MEASUREMENT_IPMI_PROCESSOR {
-			  public String processorIdentifier;
-			  public EvelOptionDouble processorThermalControlPercent;
-			  public EvelOptionDouble processorDTSthermalMargin;
+			  private String processorIdentifier;
+			  private EvelOptionDouble processorThermalControlPercent;
+			  private EvelOptionDouble processorDtsThermalMargin;
 		  
 			  ArrayList<Processor_DIMMaggregate_Thermal_Margin> processorDIMMaggregateThermalMargin;
 			  
 			  public class Processor_DIMMaggregate_Thermal_Margin {
-				  public String processorDIMMaggregateThermalMarginIdentifier;
-				  public double processorDIMMaggregateThermalMargin;
+				  private String processorDIMMaggregateThermalMarginIdentifier;
+				  private double thermalMargin;
 				 
 				  
 				}
 			  
-			  public void evel_measurement_IPMI_ProcessorDIMMaggregateThermalMargin_add(
-                      String thermalMarginIdentifier,
-                      double thermalMargin)
-			  {
-				  Processor_DIMMaggregate_Thermal_Margin pp = null;
-				  EVEL_ENTER();
+			  public ArrayList<Processor_DIMMaggregate_Thermal_Margin> getProcessorDIMMaggregateThermalMargin(
+	                      String thermalMarginIdentifier,
+	                      double thermalMargin)
+				  {
+					  Processor_DIMMaggregate_Thermal_Margin pp = null;
+					  EVEL_ENTER();
 
-				  /***************************************************************************/
-				  /* Check assumptions.                                                      */
-				  /***************************************************************************/
-					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(thermalMarginIdentifier != null);
-					assert(thermalMargin > 0.0);
+					  /***************************************************************************/
+					  /* Check assumptions.                                                      */
+					  /***************************************************************************/
+						assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+						assert(thermalMarginIdentifier != null);
+						assert(thermalMargin > 0.0);
+						
+						/***************************************************************************/
+						/* Allocate a container for the value and push onto the list.              */
+						/***************************************************************************/
+						LOGGER.debug(MessageFormatter.format("Adding ThermalMarginIdentifier={0} Use={1}", thermalMarginIdentifier, thermalMargin));
+						pp = new Processor_DIMMaggregate_Thermal_Margin();
+						assert(pp != null);
+						pp.processorDIMMaggregateThermalMarginIdentifier = thermalMarginIdentifier;
+						assert(pp.thermalMargin >= 0.0);
+						pp.thermalMargin = thermalMargin;
+						
+						if( processorDIMMaggregateThermalMargin == null ){
+							processorDIMMaggregateThermalMargin = new ArrayList<Processor_DIMMaggregate_Thermal_Margin>();
+						LOGGER.debug("Allocate new ProcessorDIMMaggregateThermalMargin");
+						}
+
+						processorDIMMaggregateThermalMargin.add(pp);
 					
-					/***************************************************************************/
-					/* Allocate a container for the value and push onto the list.              */
-					/***************************************************************************/
-					LOGGER.debug(MessageFormatter.format("Adding ThermalMarginIdentifier={0} Use={1}", thermalMarginIdentifier, thermalMargin));
-					pp = new Processor_DIMMaggregate_Thermal_Margin();
-					assert(pp != null);
-					pp.processorDIMMaggregateThermalMarginIdentifier = thermalMarginIdentifier;
-					assert(pp.processorDIMMaggregateThermalMargin >= 0.0);
-					pp.processorDIMMaggregateThermalMargin = thermalMargin;
+
+						EVEL_EXIT();
+						return processorDIMMaggregateThermalMargin;
+				  }
+				  
+		  
+		  
+		  
+		  
+		  }	  	
+		  
+		  
+		  
+		  ArrayList<Processor_DIMMaggregate_Thermal_Margin> processorDIMMaggregateThermalMargin;
+		  public void evelMeasurementIpmiProcessorAdd(String processorIdentifier,double val, double processDTSthermalMargin,String thermalMarginIdentifier, double thermalMargin) {
+			  MEASUREMENT_IPMI_PROCESSOR mIP = null;
+			  EVEL_ENTER();
+              
+			  /***************************************************************************/
+			  /* Check assumptions.                                                      */
+			  /***************************************************************************/
+				assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+				assert(processorIdentifier != null);
+				
+				
+				/***************************************************************************/
+				/* Allocate a container for the value and push onto the list.              */
+				/***************************************************************************/
+				LOGGER.debug(MessageFormatter.format("Adding Identifier={0}", processorIdentifier));
+				mIP = new MEASUREMENT_IPMI_PROCESSOR();
+				assert(mIP != null);
+				mIP.processorIdentifier = processorIdentifier;
+				mIP.processorThermalControlPercent = new EvelOptionDouble();
+				mIP.processorThermalControlPercent.SetValuePr(val,"Processor Thermal Control Percent");
+				mIP.processorDtsThermalMargin = new EvelOptionDouble();
+				mIP.processorDtsThermalMargin.SetValuePr(processDTSthermalMargin,"processor DTSthermal Margin");
+				
+				
+				
+				if( ipmiprocessor == null ){
+					ipmiprocessor = new ArrayList<MEASUREMENT_IPMI_PROCESSOR>();
+				LOGGER.debug("Allocate new IPMI_PROCESSOR");
+				}
+				
+				
+					mIP.processorDIMMaggregateThermalMargin = new MEASUREMENT_IPMI_PROCESSOR().getProcessorDIMMaggregateThermalMargin(thermalMarginIdentifier,thermalMargin);//processorDIMMaggregateThermalMargin;
 					
-					if( processorDIMMaggregateThermalMargin == null ){
-						processorDIMMaggregateThermalMargin = new ArrayList<Processor_DIMMaggregate_Thermal_Margin>();
-					LOGGER.debug("Allocate new ProcessorDIMMaggregateThermalMargin");
-					}
+					
+					ipmiprocessor.add(mIP);
+				
 
-					processorDIMMaggregateThermalMargin.add(pp);
+				EVEL_EXIT();
 
-					EVEL_EXIT();
-			  }
-			  
-			  
 		  }
-		  public void evel_measurement_IPMI_MEASUREMENT_IPMI_PROCESSOR_add(
-                  String processorIdentifier
+
+		  
+		  public MEASUREMENT_IPMI_PROCESSOR evel_measurement_IPMI_MEASUREMENT_IPMI_PROCESSOR_add(
+                  String processorIdentifier,double val
                   )
 		  {
 			  MEASUREMENT_IPMI_PROCESSOR mIP = null;
@@ -521,7 +598,8 @@ public class EvelScalingMeasurement extends EvelHeader {
 				assert(mIP != null);
 				mIP.processorIdentifier = processorIdentifier;
 				mIP.processorThermalControlPercent = new EvelOptionDouble();
-				mIP.processorDTSthermalMargin = new EvelOptionDouble(); 
+				mIP.processorThermalControlPercent.SetValuePr(val,"Processor Thermal Control Percent");
+				mIP.processorDtsThermalMargin = new EvelOptionDouble(); 
 				
 				
 				
@@ -531,24 +609,21 @@ public class EvelScalingMeasurement extends EvelHeader {
 				}
 
 				ipmiprocessor.add(mIP);
-
+                
 				EVEL_EXIT();
+				return mIP;
 		  }
 		  
-		  
-		
-		  
-		  
-		  
+
 			  ArrayList<IPMIglobalAggregateTemperatureMargin> ipmiglobalAggregateTemperatureMarginArray;
 			  
 			  public class IPMIglobalAggregateTemperatureMargin {
-				  public String globalAggregateTemperatureMarginIdentifier;
-				  public EvelOptionDouble globalAggregateTemeratureMargin;			  
+				  private String globalAggregateTemperatureMarginIdentifier;
+				  private EvelOptionDouble globalAggregateTemeratureMargin;			  
 				}
 			  
 			  public void evel_measurement_IPMI_MEASUREMENT_IPMIglobalAggregateTemperatureMargin_add(
-	                  String globalAggregateTemperatureMarginIdentifier
+	                  String globalAggregateTemperatureMarginIdentifier,double val
 	                  )
 			  {
 				  IPMIglobalAggregateTemperatureMargin ipmiGlobalAgg = null;
@@ -569,7 +644,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(ipmiGlobalAgg != null);
 					ipmiGlobalAgg.globalAggregateTemperatureMarginIdentifier = globalAggregateTemperatureMarginIdentifier;
 					ipmiGlobalAgg.globalAggregateTemeratureMargin = new EvelOptionDouble();
-					
+					ipmiGlobalAgg.globalAggregateTemeratureMargin.SetValuePr(val,"Processor Thermal Control Percent");
 					
 					if( ipmiglobalAggregateTemperatureMarginArray == null ){
 						ipmiglobalAggregateTemperatureMarginArray = new ArrayList<IPMIglobalAggregateTemperatureMargin>();
@@ -583,17 +658,19 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  
 			  
 			  
+			  
+			  
 			  ArrayList<IPMIpowerSupply> ipmipowerSupply;
 			  
 			  public class IPMIpowerSupply {
-				  public String powerSupplyIdentifier;
-				  public EvelOptionDouble powerSupplyInputPower;
-				  public EvelOptionDouble powerSupplycurrentOutputPercent;
-				  public EvelOptionDouble powerSupplyTemperature;
+				  private String powerSupplyIdentifier;
+				  private EvelOptionDouble powerSupplyInputPower;
+				  private EvelOptionDouble powerSupplycurrentOutputPercent;
+				  private EvelOptionDouble powerSupplyTemperature;
 				}
 			  
 			  public void evel_measurement_IPMI_MEASUREMENT_IPMIpowerSupply_add(
-	                  String powerSupplyIdentifier
+	                  String powerSupplyIdentifier,double powerSupplyInputPower,double powerSupplycurrentOutputPercent,double powerSupplyTemperature
 	                  )
 			  {
 				  IPMIpowerSupply ipmipower = null;
@@ -603,7 +680,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(ipmipower != null);
+					//assert(ipmipower != null);
 					
 					
 					/***************************************************************************/
@@ -614,8 +691,11 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(ipmipower != null);
 					ipmipower.powerSupplyIdentifier = powerSupplyIdentifier;
 					ipmipower.powerSupplycurrentOutputPercent = new EvelOptionDouble();
+					ipmipower.powerSupplycurrentOutputPercent.SetValuePr(powerSupplyInputPower,"Power Supply Input Power");
 					ipmipower.powerSupplyInputPower = new EvelOptionDouble();
+					ipmipower.powerSupplyInputPower.SetValuePr(powerSupplycurrentOutputPercent,"power Supply currentOutput Percent");
 					ipmipower.powerSupplyTemperature = new EvelOptionDouble();
+					ipmipower.powerSupplyTemperature.SetValuePr(powerSupplyTemperature,"power Supply Temperature");
 					
 					
 					if( ipmipowerSupply == null ){
@@ -635,14 +715,14 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  ArrayList<IPMIbattery> ipmibattery;
 			  
 			  public class IPMIbattery {
-				  public String batteryIdentifier;
-				  public EvelOptionString batteryType;
-				  public EvelOptionDouble batteryVoltageLevel;
+				  private String batteryIdentifier;
+				  private EvelOptionString batteryType;
+				  private EvelOptionDouble batteryVoltageLevel;
 				  
 				}
 			  
 			  public void evel_measurement_IPMI_MEASUREMENT_IPMIbattery_add(
-	                  String batteryIdentifier
+	                  String batteryIdentifier,String batteryType,double batteryVoltageLevel
 	                  )
 			  {
 				  IPMIbattery imibatt = null;
@@ -652,7 +732,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(imibatt != null);
+					//assert(imibatt != null);
 					
 					
 					/***************************************************************************/
@@ -663,7 +743,9 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(imibatt != null);
 					imibatt.batteryIdentifier = batteryIdentifier;
 					imibatt.batteryType = new EvelOptionString();
+					imibatt.batteryType.SetValue("BatteryType");
 					imibatt.batteryVoltageLevel = new EvelOptionDouble();
+					imibatt.batteryVoltageLevel.SetValuePr(batteryVoltageLevel,"Battery Voltage Level");
 					
 					if( ipmibattery == null ){
 						ipmibattery = new ArrayList<IPMIbattery>();
@@ -680,14 +762,14 @@ public class EvelScalingMeasurement extends EvelHeader {
               ArrayList<IPMINIC> ipmiNIC;
 			  
 			  public class IPMINIC {
-				  public String nic_Identifier;
-				  public EvelOptionDouble nic_Temperature;
+				  private String nicIdentifier;
+				  private EvelOptionDouble nicTemperature;
 				  
 				  
 				}
 			  
 			  public void evel_measurement_IPMINIC_add(
-	                  String nic_Identifier
+	                  String nicIdentifier,double nicTemperature
 	                  )
 			  {
 				  IPMINIC ipmiNic = null;
@@ -697,17 +779,19 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(ipmiNic != null);
+					//assert(ipmiNic != null);
 					
 					
 					/***************************************************************************/
 					/* Allocate a container for the value and push onto the list.              */
 					/***************************************************************************/
-					LOGGER.debug(MessageFormatter.format("Adding Identifier={0}", nic_Identifier));
+					
 					ipmiNic = new IPMINIC();
 					assert(ipmiNic != null);
-					ipmiNic.nic_Identifier = nic_Identifier;
-					ipmiNic.nic_Temperature = new EvelOptionDouble();
+					ipmiNic.nicIdentifier = nicIdentifier;
+					ipmiNic.nicTemperature = new EvelOptionDouble();
+					ipmiNic.nicTemperature.SetValuePr(nicTemperature, "nic Temperature");
+					
 					
 					
 					
@@ -726,15 +810,15 @@ public class EvelScalingMeasurement extends EvelHeader {
              ArrayList<IPMIHSBP> ipmiHSBP;
 			  
 			  public class IPMIHSBP {
-				  public String hsbpIdentifier;
-				  public EvelOptionDouble hsbpTemperature;
+				  private String hsbpIdentifier;
+				  private EvelOptionDouble hsbpTemperature;
 				  
 				  
 				}
 			  
 			  
 			  public void evel_measurement_IPMIHSBP_add(
-	                  String hsbpIdentifier
+	                  String hsbpIdentifier,double hsbpTemperature
 	                  )
 			  {
 				  IPMIHSBP ipmiHsbp = null;
@@ -744,7 +828,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(ipmiHsbp != null);
+					//assert(ipmiHsbp != null);
 					
 					
 					/***************************************************************************/
@@ -755,7 +839,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(ipmiHsbp != null);
 					ipmiHsbp.hsbpIdentifier = hsbpIdentifier;
 					ipmiHsbp.hsbpTemperature = new EvelOptionDouble();
-					
+					ipmiHsbp.hsbpTemperature.SetValuePr(hsbpTemperature,"Hsbp Temperature");
 					
 					if( ipmiHSBP == null ){
 						ipmiHSBP = new ArrayList<IPMIHSBP>();
@@ -773,8 +857,8 @@ public class EvelScalingMeasurement extends EvelHeader {
             ArrayList<IPMIbaseboardTemperature> ipmibaseboardTemperature;
 			  
 			  public class IPMIbaseboardTemperature {
-				  public String baseboardTemperatureIdentifier;
-				  public EvelOptionDouble baseboardTemperature;
+				  private String baseboardTemperatureIdentifier;
+				  private EvelOptionDouble baseboardTemperature;
 				  
 				  
 				}
@@ -782,7 +866,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  
 			  
 			  public void evel_measurement_IPMIbaseboardTemperature_add(
-	                  String baseboardTemperatureIdentifier
+	                  String baseboardTemperatureIdentifier,double baseboardTemperature
 	                  )
 			  {
 				  IPMIbaseboardTemperature ipmibaseboardTemp = null;
@@ -792,7 +876,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(ipmibaseboardTemperature != null);
+					//assert(ipmibaseboardTemperature != null);
 					
 					
 					/***************************************************************************/
@@ -803,6 +887,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(ipmibaseboardTemp != null);
 					ipmibaseboardTemp.baseboardTemperatureIdentifier = baseboardTemperatureIdentifier;
 					ipmibaseboardTemp.baseboardTemperature = new EvelOptionDouble();
+					ipmibaseboardTemp.baseboardTemperature.SetValuePr(baseboardTemperature,"Baseboard Temperature");
 					
 					if( ipmibaseboardTemperature == null ){
 						ipmibaseboardTemperature = new ArrayList<IPMIbaseboardTemperature>();
@@ -820,15 +905,15 @@ public class EvelScalingMeasurement extends EvelHeader {
                ArrayList<IPMIbaseboardvoltageResulator> ipmiBaseboardvoltageResulator;
 			  
 			  public class IPMIbaseboardvoltageResulator {
-				  public String baseboardVoltageRegulatorIdentifier;
-				  public EvelOptionDouble voltageRegulatorTemperature;
+				  private String baseboardVoltageRegulatorIdentifier;
+				  private EvelOptionDouble voltageRegulatorTemperature;
 				  
 				  
 				}
 			  
 			  
 			  public void evel_measurement_IPMIbaseboardvoltageResulator_add(
-	                  String baseboardVoltageRegulatorIdentifier
+	                  String baseboardVoltageRegulatorIdentifier,double voltageRegulatorTemperature
 	                  )
 			  {
 				  IPMIbaseboardvoltageResulator ipmiBaseboardvoltageRes = null;
@@ -838,7 +923,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(ipmiBaseboardvoltageRes != null);
+					//assert(ipmiBaseboardvoltageRes != null);
 					
 					
 					/***************************************************************************/
@@ -849,6 +934,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(ipmiBaseboardvoltageRes != null);
 					ipmiBaseboardvoltageRes.baseboardVoltageRegulatorIdentifier = baseboardVoltageRegulatorIdentifier;
 					ipmiBaseboardvoltageRes.voltageRegulatorTemperature = new EvelOptionDouble();
+					ipmiBaseboardvoltageRes.voltageRegulatorTemperature.SetValuePr(voltageRegulatorTemperature,"Voltage Regulator Temperature");
 					
 					if( ipmiBaseboardvoltageResulator == null ){
 						ipmiBaseboardvoltageResulator = new ArrayList<IPMIbaseboardvoltageResulator>();
@@ -866,14 +952,14 @@ public class EvelScalingMeasurement extends EvelHeader {
             ArrayList<IPMIfan> ipmiFan;
 			  
 			  public class IPMIfan {
-				  public String fanIdentifier;
-				  public EvelOptionDouble fanSpeed;
+				  private String fanIdentifier;
+				  private EvelOptionDouble fanSpeed;
 				  
 				  
 				}
 			  
 			  public void evel_measurement_IPMIfan_add(
-	                  String fanIdentifier
+	                  String fanIdentifier,double fanSpeed
 	                  )
 			  {
 				  IPMIfan ipmiF = null;
@@ -883,7 +969,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  /* Check assumptions.                                                      */
 				  /***************************************************************************/
 					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-					assert(ipmiF != null);
+					//assert(ipmiF != null);
 					
 					
 					/***************************************************************************/
@@ -894,6 +980,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					assert(ipmiF != null);
 					ipmiF.fanIdentifier = fanIdentifier;
 					ipmiF.fanSpeed = new EvelOptionDouble();
+					ipmiF.fanSpeed.SetValuePr(fanSpeed,"Fan Speed");
 					
 					if( ipmiFan == null ){
 						ipmiFan = new ArrayList<IPMIfan>();
@@ -907,7 +994,84 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  
 			  
 			  
-		
+			  
+			  
+			  
+				public void evel_meas_ipmi_add(MEASUREMENT_IPMI ipmi,double exitAirTemperature,double frontPanelTemperature,double ioModuleTemperature,double systemAirflow)
+				{
+					EVEL_ENTER();
+					
+					/***************************************************************************/
+					/* Check preconditions.                                                    */
+					/***************************************************************************/
+					// MEASUREMENT_IPMI ipmi = new MEASUREMENT_IPMI();
+					assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+					assert(ipmi != null);
+					
+					
+					
+					    assert(ipmi != null);
+					    //cpu_use.id    = id;
+					    //cpu_use.usage = usage;
+					    ipmi.exitAirTemperature = new EvelOptionDouble();
+					  ipmi.exitAirTemperature.SetValuePr(exitAirTemperature, "Exit Air Temperature");
+					    ipmi.frontPanelTemperature = new EvelOptionDouble();
+					    ipmi.frontPanelTemperature.SetValuePr(frontPanelTemperature, "front Panel Temperature");
+					    ipmi.ioModuleTemperature = new EvelOptionDouble();
+					    ipmi.ioModuleTemperature.SetValuePr(ioModuleTemperature, "IOModule Temperature");
+					    ipmi.systemAirflow = new EvelOptionDouble();
+					    ipmi.systemAirflow.SetValuePr(systemAirflow, "System Airflow");
+					    ipmi.ipmibaseboardTemperature = null;
+					    ipmi.ipmiBaseboardvoltageResulator = null;
+					    ipmi.ipmibattery = null;
+					    ipmi.ipmiFan = null;
+					    ipmi.ipmiglobalAggregateTemperatureMarginArray = null;
+					    ipmi.ipmiHSBP = null;
+					    ipmi.ipmiNIC = null;
+					    ipmi.ipmipowerSupply = null;
+					    ipmi.ipmiprocessor = null;
+					
+				    
+					if( ipmis == null ){
+					ipmis = new ArrayList<MEASUREMENT_IPMI>();
+					LOGGER.debug("Allocate new file system usage");
+					}
+					
+					
+					ipmis.add(ipmi);
+					
+					EVEL_EXIT();
+					
+					//return ipmi;
+				}
+				
+
+
+				 public void evel_measurement_ipmi_frontPanelTemperature_set(MEASUREMENT_IPMI ipmi,
+			             double val)
+				  {
+					  EVEL_ENTER();
+					  ipmi.frontPanelTemperature.SetValuePr(val,"Front panel temp in Celsius");
+					  EVEL_EXIT();
+				  }
+				 public void evel_measurement_ipmi_ioModuleTemperature_set(MEASUREMENT_IPMI ipmi,
+			             double val)
+				  {
+					  EVEL_ENTER();
+					  ipmi.ioModuleTemperature.SetValuePr(val,"Io module temp in Celsius ");
+					  EVEL_EXIT();
+				  }
+				 public void evel_measurement_ipmi_systemAirflow_set(MEASUREMENT_IPMI ipmi,
+			             double val)
+				  {
+					  EVEL_ENTER();
+					  ipmi.systemAirflow.SetValuePr(val,"Airflow in cubic feet per minute (cfm)");
+					  EVEL_EXIT();
+				  }
+				
+
+			  
+
 			  
 			  
 			  
@@ -916,379 +1080,12 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  
 			  
 			  
-			  
-			  
-			  
-			  
-			  
-			  
-			  
-			
-		
-		
-		
-//		ArrayList<MEASUREMENT_IPMI_PERCENT_USAGE> ipmi_percentage;
-//		ArrayList<MEASUREMENT_IPMI_VOLTAGE> ipmi_voltage;
-//		
-//		ArrayList<MEASUREMENT_IPMI_TEMPARATURE> ipmi_temparature;
-//		ArrayList<MEASUREMENT_IPMI_FAN> ipmi_fan;
-//		ArrayList<MEASUREMENT_IPMI_CFM> ipmi_cfm;
-//		ArrayList<MEASUREMENT_IPMI_WATTS> ipmi_watts;    
-//		/**************************************************************************//**
-//		 * IPMI Percent Usage.
-//		 * JSON equivalent field: PercentUsage
-//		 *****************************************************************************/
-//		public class MEASUREMENT_IPMI_PERCENT_USAGE {
-//		  public EvelOptionDouble P2ThermCtrl;
-//		  public EvelOptionDouble P1ThermCtrl;
-//		  public EvelOptionDouble PS1CurrOut;
-//		  
-//		}
-//		
-//		public class MEASUREMENT_IPMI_VOLTAGE {
-//			public EvelOptionDouble  BB3_3vVbat;
-//			public EvelOptionDouble  BB12_0v;
-//			  
-//			}
-//		
-//		public class MEASUREMENT_IPMI_TEMPARATURE {
-//			public EvelOptionDouble  AggThermMgn1;
-//			public EvelOptionDouble  DIMMThrmMrgn4;
-//			public EvelOptionDouble  DIMMThrmMrgn3;
-//			public EvelOptionDouble  DIMMThrmMrgn2;
-//			public EvelOptionDouble  DIMMThrmMrgn1;
-//			public EvelOptionDouble  P2DTSThermMgn;
-//			public EvelOptionDouble  P1DTSThermMgn;
-//			public EvelOptionDouble  P2ThermCtrl;
-//			public EvelOptionDouble  P1ThermCtrl;
-//			public EvelOptionDouble  P2ThermMargin;
-//			public EvelOptionDouble  P1ThermMargin;
-//			public EvelOptionDouble  PS1Temperature;
-//			public EvelOptionDouble  LANNICTemp;
-//			public EvelOptionDouble  ExitAirTemp;
-//			public EvelOptionDouble  HSBP1Temp;
-//			public EvelOptionDouble   IOModTemp;
-//			public EvelOptionDouble   BBLftRearTemp;
-//			public EvelOptionDouble   BBRtRearTemp;
-//			public EvelOptionDouble   BBBMCTemp;
-//			public EvelOptionDouble   SSBTemp;
-//			public EvelOptionDouble   FrontPanelTemp;
-//			public EvelOptionDouble   BBP2VRTemp;
-//			public EvelOptionDouble   BBP1VRTemp;
-//			  
-//			}
-//		
-//		public class MEASUREMENT_IPMI_FAN {
-//			public EvelOptionDouble  SystemFan6B;
-//			public EvelOptionDouble  SystemFan6A;
-//			public EvelOptionDouble  SystemFan5B;
-//			public EvelOptionDouble  SystemFan5A;
-//			public EvelOptionDouble  SystemFan4B;
-//			public EvelOptionDouble  SystemFan4A;
-//			public EvelOptionDouble  SystemFan3B;
-//			public EvelOptionDouble  SystemFan3A;
-//			public EvelOptionDouble  SystemFan2B;
-//			public EvelOptionDouble  SystemFa_2A;
-//			public EvelOptionDouble   SystemFan1B;
-//			public EvelOptionDouble  SystemFan1A;
-//			  
-//			}
-//		public class MEASUREMENT_IPMI_CFM {
-//			public EvelOptionDouble   System_Airflow;
-//
-//			}
-//		public class MEASUREMENT_IPMI_WATTS {
-//			public EvelOptionDouble  PS1InputPower;
-//
-//			}    
-//		
-//		
-//		public MEASUREMENT_IPMI_TEMPARATURE evel_measurement_new_temparature_add(double usage)
-//		  {
-//		    EVEL_ENTER();
-//
-//		    /***************************************************************************/
-//		    /* Check assumptions.                                                      */
-//		    /***************************************************************************/
-//		    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-//		    assert(usage >= 0.0);
-//
-//		    /***************************************************************************/
-//		    /* Allocate a container for the value and push onto the list.              */
-//		    /***************************************************************************/
-//		    LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", usage));
-//		    MEASUREMENT_IPMI_TEMPARATURE temparature = new MEASUREMENT_IPMI_TEMPARATURE();
-//		    assert(temparature != null);
-//		    temparature.AggThermMgn1   = new EvelOptionDouble();
-//		    temparature.DIMMThrmMrgn4 = new EvelOptionDouble();
-//		    
-//		    temparature.DIMMThrmMrgn3 = new EvelOptionDouble();
-//		    temparature.DIMMThrmMrgn2 = new EvelOptionDouble();
-//		    temparature.DIMMThrmMrgn1 = new EvelOptionDouble();
-//		    temparature.P2DTSThermMgn = new EvelOptionDouble();
-//		    temparature.P1DTSThermMgn = new EvelOptionDouble();
-//		    temparature.P2ThermCtrl = new EvelOptionDouble();
-//		    temparature.P1ThermCtrl = new EvelOptionDouble();
-//		    temparature.P2ThermMargin = new EvelOptionDouble();
-//		    temparature.P1ThermMargin = new EvelOptionDouble();
-//		    temparature.PS1Temperature = new EvelOptionDouble();
-//		    temparature.LANNICTemp = new EvelOptionDouble();
-//		    temparature.ExitAirTemp = new EvelOptionDouble();
-//		    temparature.HSBP1Temp = new EvelOptionDouble();
-//		    temparature.IOModTemp = new EvelOptionDouble();
-//		    temparature.BBLftRearTemp = new EvelOptionDouble();
-//		    temparature.BBRtRearTemp = new EvelOptionDouble();
-//		    temparature.BBBMCTemp = new EvelOptionDouble();
-//		    temparature.SSBTemp = new EvelOptionDouble();
-//		    temparature.FrontPanelTemp = new EvelOptionDouble();
-//		    temparature.BBP2VRTemp = new EvelOptionDouble();
-//		    temparature.BBP1VRTemp = new EvelOptionDouble();    
-//		    
-//		    
-//		   
-//		    if( ipmi_temparature == null ){
-//		    	ipmi_temparature = new ArrayList<MEASUREMENT_IPMI_TEMPARATURE>();
-//		    	LOGGER.debug("Allocate percent_usage");
-//		    }
-//
-//		    ipmi_temparature.add(temparature);
-//
-//		    EVEL_EXIT();
-//		    return temparature;
-//		  }
-//		
-//		
-//		
-//		public MEASUREMENT_IPMI_FAN evel_measurement_new_fan_add(double usage)
-//		  {
-//		    EVEL_ENTER();
-//
-//		    /***************************************************************************/
-//		    /* Check assumptions.                                                      */
-//		    /***************************************************************************/
-//		    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-//		    assert(usage >= 0.0);
-//
-//		    /***************************************************************************/
-//		    /* Allocate a container for the value and push onto the list.              */
-//		    /***************************************************************************/
-//		    LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", usage));
-//		    MEASUREMENT_IPMI_FAN fan = new MEASUREMENT_IPMI_FAN();
-//		    assert(fan != null);
-//		    fan.SystemFan6B    = new EvelOptionDouble();
-//		    fan.SystemFan6A = new EvelOptionDouble();
-//		    fan.SystemFan5B    = new EvelOptionDouble();
-//		    fan.SystemFan5A    = new EvelOptionDouble();
-//		    fan.SystemFan4B    = new EvelOptionDouble();
-//		    fan.SystemFan4A    = new EvelOptionDouble();
-//		    fan.SystemFan3B    = new EvelOptionDouble();
-//		    fan.SystemFan3A    = new EvelOptionDouble();
-//		    fan.SystemFan2B    = new EvelOptionDouble();
-//		    fan.SystemFa_2A    = new EvelOptionDouble();
-//		    fan.SystemFan1B    = new EvelOptionDouble();
-//		    fan.SystemFan1A    = new EvelOptionDouble();    
-//		   
-//		    if( ipmi_fan == null ){
-//		    	ipmi_fan = new ArrayList<MEASUREMENT_IPMI_FAN>();
-//		    	LOGGER.debug("Allocate percent_usage");
-//		    }
-//
-//		    ipmi_fan.add(fan);
-//
-//		    EVEL_EXIT();
-//		    return fan;
-//		  }
-//		
-//		
-//		public MEASUREMENT_IPMI_CFM evel_measurement_new_cfm_add(double usage)
-//		  {
-//		    EVEL_ENTER();
-//
-//		    /***************************************************************************/
-//		    /* Check assumptions.                                                      */
-//		    /***************************************************************************/
-//		    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-//		    assert(usage >= 0.0);
-//
-//		    /***************************************************************************/
-//		    /* Allocate a container for the value and push onto the list.              */
-//		    /***************************************************************************/
-//		    LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", usage));
-//		    MEASUREMENT_IPMI_CFM cfm = new MEASUREMENT_IPMI_CFM();
-//		    assert(cfm != null);
-//		    cfm.System_Airflow    = new EvelOptionDouble();
-//		    
-//		    
-//		    
-//		    
-//		   
-//		    if( ipmi_cfm == null ){
-//		    	ipmi_cfm = new ArrayList<MEASUREMENT_IPMI_CFM>();
-//		    	LOGGER.debug("Allocate percent_usage");
-//		    }
-//
-//		    ipmi_cfm.add(cfm);
-//
-//		    EVEL_EXIT();
-//		    return cfm;
-//		  }
-//		
-//		
-//		public MEASUREMENT_IPMI_WATTS evel_measurement_new_watts_add(double usage)
-//		  {
-//		    EVEL_ENTER();
-//
-//		    /***************************************************************************/
-//		    /* Check assumptions.                                                      */
-//		    /***************************************************************************/
-//		    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-//		    assert(usage >= 0.0);
-//
-//		    /***************************************************************************/
-//		    /* Allocate a container for the value and push onto the list.              */
-//		    /***************************************************************************/
-//		    LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", usage));
-//		    MEASUREMENT_IPMI_WATTS watts = new MEASUREMENT_IPMI_WATTS();
-//		    assert(watts != null);
-//		    watts.PS1InputPower    = new EvelOptionDouble();
-//		    
-//		    
-//		    
-//		    
-//		   
-//		    if( ipmi_watts == null ){
-//		    	ipmi_watts = new ArrayList<MEASUREMENT_IPMI_WATTS>();
-//		    	LOGGER.debug("Allocate percent_usage");
-//		    }
-//
-//		    ipmi_watts.add(watts);
-//
-//		    EVEL_EXIT();
-//		    return watts;
-//		  }
-		
-		
-//		public MEASUREMENT_IPMI_VOLTAGE evel_measurement_new_voltage_add(double usage)
-//		  {
-//		    EVEL_ENTER();
-//
-//		    /***************************************************************************/
-//		    /* Check assumptions.                                                      */
-//		    /***************************************************************************/
-//		    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-//		    assert(usage >= 0.0);
-//
-//		    /***************************************************************************/
-//		    /* Allocate a container for the value and push onto the list.              */
-//		    /***************************************************************************/
-//		    LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", usage));
-//		    MEASUREMENT_IPMI_VOLTAGE voltage = new MEASUREMENT_IPMI_VOLTAGE();
-//		    assert(voltage != null);
-//		    voltage.BB12_0v    = new EvelOptionDouble();
-//		    voltage.BB3_3vVbat = new EvelOptionDouble();
-//		    
-//		    
-//		    
-//		   
-//		    if( ipmi_voltage == null ){
-//		    	ipmi_voltage = new ArrayList<MEASUREMENT_IPMI_VOLTAGE>();
-//		    	LOGGER.debug("Allocate percent_usage");
-//		    }
-//
-//		    ipmi_voltage.add(voltage);
-//
-//		    EVEL_EXIT();
-//		    return voltage;
-//		  }
-		
-//		public MEASUREMENT_IPMI_PERCENT_USAGE evel_measurement_new_percent_usage_add(double usage)
-//		  {
-//		    EVEL_ENTER();
-//
-//		    /***************************************************************************/
-//		    /* Check assumptions.                                                      */
-//		    /***************************************************************************/
-//		    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-//		    assert(usage >= 0.0);
-//
-//		    /***************************************************************************/
-//		    /* Allocate a container for the value and push onto the list.              */
-//		    /***************************************************************************/
-//		    LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", usage));
-//		    MEASUREMENT_IPMI_PERCENT_USAGE percent_usage = new MEASUREMENT_IPMI_PERCENT_USAGE();
-//		    assert(percent_usage != null);
-//		    percent_usage.P1ThermCtrl    = new EvelOptionDouble();
-//		    percent_usage.P2ThermCtrl = new EvelOptionDouble();
-//		    percent_usage.PS1CurrOut = new EvelOptionDouble();
-//		    
-//		    
-//		   
-//		    if( ipmi_percentage == null ){
-//		    	ipmi_percentage = new ArrayList<MEASUREMENT_IPMI_PERCENT_USAGE>();
-//		    	LOGGER.debug("Allocate percent_usage");
-//		    }
-//
-//		    ipmi_percentage.add(percent_usage);
-//
-//		    EVEL_EXIT();
-//		    return percent_usage;
-//		  }
-//	  
+
 }
 	
-	public MEASUREMENT_IPMI evel_meas_ipmi_add(MEASUREMENT_IPMI  ipmi)
-	{
-		EVEL_ENTER();
-		
-		/***************************************************************************/
-		/* Check preconditions.                                                    */
-		/***************************************************************************/
-		
-		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-		assert(ipmi != null);
-	    
-		if( ipmis == null ){
-		ipmis = new ArrayList<MEASUREMENT_IPMI>();
-		LOGGER.debug("Allocate new file system usage");
-		}
-		
-		
-		ipmis.add(ipmi);
-		
-		EVEL_EXIT();
-		
-		return ipmi;
-	}
 	
-	 public void evel_measurement_ipmi_exitAirTemperature_set(MEASUREMENT_IPMI ipmi,
-             double val)
-	  {
-		  EVEL_ENTER();
-		  ipmi.exitAirTemperature.SetValuePr(val,"System fan exit air flow temperature in Celsius ");
-		  EVEL_EXIT();
-	  }
-	 public void evel_measurement_ipmi_frontPanelTemperature_set(MEASUREMENT_IPMI ipmi,
-             double val)
-	  {
-		  EVEL_ENTER();
-		  ipmi.frontPanelTemperature.SetValuePr(val,"Front panel temp in Celsius");
-		  EVEL_EXIT();
-	  }
-	 public void evel_measurement_ipmi_ioModuleTemperature_set(MEASUREMENT_IPMI ipmi,
-             double val)
-	  {
-		  EVEL_ENTER();
-		  ipmi.ioModuleTemperature.SetValuePr(val,"Io module temp in Celsius ");
-		  EVEL_EXIT();
-	  }
-	 public void evel_measurement_ipmi_systemAirflow_set(MEASUREMENT_IPMI ipmi,
-             double val)
-	  {
-		  EVEL_ENTER();
-		  ipmi.systemAirflow.SetValuePr(val,"Airflow in cubic feet per minute (cfm)");
-		  EVEL_EXIT();
-	  }
-	
+
+
 	
 	
 	
@@ -1325,7 +1122,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  
 	  ArrayList<MEASUREMENT_DISK_USE> disk_usage;
 	  boolean errstat;
-	  MEASUREMENT_ERRORS myerrors;
+	//  MEASUREMENT_ERRORS myerrors;
 	  ArrayList<MEASUREMENT_FEATURE_USE> feature_usage;
 	  ArrayList<MEASUREMENT_FSYS_USE> filesystem_usage;
 	  ArrayList<MEASUREMENT_LATENCY_BUCKET> latency_distribution;
@@ -1463,13 +1260,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 		  }
 
 		  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-		//  addl_info = new String[2];
-		//  assert(addl_info != null);
-		 // addl_info[0] = name;
-		//  addl_info[1] = value;
 		  additional_inf.put(name,  value);
-		//  additional_info.add(addl_info);
-
 		  EVEL_EXIT();
 		}
 
@@ -1480,37 +1271,97 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  
 	  public MEASUREMENT_IPMI evel_measurement_new_ipmis_add()
 	  {
-	    EVEL_ENTER();
-
-	    /***************************************************************************/
-	    /* Check assumptions.                                                      */
-	    /***************************************************************************/
-	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-
-	    /***************************************************************************/
-	    /* Allocate a container for the value and push onto the list.              */
-	    /***************************************************************************/
-	    //LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", id, usage));
-	    MEASUREMENT_IPMI ipmi = new MEASUREMENT_IPMI();
-	    assert(ipmi != null);
-	    //cpu_use.id    = id;
-	    //cpu_use.usage = usage;
-	    ipmi.exitAirTemperature = new EvelOptionDouble();
-	    ipmi.frontPanelTemperature = new EvelOptionDouble();
-	    ipmi.ioModuleTemperature = new EvelOptionDouble();
-	    ipmi.systemAirflow = new EvelOptionDouble();
-	    
-	   
-	    	    if( ipmis == null ){
-	    	    	ipmis= new ArrayList<MEASUREMENT_IPMI>();
-	    	LOGGER.debug("Allocate new ipmis");
-	    }
-
-	    ipmis.add(ipmi);
-
-	    EVEL_EXIT();
+			EVEL_ENTER();
+			
+			/***************************************************************************/
+			/* Check preconditions.                                                    */
+			/***************************************************************************/
+			 MEASUREMENT_IPMI ipmi = new MEASUREMENT_IPMI();
+			assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+			assert(ipmi != null);
+			
+			
+			
+			    assert(ipmi != null);
+			    //cpu_use.id    = id;
+			    //cpu_use.usage = usage;
+			    ipmi.exitAirTemperature = new EvelOptionDouble();
+			 //   ipmi.exitAirTemperature.SetValuePr(exitAirTemperature, "Exit Air Temperature");
+			    ipmi.frontPanelTemperature = new EvelOptionDouble();
+			 //   ipmi.frontPanelTemperature.SetValuePr(frontPanelTemperature, "front Panel Temperature");
+			    ipmi.ioModuleTemperature = new EvelOptionDouble();
+			//    ipmi.ioModuleTemperature.SetValuePr(ioModuleTemperature, "IOModule Temperature");
+			    ipmi.systemAirflow = new EvelOptionDouble();
+			//    ipmi.systemAirflow.SetValuePr(systemAirflow, "System Airflow");
+			    ipmi.ipmibaseboardTemperature = null;
+			    ipmi.ipmiBaseboardvoltageResulator = null;
+			    ipmi.ipmibattery = null;
+			    ipmi.ipmiFan = null;
+			    ipmi.ipmiglobalAggregateTemperatureMarginArray = null;
+			    ipmi.ipmiHSBP = null;
+			    ipmi.ipmiNIC = null;
+			    ipmi.ipmipowerSupply = null;
+			    ipmi.ipmiprocessor = null;
+			
+		    
+			if( ipmis == null ){
+			ipmis = new ArrayList<MEASUREMENT_IPMI>();
+			LOGGER.debug("Allocate new file IPMI");
+			}
+			
+			
+			ipmis.add(ipmi);
+			
+			EVEL_EXIT();
+			
 	    return ipmi;
 	  }
+	  
+
+	  
+	  
+	  
+	  
+	  
+	  
+	  
+//	  public MEASUREMENT_IPMI evel_measurement_new_ipmis_add(double exitAirTemperature,double frontPanelTemperature,double ioModuleTemperature,double systemAirflow)
+//	  {
+//	    EVEL_ENTER();
+//
+//	    /***************************************************************************/
+//	    /* Check assumptions.                                                      */
+//	    /***************************************************************************/
+//	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+//
+//	    /***************************************************************************/
+//	    /* Allocate a container for the value and push onto the list.              */
+//	    /***************************************************************************/
+//	    //LOGGER.debug(MessageFormatter.format("Adding id={0} usage={1}", id, usage));
+//	    MEASUREMENT_IPMI ipmi = new MEASUREMENT_IPMI();
+//	    assert(ipmi != null);
+//	    //cpu_use.id    = id;
+//	    //cpu_use.usage = usage;
+//	    ipmi.exitAirTemperature = new EvelOptionDouble();
+//	    ipmi.exitAirTemperature.SetValuePr(exitAirTemperature, "Exit Air Temperature");
+//	    ipmi.frontPanelTemperature = new EvelOptionDouble();
+//	    ipmi.frontPanelTemperature.SetValuePr(frontPanelTemperature, "front Panel Temperature");
+//	    ipmi.ioModuleTemperature = new EvelOptionDouble();
+//	    ipmi.ioModuleTemperature.SetValuePr(ioModuleTemperature, "IOModule Temperature");
+//	    ipmi.systemAirflow = new EvelOptionDouble();
+//	    ipmi.systemAirflow.SetValuePr(systemAirflow, "System Airflow");
+//	    
+//	   
+//	    	    if( ipmis == null ){
+//	    	    	ipmis= new ArrayList<MEASUREMENT_IPMI>();
+//	    	LOGGER.debug("Allocate new ipmis");
+//	    }
+//
+//	    ipmis.add(ipmi);
+//
+//	    EVEL_EXIT();
+//	    return ipmi;
+//	  }
 	  
 	  
 	  
@@ -1577,66 +1428,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    EVEL_EXIT();
 	  }
 
-	  /**************************************************************************//**
-	   * Add an additional set of myerrors to the Measurement.
-	   *
-	   * @note  The property is treated as immutable: it is only valid to call
-	   *        the setter once.  However, we don't assert if the caller tries to
-	   *        overwrite, just ignoring the update instead.
-	   *
-	   * @param measurement       Pointer to the measurement.
-	   * @param receive_discard  The number of receive discards.
-	   * @param receive_error    The number of receive myerrors.
-	   * @param transmit_discard The number of transmit discards.
-	   * @param transmit_error   The number of transmit myerrors.
-	   *****************************************************************************/
-	  public void evel_measurement_myerrors_set( 
-	                                   int receive_discard,
-	                                   int receive_error,
-	                                   int transmit_discard,
-	                                   int transmit_error)
-	  {
-
-	    EVEL_ENTER();
-
-	    /***************************************************************************/
-	    /* Check preconditions.                                                      */
-	    /***************************************************************************/
-	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
-	    assert(receive_discard >= 0);
-	    assert(receive_error >= 0);
-	    assert(transmit_discard >= 0);
-	    assert(transmit_error >= 0);
-
-	    if (errstat == false)
-	    {
-	      errstat = true;
-	      LOGGER.debug(MessageFormat.format("Adding myerrors: {0}, {1}, {2}, {3}",
-	                 receive_discard,
-	                 receive_error,
-	                 transmit_discard,
-	                 transmit_error));
-	      if( myerrors == null )myerrors = new MEASUREMENT_ERRORS();
-	      myerrors.receive_discards = receive_discard;
-	      myerrors.receive_myerrors = receive_error;
-	      myerrors.transmit_discards = transmit_discard;
-	      myerrors.transmit_myerrors = transmit_error;
-	    }
-	    else
-	    {
-	      LOGGER.debug(MessageFormat.format("Adding myerrors: {0}, {1}; {2}, {3} myerrors already set: {4}, {5}; {6}, {7}",
-	                 receive_discard,
-	                 receive_error,
-	                 transmit_discard,
-	                 transmit_error,
-	                 myerrors.receive_discards,
-	                 myerrors.receive_myerrors,
-	                 myerrors.transmit_discards,
-	                 myerrors.transmit_myerrors));
-	    }
-
-	    EVEL_EXIT();
-	  }
 
 	  /**************************************************************************//**
 	   * Set the Mean Request Latency property of the Measurement.
@@ -2122,28 +1913,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    EVEL_EXIT();
 	    return huge_page;
 	  }
-	  
-	  
-	  	  /**************************************************************************//**
-	   * Set Number of free hugepages in bytes
-	   * @note  The property is treated as immutable: it is only valid to call
-	   *        the setter once.  However, we don't assert if the caller tries to
-	   *        overwrite, just ignoring the update instead.
-	   *
-	   * @param cpu_use      Pointer to the CPU Use.
-	   * @param string          double
-	   *****************************************************************************/
-	  
-	  
-//	  public void evel_measurement_huge_page_hugePagesIdentifier_set(MEASUREMENT_HUGE_PAGE huge_page,
-//              String string)
-//	  {
-//		  EVEL_ENTER();
-//		  huge_page.SetValuePr(string,"CPU hugePagesIdentifier");
-//		  EVEL_EXIT();
-//		  
-//		  
-//	  }
+
 	  /**************************************************************************//**
 	   * Set Number of free hugepages in percent
 	   * @note  The property is treated as immutable: it is only valid to call
@@ -2631,13 +2401,12 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    mem_use.memorySwapOutRateAvg= new EvelOptionDouble();
 	    mem_use.memorySwapUsedAvg= new EvelOptionDouble();
 
-	    assert(mem_use.id != null);
+	//    assert(mem_use.id != null);
 	    
 	    if( mem_usage == null ){
 	    	mem_usage = new ArrayList<MEASUREMENT_MEM_USE>();
 	    	LOGGER.debug("Allocated new memory usage");
 	    }
-
 
 	    mem_usage.add(mem_use);
 
@@ -4461,19 +4230,20 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    /* Check preconditions.                                                    */
 	    /***************************************************************************/
 	    assert(vnic_id != null);
-	    assert(val_suspect.equals("true") || val_suspect.equals("false"));
+	   // assert(val_suspect.equals("true") || val_suspect.equals("false"));
+	    
 
 	    /***************************************************************************/
 	    /* Allocate, then set Mandatory Parameters.                                */
 	    /***************************************************************************/
-
+    
 	    vnic_perf = new MEASUREMENT_NIC_PERFORMANCE();
 	    assert(vnic_perf != null);
 	    vnic_perf.vnic_id = vnic_id;
 	    vnic_perf.valuesaresuspect = val_suspect;
 	    
 	    //VES6.0 added field 14July
-	    //vnic_perf.nicIdentifier = nicIdentifier;
+	    //vnic_perf.nicIdentifier = vnic_id;
 	    
 	    vnic_perf.recvd_bcast_packets_acc= new EvelOptionDouble();
 	    vnic_perf.recvd_bcast_packets_delta= new EvelOptionDouble();
@@ -4506,23 +4276,28 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    vnic_perf.tx_ucast_packets_delta= new EvelOptionDouble();
 	    
 	    
-	    vnic_perf.administrativeState= new EvelOptionDouble();
-	    vnic_perf.operationalState= new EvelOptionDouble();
+	    vnic_perf.administrativeState= new EvelOptionString();
+	    vnic_perf.operationalState= new EvelOptionString();
 	    vnic_perf.receivedPercentDiscard= new EvelOptionDouble();
 	    vnic_perf.receivedPercentError= new EvelOptionDouble();
 	    vnic_perf.receivedUtilization= new EvelOptionDouble();
-	    vnic_perf.speed= new EvelOptionString();
+	    vnic_perf.speed= new EvelOptionDouble();
 	    vnic_perf.transmittedPercentDiscard= new EvelOptionDouble();
 	    vnic_perf.transmittedPercentError= new EvelOptionDouble();
 	    vnic_perf.transmittedUtilization= new EvelOptionDouble();
 	    
+        
+        //assert(vnic_perf.vnic_id != null);
 	    
-	    
-	    LOGGER.debug("Adding "+vnic_perf+"VNIC ID="+ vnic_perf.vnic_id+"Value="+vnic_perf.valuesaresuspect);
+	    if( vnic_usage == null ){
+	    	vnic_usage = new ArrayList<MEASUREMENT_NIC_PERFORMANCE>();
+	    	LOGGER.debug("Allocated new Vnic Perfomence");
+	    }
 
-	    /***************************************************************************/
-	    /* Initialize Optional Parameters.                                         */
-	    /***************************************************************************/
+
+	    vnic_usage.add(vnic_perf);
+	    
+
 	    EVEL_EXIT();
 
 	    return vnic_perf;
@@ -5323,14 +5098,14 @@ public class EvelScalingMeasurement extends EvelHeader {
 	   */
 	  
 	  public void evel_vnic_performance_administrativeState_set(MEASUREMENT_NIC_PERFORMANCE  vnic_performance,
-              double administrativeState)
+              String administrativeState)
 	  {
 		  EVEL_ENTER();
 
 		/***************************************************************************/
 		/* Check preconditions.                                                    */
 		/***************************************************************************/
-		assert(administrativeState >= 0.0);
+		assert(administrativeState != null);
 		
 		vnic_performance.administrativeState.SetValuePr(
 				administrativeState,"Administrative State");
@@ -5341,14 +5116,14 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  
 	  
 	  public void evel_vnic_performance_operationalState_set(MEASUREMENT_NIC_PERFORMANCE  vnic_performance,
-              double operationalState)
+              String operationalState)
 	  {
 		  EVEL_ENTER();
 
 		/***************************************************************************/
 		/* Check preconditions.                                                    */
 		/***************************************************************************/
-		assert(operationalState >= 0.0);
+		assert(operationalState != null);
 		
 		vnic_performance.operationalState.SetValuePr(
 				operationalState,"operational State");
@@ -5405,17 +5180,17 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  }
 	  
 	  public void evel_vnic_performance_speed_set(MEASUREMENT_NIC_PERFORMANCE  vnic_performance,
-              String speed)
+              double speed)
 	  {
 		  EVEL_ENTER();
 
 		/***************************************************************************/
 		/* Check preconditions.                                                    */
 		/***************************************************************************/
-		assert(speed != null);
+		assert(speed >= 0.0);
 		
-		vnic_performance.speed.SetValuePr(
-				speed,"Speed");
+		vnic_performance.speed.SetValuePr(speed, "Speed");
+				
 
 		EVEL_EXIT();
 	  }
@@ -5496,6 +5271,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    }
 
 	    vnic_usage.add(vnic_performance);
+	   
 
 	    EVEL_EXIT();
 	  }
@@ -5545,7 +5321,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 	                                 String valset,
 	                                 //VES6.0 added field 14July
 	                                 //String nicIdentifier,
-	                                 String speed,
+	                                 double speed,
 	                                 double recvd_bcast_packets_acc,
 	                                 double recvd_bcast_packets_delta,
 	                                 double recvd_discarded_packets_acc,
@@ -5575,8 +5351,8 @@ public class EvelScalingMeasurement extends EvelHeader {
 	                                 double tx_ucast_packets_acc,
 	                                 double tx_ucast_packets_delta,
 	                                 //VES6.0 addded fileds 19July
-	                                 double administrativeState,
-	                                 double operationalState, 
+	                                 String administrativeState,
+	                                 String operationalState, 
 	                                 double receivedPercentDiscard,
 	                                 double receivedPercentError,
 	                                 double receivedUtilization,
@@ -5714,10 +5490,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    IPMIbaseboardTemperature ipmiBaseBoardTempJson;
 	    IPMIbaseboardvoltageResulator ipmiBaseboardVoltageResultatorJson;
 	    IPMIfan ipmifanjson;
-	    //DLIST_ITEM item = null;
-	    //DLIST_ITEM nested_item = null;
-	    //DLIST_ITEM addl_info_item = null;
-	    //OTHER_FIELD addl_info = null;
 //	    double version = major_version+(double)minor_version/10;
         String version = "4.0";
 	    EVEL_ENTER();
@@ -5736,20 +5508,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 	    /***************************************************************************/
 	    /* Optional fields.                                                        */
 	    /***************************************************************************/
-	    // additional fields
-//		  if( additional_info != null )
-//		  {
-//		    JsonArrayBuilder builder = Json.createArrayBuilder();
-//		    for(int i=0;i<additional_info.size();i++) {
-//			  String[] addl_info = additional_info.get(i);
-//			  JsonObject obj = Json.createObjectBuilder()
-//			    	     .add("name", addl_info[0])
-//			    	     .add("value", addl_info[1]).build();
-//			  builder.add(obj);
-//		    }
-//			evelmeasmt.add("additionalFields", builder);
-//		  }
-	    
 	    
 		  if(additional_inf != null) {
 			  JsonObjectBuilder builder = Json.createObjectBuilder();
@@ -5759,9 +5517,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  Map.Entry<String, String> add_inf = (Map.Entry<String, String>)it.next();
 				  String addl_info_key = add_inf.getKey();
 				  String addl_info_value = add_inf.getValue();
-//				  JsonObject obj1 = Json.createObjectBuilder()
-//				    	     .add("name", addl_info_key)
-//				    	     .add("value", addl_info_value).build();
 				  builder.add(addl_info_key, addl_info_value);
 			  }
 			  evelmeasmt.add("additionalFields", builder);
@@ -5856,17 +5611,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 				 obj.add( "percentUsed", hugePage.percentUsed.value);
 				 obj.add( "percentFree", hugePage.percentFree.value);
 				 
-//				 obj.add( "bytesFree", hugePage.bytesFree);
-//				 obj.add( "vmPageNumberUsed", hugePage.vmPageNumberUsed);
-//				 obj.add( "vmPageNumberFree", hugePage.vmPageNumberFree);
-//				 obj.add( "percentUsed", hugePage.percentUsed);
-//				 obj.add( "percentFree", hugePage.percentFree);
-				 
-				 
-//				 hugePage.correctedMemoryErrors.encJsonValue(obj, "correctedMemoryErrors");
-//				 hugePage.correctedMemoryErrors_In1Hr.encJsonValue(obj, "correctedMemoryErrorsIn1Hr");
-//				 hugePage.uncorrectedMemoryErrors.encJsonValue(obj, "uncorrectedMemoryErrors");
-//				 hugePage.uncorrectedMemoryErrors_In1Hr.encJsonValue(obj, "uncorrectedMemoryErrorsIn1Hr");
 				 
 				 builder.add(obj.build());
 				 
@@ -5912,23 +5656,36 @@ public class EvelScalingMeasurement extends EvelHeader {
 		  if(ipmis != null && ipmis.size() > 0) {
 			  JsonObjectBuilder builder1 = Json.createObjectBuilder();
 			 JsonArrayBuilder builder = Json.createArrayBuilder();
-			  System.out.println("ipmis size---"+ ipmis.size());
+			  
 			  for(int i=0;i<ipmis.size();i++) {
 				  ipmij = ipmis.get(i);
 				//  JsonObjectBuilder obj= null;
-				  JsonObjectBuilder obj = Json.createObjectBuilder();
+				  
+				  builder1.add("exitAirTemperature", ipmij.exitAirTemperature.GetValue().doubleValue());
+				  builder1.add("frontPanelTemperature", ipmij.frontPanelTemperature.GetValue().doubleValue());
+				  builder1.add("ioModuleTemperature", ipmij.ioModuleTemperature.GetValue().doubleValue());
+				  builder1.add("systemAirflow", ipmij.systemAirflow.GetValue().doubleValue());
+				  
+				  
+				  
+				  /*JsonObjectBuilder obj = Json.createObjectBuilder();
 				  ipmij.exitAirTemperature.encJsonValue(obj, "exitAirTemperature");
 				  ipmij.frontPanelTemperature.encJsonValue(obj, "frontPanelTemperature");
 				  ipmij.ioModuleTemperature.encJsonValue(obj, "ioModuleTemperature");
-				  ipmij.systemAirflow.encJsonValue(obj, "systemAirflow");
+				  ipmij.systemAirflow.encJsonValue(obj, "systemAirflow"); */
 				  
+				  
+				  
+				  
+
+
 				  
 				  if(ipmij.ipmiprocessor != null && ipmij.ipmiprocessor.size() > 0 ) {
 					  JsonArrayBuilder ipmi_processor_builder = Json.createArrayBuilder();
 					  for(int j=0; j<ipmij.ipmiprocessor.size();j++) {
 						  ipmiProcessorJson = ipmij.ipmiprocessor.get(j);
 						  JsonObjectBuilder obj1 = Json.createObjectBuilder().add("processorIdentifier", ipmiProcessorJson.processorIdentifier);
-						  ipmiProcessorJson.processorDTSthermalMargin.encJsonValue(obj1 , "processorDTSthermalMargin");
+						  ipmiProcessorJson.processorDtsThermalMargin.encJsonValue(obj1 , "processorDtsThermalMargin");
 						  ipmiProcessorJson.processorThermalControlPercent.encJsonValue(obj1, "processorThermalControlPercent");
 						  if(ipmiProcessorJson.processorDIMMaggregateThermalMargin != null && 
 								  ipmiProcessorJson.processorDIMMaggregateThermalMargin.size() > 0) {
@@ -5936,12 +5693,12 @@ public class EvelScalingMeasurement extends EvelHeader {
 							  for( int k=0 ;k<ipmiProcessorJson.processorDIMMaggregateThermalMargin.size();k++) {
 								  
 								  ipmiProcessorDIMMagregatejson = ipmiProcessorJson.processorDIMMaggregateThermalMargin.get(k);
-								  JsonObjectBuilder obj2 = Json.createObjectBuilder().add("processorDIMMaggregateThermalMarginIdentifier", ipmiProcessorDIMMagregatejson.processorDIMMaggregateThermalMarginIdentifier)
-										  .add("processorDIMMaggregateThermalMargin", ipmiProcessorDIMMagregatejson.processorDIMMaggregateThermalMargin);
+								  JsonObjectBuilder obj2 = Json.createObjectBuilder().add("processorDimmAggregateThermalMarginIdentifier", ipmiProcessorDIMMagregatejson.processorDIMMaggregateThermalMarginIdentifier)
+										  .add("thermalMargin", ipmiProcessorDIMMagregatejson.thermalMargin);
 								
 								  ipmi_procesor_DTS_thermal_margin.add(obj2.build()); 
 							  }
-							  obj1.add("processorDIMMaggregateThermalMargin", ipmi_procesor_DTS_thermal_margin );
+							  obj1.add("processorDimmAggregateThermalMarginArray", ipmi_procesor_DTS_thermal_margin );
 						  
 						  }
 						  
@@ -5960,13 +5717,13 @@ public class EvelScalingMeasurement extends EvelHeader {
 					  for(int j=0; j<ipmij.ipmiglobalAggregateTemperatureMarginArray.size();j++) {
 						  ipmiGlobalAggTempMarginJson = ipmij.ipmiglobalAggregateTemperatureMarginArray.get(j);
 						  JsonObjectBuilder obj1 = Json.createObjectBuilder().add("globalAggregateTemperatureMarginIdentifier", ipmiGlobalAggTempMarginJson.globalAggregateTemperatureMarginIdentifier);
-						  ipmiGlobalAggTempMarginJson.globalAggregateTemeratureMargin.encJsonValue(obj1, "globalAggregateTemeratureMargin");
+						  ipmiGlobalAggTempMarginJson.globalAggregateTemeratureMargin.encJsonValue(obj1, "globalAggregateTemperatureMargin");
 						  
 						  ipmi_global_aggregate_tepmerature_margin_array.add(obj1.build());
 					  }
 					  
 					//  obj.add("globalAggregateTemperatureMarginArray", ipmi_global_aggregate_tepmerature_margin_array );
-					  builder1.add("globalAggregateTemperatureMarginArray", ipmi_global_aggregate_tepmerature_margin_array);
+					  builder1.add("ipmiGlobalAggregateTemperatureMarginArray", ipmi_global_aggregate_tepmerature_margin_array);
 				  }
 				  
 				  
@@ -5978,7 +5735,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 					  for(int j=0; j<ipmij.ipmipowerSupply.size();j++) {
 						  ipmiPowerSupplyJson = ipmij.ipmipowerSupply.get(j);
 						  JsonObjectBuilder obj1 = Json.createObjectBuilder().add("powerSupplyIdentifier", ipmiPowerSupplyJson.powerSupplyIdentifier);
-						  ipmiPowerSupplyJson.powerSupplycurrentOutputPercent.encJsonValue(obj1, "powerSupplycurrentOutputPercent");
+						  ipmiPowerSupplyJson.powerSupplycurrentOutputPercent.encJsonValue(obj1, "powerSupplyCurrentOutputPercent");
 						  ipmiPowerSupplyJson.powerSupplyInputPower.encJsonValue(obj1, "powerSupplyInputPower");
 						  ipmiPowerSupplyJson.powerSupplyTemperature.encJsonValue(obj1, "powerSupplyTemperature");
 						  
@@ -6014,8 +5771,9 @@ public class EvelScalingMeasurement extends EvelHeader {
 					  JsonArrayBuilder ipmi_Nic_array = Json.createArrayBuilder();
 					  for(int j=0; j<ipmij.ipmiNIC.size();j++) {
 						  ipmiNicJson = ipmij.ipmiNIC.get(j);
-						  JsonObjectBuilder obj1 = Json.createObjectBuilder().add("nicIdentifier", ipmiNicJson.nic_Identifier);
-						  ipmiNicJson.nic_Temperature.encJsonValue(obj1, "nicIdentifier");
+						  JsonObjectBuilder obj1 = Json.createObjectBuilder().add("nicIdentifier", ipmiNicJson.nicIdentifier);
+						  ipmiNicJson.nicTemperature.encJsonValue(obj1, "nicTemperature");
+						  
 						  
 						  
 						  
@@ -6070,7 +5828,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 						  ipmiBaseboardVoltageResultatorJson = ipmij.ipmiBaseboardvoltageResulator.get(j);
 						  JsonObjectBuilder obj1 = Json.createObjectBuilder().add("baseboardVoltageRegulatorIdentifier",
 								  ipmiBaseboardVoltageResultatorJson.baseboardVoltageRegulatorIdentifier);
-						  ipmiBaseboardVoltageResultatorJson.voltageRegulatorTemperature.encJsonValue(obj1, "baseboardTemperature");
+						  ipmiBaseboardVoltageResultatorJson.voltageRegulatorTemperature.encJsonValue(obj1, "voltageRegulatorTemperature");
 						  
 						  
 						  
@@ -6106,9 +5864,10 @@ public class EvelScalingMeasurement extends EvelHeader {
 				  
 				  
 				  
-				  builder.add(obj.build());
+				  //builder.add(obj.build());
 			  }
 			//evelmeasmt.add("ipmi", builder) ;
+			  
 			evelmeasmt.add("ipmi", builder1) ;
 		  }
 
@@ -6283,7 +6042,7 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  nic_use.tx_ucast_packets_delta.encJsonValue(obj,"transmittedUnicastPacketsDelta");
 			  
 			  //VES6.0 added fields 19July
-			  nic_use.administrativeState.encJsonValue(obj, "administrativeState");
+			//  nic_use.administrativeState.encJsonValue(obj, "administrativeState");
 			  nic_use.administrativeState.encJsonValue(obj, "administrativeState");
 			  nic_use.operationalState.encJsonValue(obj, "operationalState");
 			  nic_use.receivedPercentDiscard.encJsonValue(obj, "receivedPercentDiscard");
@@ -6315,14 +6074,27 @@ public class EvelScalingMeasurement extends EvelHeader {
 			  JsonObjectBuilder obj = Json.createObjectBuilder()
 		    //                  .add( "memIdentifier", mem_use.id)
 			                      .add( "vmIdentifier", mem_use.vmid)
-			                      .add( "percentMemoryUsage",mem_use.membuffsz);
+			                      .add( "memoryBuffered",mem_use.membuffsz);
 			  
 			  mem_use.memcache.encJsonValue(obj,"memoryCached");
 			  mem_use.memconfig.encJsonValue(obj,"memoryConfigured");
 			  mem_use.memfree.encJsonValue(obj,"memoryFree");
 			  mem_use.slabrecl.encJsonValue(obj,"memorySlabRecl");
 			  mem_use.slabunrecl.encJsonValue(obj,"memorySlabUnrecl");
-			  mem_use.memused.encJsonValue(obj,"memoryUsed");				  
+			  mem_use.memused.encJsonValue(obj,"memoryUsed");
+			  
+			  mem_use.memoryDemand.encJsonValue(obj,"memoryDemand");
+			  mem_use.memoryLatencyAvg.encJsonValue(obj,"memoryLatencyAvg");
+			  
+			  mem_use.memoryLatencyAvg.encJsonValue(obj,"memoryLatencyAvg");
+			  mem_use.memorySharedAvg.encJsonValue(obj,"memorySharedAvg");
+			  mem_use.memorySwapInAvg.encJsonValue(obj,"memorySwapInAvg");
+			  mem_use.memorySwapInRateAvg.encJsonValue(obj,"memorySwapInRateAvg");
+			  
+			  mem_use.memorySwapOutAvg.encJsonValue(obj,"memorySwapOutAvg");
+			  mem_use.memorySwapOutRateAvg.encJsonValue(obj,"memorySwapOutRateAvg");
+			  mem_use.memorySwapUsedAvg.encJsonValue(obj,"memorySwapUsedAvg");
+			  
 					  
 			  builder.add(obj.build());
 		    }
@@ -6334,17 +6106,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 		  
 
 	    /***************************************************************************/
-	    /* myerrors list.                                                            */
-	    /***************************************************************************/
-	//    if (errstat == true && myerrors != null) 
-	//    {
-	//    	evelmeasmt.add("receiveDiscards", myerrors.receive_discards);
-	//    	evelmeasmt.add("receivemyerrors", myerrors.receive_myerrors);
-	//    	evelmeasmt.add("transmitDiscards", myerrors.transmit_discards);
-	//    	evelmeasmt.add("transmitmyerrors", myerrors.transmit_myerrors);
-	//    }
-
-	    /***************************************************************************/
 	    /* Feature Utilization list.                                               */
 	    /***************************************************************************/
 		  if( feature_usage != null && feature_usage.size() > 0 )
@@ -6353,10 +6114,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 		   // JsonArrayBuilder builder = Json.createArrayBuilder();
 		    for(int i=0;i<feature_usage.size();i++) {
 			  feature_use = feature_usage.get(i);
-//			  JsonObjectBuilder obj = Json.createObjectBuilder()
-//			                      .add( "featureIdentifier", feature_use.feature_id)
-//			                      .add( "featureUtilization", feature_use.feature_utilization);			  
-					  
 			  builder.add(feature_use.feature_id, feature_use.feature_utilization+"");
 		    }
 			evelmeasmt.add("featureUsageArray", builder);
@@ -6396,9 +6153,6 @@ public class EvelScalingMeasurement extends EvelHeader {
 			 
 			  for(int j=0;j<meas_group.measurements.size();j++) {
 				  custom_meas = meas_group.measurements.get(j);
-//				  JsonObjectBuilder obj2 = Json.createObjectBuilder()
-//						                    .add("name",custom_meas.name)
-//				                            .add("value",custom_meas.value);
 				  builder2.add(custom_meas.name, custom_meas.value);	  
 			  }
 			  obj.add("hashMap", builder2);			  
@@ -6442,13 +6196,31 @@ public class EvelScalingMeasurement extends EvelHeader {
 	  {
 		EVEL_ENTER();
 		
-		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_STATE_CHANGE);
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
 		//encode common event header and measurement body    
 	    JsonObject obj = Json.createObjectBuilder()
 	    	     .add("event", Json.createObjectBuilder()
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "measurementFields",evelScalingMeasurementObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MEASUREMENT);
+		//encode common event header and measurement body    
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "measurementFields",evelScalingMeasurementObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

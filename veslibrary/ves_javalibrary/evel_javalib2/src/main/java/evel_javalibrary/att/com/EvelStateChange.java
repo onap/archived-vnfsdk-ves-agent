@@ -92,8 +92,8 @@ public class EvelStateChange extends EvelHeader {
 	{
 		super(evname,evid);
 		event_domain = EvelHeader.DOMAINS.EVEL_DOMAIN_STATE_CHANGE;
-		assert(EVEL_ENTITY_STATE.EVEL_MAX_ENTITY_STATES.compareTo(newstate) < 0 );
-		assert(EVEL_ENTITY_STATE.EVEL_MAX_ENTITY_STATES.compareTo(oldstate) < 0 );
+		assert(EVEL_ENTITY_STATE.EVEL_MAX_ENTITY_STATES.compareTo(newstate) >= 0 );
+		assert(EVEL_ENTITY_STATE.EVEL_MAX_ENTITY_STATES.compareTo(oldstate) >= 0 );
 		assert( interfce != null);
 		
 		new_state = newstate;
@@ -270,6 +270,24 @@ public class EvelStateChange extends EvelHeader {
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "stateChangeFields",evelStateChangeObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	 
+	 JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_STATE_CHANGE);
+	    //encode header and state change fields    
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "stateChangeFields",evelStateChangeObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

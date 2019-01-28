@@ -145,10 +145,10 @@ public class EvelFault extends EvelHeader {
 		event_domain = EvelHeader.DOMAINS.EVEL_DOMAIN_FAULT;
 		//Validate inputs
 		assert( condition != null);
-		assert( specific_problem != null);
-		assert(EvelHeader.PRIORITIES.EVEL_MAX_PRIORITIES.compareTo(tpriority) < 0 );
-		assert(EVEL_SEVERITIES.EVEL_MAX_SEVERITIES.compareTo(severity) < 0 );
-		assert(EVEL_VF_STATUSES.EVEL_MAX_VF_STATUSES.compareTo(status) < 0 );
+		assert( specproblem != null);
+		assert(EvelHeader.PRIORITIES.EVEL_MAX_PRIORITIES.compareTo(tpriority) >= 0 );
+		assert(EVEL_SEVERITIES.EVEL_MAX_SEVERITIES.compareTo(severity) >= 0 );
+		assert(EVEL_VF_STATUSES.EVEL_MAX_VF_STATUSES.compareTo(status) >= 0 );
 		//Init mandatory fields
 		event_severity = severity;
 		event_source_type = ev_source_type;
@@ -159,6 +159,7 @@ public class EvelFault extends EvelHeader {
 		//Init optional fields
 		category = new EvelOptionString(false, null);
 		alarm_interface_a = new EvelOptionString(false, null);
+		
 		
 		
 		additional_inf = null;		
@@ -303,7 +304,7 @@ public class EvelFault extends EvelHeader {
 	 * @param source_type   The source type to convert.
 	 * @returns The equivalent string.
 	 *****************************************************************************/
-	String evel_source_type(EVEL_SOURCE_TYPES source_type)
+	static String evel_source_type(EVEL_SOURCE_TYPES source_type)
 	{
 	  String result;
 
@@ -555,6 +556,22 @@ public class EvelFault extends EvelHeader {
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "faultFields",evelFaultObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_FAULT);
+		//encode common event header and body     
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "faultFields",evelFaultObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

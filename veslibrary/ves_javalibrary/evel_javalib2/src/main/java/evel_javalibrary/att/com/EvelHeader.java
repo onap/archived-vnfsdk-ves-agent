@@ -42,6 +42,7 @@ import javax.json.JsonWriter;
 import org.slf4j.helpers.MessageFormatter;
 
 
+
 public class EvelHeader {
 	
 	
@@ -206,7 +207,7 @@ public class EvelHeader {
 	    }
 	    catch (UnknownHostException ex)
 	    {
-	        System.out.println("Hostname can not be resolved");
+	        
 	    }
 	    
 	    try{
@@ -230,7 +231,7 @@ public class EvelHeader {
             }
 
             if (mac != null) {
-                /* System.out.print("Current MAC address : ");
+                /* 
 
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < mac.length; i++) {
@@ -244,7 +245,7 @@ public class EvelHeader {
         
 	    } catch (SocketException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+	   
 		}
 	    
 	    
@@ -255,21 +256,21 @@ public class EvelHeader {
 	    minor_version = EVEL_HEADER_MINOR_VERSION;
 	    
 	    //VES 7.0 added 4Sept 2018
-	    ves_eventListener_version = "7.0.2";
+	    ves_eventListener_version = "7.1";
 
 	    /***************************************************************************/
 	    /* Optional parameters.                                                    */
 	    /***************************************************************************/
-	    event_type = new EvelOptionString(false, null);
-	    nfcnaming_code = new EvelOptionString(false, null);
-	    nfnaming_code = new EvelOptionString(false, null);
+	    event_type = new EvelOptionString(true, "Perf management");
+	    nfcnaming_code = new EvelOptionString(true, "NfcNamingCode");
+	    nfnaming_code = new EvelOptionString(true, "NfNamingCode");
 	    reporting_entity_id = new EvelOptionString(true, uuid);
 	    source_id = new EvelOptionString(true, uuid);
-	    internal_field = new EvelOptionIntHeader(false, null);
+	    internal_field = new EvelOptionIntHeader(false, "InternalFeild");
 	    
 	    //VES 7.0 added 4Sept2018
-	    nfVendor_name = new EvelOptionString(false, null);
-        timeZoneOffset = new EvelOptionString(false, null);
+	    nfVendor_name = new EvelOptionString(true, "nfVendorName");
+        timeZoneOffset = new EvelOptionString(true, "UTC-5:30");
 	    EVEL_EXIT();
 	  }
 
@@ -577,7 +578,7 @@ public class EvelHeader {
 	  {
 	    EVEL_ENTER();
 	    
-	    assert(EvelHeader.PRIORITIES.EVEL_MAX_PRIORITIES.compareTo(priority_val) < 0 );
+	    assert(EvelHeader.PRIORITIES.EVEL_MAX_PRIORITIES.compareTo(priority_val) >= 0 );
 	    
 	    priority = priority_val;
 
@@ -604,6 +605,26 @@ public class EvelHeader {
 
 	    EVEL_EXIT();
 	  }
+	  
+	  /**************************************************************************//**
+	   * Set the Event Type property of the event header.
+	   *
+	   * @note The Reporting Entity Id defaults to the OpenStack VM UUID.
+	   *
+	   * @param val       Optional true or false
+	   *****************************************************************************/
+	  public void evel_header_set_eventType(String eventtype)
+	  {
+	    EVEL_ENTER();
+	    
+	    assert(event_type != null);
+	    
+	    event_type.set_option(true);
+	    event_type.SetValue(eventtype);
+
+	    EVEL_EXIT();
+	  }
+	  
 	  
 	  /**************************************************************************//**
 	   * Set the Source name property of the event header.
@@ -775,18 +796,19 @@ public class EvelHeader {
 	   	         .add("version", version)
 	   	         .add("reportingEntityId", reporting_entity_id.GetValue())
 	   	         .add("sourceId", source_id.GetValue());
-	    
+	             
 	    /***************************************************************************/
 	    /* Optional fields.                                                        */
 	    /***************************************************************************/
 	    
+	    commheader.add("eventType", event_type.GetValue());
 	    if( event_type.is_set )
-	    	commheader.add("eventType", event_type.GetValue());
-	    if( source_id.is_set )
-	    	commheader.add("sourceId", source_id.GetValue());
-	    if( reporting_entity_id.is_set )
-	    	commheader.add("reportingEntityId", reporting_entity_id.GetValue());
-	    
+//	    	commheader.add("eventType", event_type.GetValue());
+//	    if( source_id.is_set )
+//	    	commheader.add("sourceId", source_id.GetValue());
+//	    if( reporting_entity_id.is_set )
+//	    	commheader.add("reportingEntityId", reporting_entity_id.GetValue());
+//	    
 	    if( internal_field.is_set )
 	    	commheader.add("internalField",internal_field.toString());	    
 	    
@@ -797,7 +819,7 @@ public class EvelHeader {
 	    
 	    //VES 7.0 added 4Sept2018
 	    if( nfVendor_name.is_set )
-	    	commheader.add("nfNamingCode", nfVendor_name.GetValue());
+	    	commheader.add("nfVendorName", nfVendor_name.GetValue());
 	    if( timeZoneOffset.is_set )
 	    	commheader.add("timeZoneOffset", timeZoneOffset.GetValue());
 	    
@@ -814,12 +836,11 @@ public class EvelHeader {
 	   * retval : String of JSON event header only message
 	   *****************************************************************************/
   	  JsonObject evel_json_encode_event()
-	  {
-	        
-	    JsonObject obj = Json.createObjectBuilder()
-	    		
-	    		.add("event", Json.createObjectBuilder())	
-		   .add( "commonEventHeader",eventHeaderObject() ).build();
+	  {	        
+	    JsonObject obj = Json.createObjectBuilder()   		
+	    		.add("event", Json.createObjectBuilder()	
+		        .add("commonEventHeader",eventHeaderObject())
+		       ).build();
 
 	    EVEL_EXIT();
 	    
@@ -827,18 +848,18 @@ public class EvelHeader {
 
 	  }   
 	  
-	  JsonObject evel_json_encode_eventNew()
+	  JsonObject evel_json_encode_event_batch()
 	  {
 	        
 	    JsonObject obj = Json.createObjectBuilder()
-	    		
-		  .add( "commonEventHeader",eventHeaderObject() ).build();
+	    	        //   .add("event", Json.createObjectBuilder())
+		    	         .add("commonEventHeader",eventHeaderObject()).build();
 
 	    EVEL_EXIT();
 	    
 	    return obj;
 
-	  }  
+	  }
 	  
 	  
 

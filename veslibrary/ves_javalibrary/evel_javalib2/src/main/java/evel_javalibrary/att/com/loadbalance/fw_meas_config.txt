@@ -1,2 +1,0 @@
-eventName Measurement_vFirewall-AT&T_nicPerformance
-measurementInterval 30

@@ -42,6 +42,7 @@ public class EvelMobileFlow extends EvelHeader {
 	int major_version = 2;
 	int minor_version = 0;
 	
+	
 	static int EVEL_TOS_SUPPORTED    =  256;
 	/**************************************************************************//**
 	 * TCP flags.
@@ -187,7 +188,7 @@ public class EvelMobileFlow extends EvelHeader {
 		  EvelOptionInt dur_tunnel_failed_status;
 		  EvelOptionString flow_activated_by;
 		  
-		  EvelOptionTime flow_activation_time;
+		  EvelOptionString flow_activation_time;
 		  EvelOptionString flow_deactivated_by;
 		  
 		  EvelOptionString gtp_connection_status;
@@ -385,7 +386,7 @@ public class EvelMobileFlow extends EvelHeader {
 	    dur_connection_failed_status = new EvelOptionInt();
 	    dur_tunnel_failed_status = new EvelOptionInt();
 	    flow_activated_by = new EvelOptionString();
-	    flow_activation_time = new EvelOptionTime();
+	    flow_activation_time = new EvelOptionString();
 	    flow_deactivated_by = new EvelOptionString();
 	    gtp_connection_status = new EvelOptionString();
 	    gtp_tunnel_status = new EvelOptionString();
@@ -409,7 +410,7 @@ public class EvelMobileFlow extends EvelHeader {
 	/* Mandatory fields                                                        */
 	/***************************************************************************/	  
 	  String flow_direction;
-	  public MOBILE_GTP_PER_FLOW_METRICS gtp_per_flow_metrics;
+	  public static MOBILE_GTP_PER_FLOW_METRICS gtp_per_flow_metrics;
 	  String ip_protocol_type;
 	  String ip_version;
 	  String other_endpoint_ip_address;
@@ -498,7 +499,7 @@ public class EvelMobileFlow extends EvelHeader {
 	    /* Check preconditions.                                                    */
 	    /***************************************************************************/
 	    assert(flow_dir != null);
-	    assert(gtp_per_flow_metr != null);
+	    //assert(gtp_per_flow_metr != null);
 	    assert(ip_protocol_typ != null);
 	    assert(ip_vers != null);
 	    assert(other_endpoint_ip_addr != null);
@@ -690,7 +691,7 @@ public class EvelMobileFlow extends EvelHeader {
 	   *                    string.  The caller does not need to preserve the value
 	   *                    once the function returns.
 	   *****************************************************************************/
-	  void evel_mobile_flow_app_prot_ver_set(String version)
+	  public void evel_mobile_flow_app_prot_ver_set(String version)
 	  {
 	    EVEL_ENTER();
 
@@ -1364,7 +1365,7 @@ public class EvelMobileFlow extends EvelHeader {
 	   *****************************************************************************/
 	  public  void evel_mobile_gtp_metrics_act_time_set(
 	                                           MOBILE_GTP_PER_FLOW_METRICS  metrics,
-	                                           Date act_time)
+	                                           String act_time)
 	  {
 	    EVEL_ENTER();
 
@@ -1763,31 +1764,6 @@ public class EvelMobileFlow extends EvelHeader {
 	  }
 	  
 	  
-		public void evel_mobileFlow_hashMap_add(String name, String value)
-		{
-
-		  EVEL_ENTER();
-
-		  /***************************************************************************/
-		  /* Check preconditions.                                                    */
-		  /***************************************************************************/
-		  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_THRESHOLD_CROSSING);
-		  assert(name != null);
-		  assert(value != null);
-		  
-		  if( hashMap == null )
-		  {
-
-			  hashMap = new HashMap<String,String>();
-		  }
-
-		  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-		  hashMap.put(name,  value);
-
-
-		  EVEL_EXIT();
-		}
-		
 		
 
 		/**************************************************************************//**
@@ -2028,6 +2004,7 @@ public class EvelMobileFlow extends EvelHeader {
 	  JsonObjectBuilder evelMobileFlowObject()
 	  {
 
+		  
 	 //   double version = major_version+(double)minor_version/10;
         String version  = "4.0";
 	    EVEL_ENTER();
@@ -2124,13 +2101,31 @@ public class EvelMobileFlow extends EvelHeader {
 	  {
 		EVEL_ENTER();
 		
-		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_STATE_CHANGE);
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MOBILE_FLOW);
 		//encode common event header and mobile flow body    
 	    JsonObject obj = Json.createObjectBuilder()
 	    	     .add("event", Json.createObjectBuilder()
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "mobileFlowFields",evelMobileFlowObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	  
+	  JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_MOBILE_FLOW);
+		//encode common event header and mobile flow body    
+	    JsonObject obj = Json.createObjectBuilder()
+	    	   //  .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "mobileFlowFields",evelMobileFlowObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

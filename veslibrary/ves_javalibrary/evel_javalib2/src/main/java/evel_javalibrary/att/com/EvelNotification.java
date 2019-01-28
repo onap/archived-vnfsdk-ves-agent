@@ -52,6 +52,7 @@ public class EvelNotification extends EvelHeader {
 	int major_version = 1;
 	int minor_version = 0;
 	
+	
 	/***************************************************************************/
 	/* Mandatory fields                                                        */
 	/***************************************************************************/
@@ -121,36 +122,6 @@ public class EvelNotification extends EvelHeader {
 	  }
 	
 	
-//	public void evel_notification_addl_info_add(String name, String value)
-//	{
-//	  String[] addl_info = null;
-//	  EVEL_ENTER();
-//
-//	  /***************************************************************************/
-//	  /* Check preconditions.                                                    */
-//	  /***************************************************************************/
-//	  assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_NOTIFICATION);
-//	  assert(name != null);
-//	  assert(value != null);
-//	  
-//	  if( additional_info == null )
-//	  {
-//		  additional_info = new ArrayList<String[]>();
-//		  additional_inf = new HashMap<>();
-//	  }
-//
-//	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-//	  addl_info = new String[2];
-//	  assert(addl_info != null);
-//	  addl_info[0] = name;
-//	  addl_info[1] = value;
-//	  additional_inf.put(name,  value);
-//
-//	  additional_info.add(addl_info);
-//
-//	  EVEL_EXIT();
-//	}
-	
 	
 	  /**************************************************************************//**
 	   * Adds name value pair under hash key
@@ -167,7 +138,7 @@ public class EvelNotification extends EvelHeader {
 	    /***************************************************************************/
 	    /* Check preconditions.                                                    */
 	    /***************************************************************************/
-	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_OTHER);
+	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_NOTIFICATION);
 	    assert(hashname != null);
 	    assert(name != null);
 	    assert(value != null);
@@ -203,7 +174,7 @@ public class EvelNotification extends EvelHeader {
 
       } catch( Exception e)
       {
-          e.printStackTrace();
+          
       }
 
 	    EVEL_EXIT();
@@ -408,7 +379,7 @@ public class EvelNotification extends EvelHeader {
 	  newState.encJsonValue(obj, "newState");
 	  oldState.encJsonValue(obj,"oldState");
 	  changeContact.encJsonValue(obj,"changeContact");
-	  stateInterface.encJsonValue(obj, "syslogProc");
+	  stateInterface.encJsonValue(obj, "stateInterface");
 	// additional fields
 //	  if( additional_info != null )
 //	  {
@@ -501,6 +472,24 @@ public class EvelNotification extends EvelHeader {
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "notificationFields", evelNotificationObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+	 
+	 JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_NOTIFICATION);
+	        
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "notificationFields", evelNotificationObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    

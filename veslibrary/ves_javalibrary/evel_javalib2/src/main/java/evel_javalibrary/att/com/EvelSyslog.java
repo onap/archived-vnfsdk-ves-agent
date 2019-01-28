@@ -38,12 +38,14 @@ import org.apache.log4j.Logger;
 import org.slf4j.helpers.MessageFormatter;
 
 import evel_javalibrary.att.com.EvelFault.EVEL_SEVERITIES;
+import evel_javalibrary.att.com.EvelFault.EVEL_SOURCE_TYPES;
 
 
 public class EvelSyslog extends EvelHeader {
 	
 	int major_version = 3;
 	int minor_version = 0;
+	
 	
 	/**************************************************************************//**
 	 * Alert types.
@@ -106,6 +108,8 @@ public class EvelSyslog extends EvelHeader {
 	  EvelOptionInt syslog_ver;
 	  EvelOptionString syslogmsg_host;
 	  
+	  EvelOptionString syslogTs;
+	  
 	  HashMap<String, String > additional_inf;
 
 	
@@ -121,15 +125,15 @@ public class EvelSyslog extends EvelHeader {
 	   *
 	   *****************************************************************************/
 	public EvelSyslog(String evname, String evid,
-			          EvelFault.EVEL_SOURCE_TYPES evt_source_type,
+			EvelFault.EVEL_SOURCE_TYPES evt_source_type,
                       String syslg_msg,
                       String syslg_tag)
 	{
 		super(evname,evid);
 		event_domain = EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG;
-	    assert(EvelFault.EVEL_SOURCE_TYPES.EVEL_MAX_SOURCE_TYPES.compareTo(event_source_type) < 0);
-	    assert(syslog_msg != null);
-	    assert(syslog_tag != null);
+	    assert(EvelFault.EVEL_SOURCE_TYPES.EVEL_MAX_SOURCE_TYPES.compareTo(evt_source_type) >= 0);
+	    assert(syslg_msg != null);
+	    assert(syslg_tag != null);
 
 	    event_source_type = evt_source_type;
 	    syslog_msg = syslg_msg;
@@ -146,6 +150,9 @@ public class EvelSyslog extends EvelHeader {
 	    syslog_severity = new EvelOptionString();	
 	    
 	    syslogmsg_host = new EvelOptionString();	
+	    
+	    syslogTs = new EvelOptionString();	
+	    
 	    
 	    additional_inf =null;
 	}	  
@@ -464,8 +471,32 @@ public class EvelSyslog extends EvelHeader {
 	    EVEL_EXIT();
 	  }
 
-	  
+	  /**************************************************************************//**
+	   * Set the Structured SDID property of the SyslogTs.
+	   *
+	   * @note  The property is treated as immutable: it is only valid to call
+	   *        the setter once.  However, we don't assert if the caller tries to
+	   *        overwrite, just ignoring the update instead.
+	   *
+	   * 
+	   * @param sdid     The Structured Data to be set. ASCIIZ string. name@number
+	   *                 Caller does not need to preserve the value once the function
+	   *                   returns.
+	   *****************************************************************************/
+	  public void evel_syslogTs_set(String syslogT)
+	  {
+	    EVEL_ENTER();
 
+	    /***************************************************************************/
+	    /* Check preconditions.                                                    */
+	    /***************************************************************************/
+	    assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG);
+	    assert(syslogT != null);
+
+	    syslogTs.SetValuePr(syslogT, "SyslogTs");
+	    EVEL_EXIT();
+	  }
+	  
 	  /**************************************************************************//**
 	   * Set the Structured SDID property of the Syslog.
 	   *
@@ -526,6 +557,9 @@ public class EvelSyslog extends EvelHeader {
 	    }
 	    EVEL_EXIT();
 	  }
+	  
+	  
+
 	
 	  
 		/**************************************************************************//**
@@ -545,7 +579,7 @@ public class EvelSyslog extends EvelHeader {
 		  /* Mandatory fields                                                        */
 		  /***************************************************************************/
 		  JsonObjectBuilder obj = Json.createObjectBuilder()
-		   	         .add("eventSourceType", event_source_type.toString())
+		   	         .add("eventSourceType", EvelFault.evel_source_type(event_source_type))
 		   	         .add("syslogMsg", syslog_msg)
 		   	         .add("syslogTag", syslog_tag)
 		   	         .add("syslogFieldsVersion",version);
@@ -563,6 +597,8 @@ public class EvelSyslog extends EvelHeader {
 		  syslog_severity.encJsonValue(obj, "syslogSev");
 		  syslog_ver.encJsonValue(obj, "syslogVer");
 		  syslogmsg_host.encJsonValue(obj, "syslogMsgHost");
+		  
+		  syslogTs.encJsonValue(obj, "syslogTs");
 		  
 		  
 		  if(additional_inf != null) {
@@ -602,6 +638,24 @@ public class EvelSyslog extends EvelHeader {
 		    	         .add( "commonEventHeader",eventHeaderObject() )
 		    	         .add( "syslogFields",evelSyslogObject() )
 		    	         ).build();
+
+	    EVEL_EXIT();
+	    
+	    return obj;
+
+	  }
+      
+      JsonObject evel_json_encode_event_batch()
+	  {
+		EVEL_ENTER();
+		
+		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_SYSLOG);
+	        
+	    JsonObject obj = Json.createObjectBuilder()
+	    	    // .add("event", Json.createObjectBuilder()
+		    	         .add( "commonEventHeader",eventHeaderObject() )
+		    	         .add( "syslogFields",evelSyslogObject() )
+		    	         .build();
 
 	    EVEL_EXIT();
 	    
