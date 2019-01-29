@@ -1,25 +1,33 @@
-/*
- * ============LICENSE_START=======================================================
- * ves-agent
- * ================================================================================
- * Copyright (C) 2017 AT&T Intellectual Property. All rights reserved.
- * ================================================================================
+
+package evel_javalibrary.att.com.maindir;
+
+/**************************************************************************//**
+ * @file
+ * Sample Test Agent for EVEL library
+ *
+ * This file implements the Sample Agent which is intended to provide a
+ * simple wrapper around the complexity of AT&T's Vendor Event Listener API so
+ * that VNFs can use it without worrying about details of the API transport.
+ * It also shows how events can be formatted with data for POST
+ *
+ * License
+ * -------
+ * Unless otherwise specified, all software contained herein is
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *        http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * ============LICENSE_END=========================================================
- */
+ *****************************************************************************/
 
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
+
+import org.apache.log4j.Logger;
+
 import evel_javalibrary.att.com.*;
 import evel_javalibrary.att.com.AgentMain.EVEL_ERR_CODES;
 import evel_javalibrary.att.com.EvelFault.EVEL_SEVERITIES;
@@ -28,81 +36,51 @@ import evel_javalibrary.att.com.EvelFault.EVEL_VF_STATUSES;
 import evel_javalibrary.att.com.EvelHeader.PRIORITIES;
 import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_CPU_USE;
-import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_MEM_USE;
-import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_DISK_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_VNIC_PERFORMANCE;
 import evel_javalibrary.att.com.EvelStateChange.EVEL_ENTITY_STATE;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_ALERT_TYPE;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_EVENT_ACTION;
 
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
-
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
-
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-import org.apache.log4j.Logger;
 import org.apache.log4j.Level;
-import org.apache.log4j.BasicConfigurator;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Date;
 
+public class Main
+{
 
-@PrepareForTest({AgentMain.class})
-@RunWith(PowerMockRunner.class)
-public class TestJunit {
+        public static void main(String[] args)
+        {
 
-   private AgentMain  mymainmock = null;
-   private EvelHeader header = null;
+       try{
 
-   //private static final Logger LOG = LoggerFactory.getLogger(TestJunit.class);
-   private static final Logger LOG = Logger.getLogger(TestJunit.class.getName());
-
-    @Before
-    public void setupClass() {
-        BasicConfigurator.configure();
-        mymainmock = mock(AgentMain.class);
-
-        // PowerMockito does bytecode magic to mock static methods and use final classes
-        PowerMockito.mockStatic(AgentMain.class);
-
-        //evel init
-         try {
-          mymainmock.evel_initialize( "http://127.0.0.1", 30000, "/vendor_event_listener", "/example_vnf", null, null,null, "pill", "will",                   "http://127.0.0.1",30001, "will",
-                  "pill", Level.DEBUG);
-         } catch ( Exception e )
-         {
+           AgentMain.evel_initialize("http://127.0.0.1",30000,
+                   null,null,
+                   "will",
+                   "pill",
+                   null, null, null,
+                   "http://127.0.0.1",30001, "will",
+                   "pill",
+                   Level.TRACE); 
+       } catch( Exception e )
+       {
            e.printStackTrace();
-         }
-    }
+       }
 
-
-   @Test
-   public void testHeartbeat() {
-
-              header  = EvelHeader.evel_new_heartbeat("Hearbeat_vAFX","vmname_ip");
+        for(int i= 0; i < 30; i++)
+        {
+              EvelHeader header  = EvelHeader.evel_new_heartbeat("Hearbeat_vAFX","vmname_ip");
               header.evel_nfnamingcode_set("vVNF");
               header.evel_nfcnamingcode_set("vVNF");
-
-              when(mymainmock.evel_post_event(header)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(header);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
-
-
-   @Test
-   public void testFault() {
+              AgentMain.evel_post_event(header);
+              try {
+                Thread.sleep(1000);
+              } catch( Exception e )
+              {
+                 e.printStackTrace();
+              }
 
               EvelFault flt  = new EvelFault("Fault_vVNF", "vmname_ip",
             		  "NIC error", "Hardware failed",
@@ -112,15 +90,8 @@ public class TestJunit {
                   EVEL_VF_STATUSES.EVEL_VF_STATUS_ACTIVE);
               flt.evel_fault_addl_info_add("nichw", "fail");
               flt.evel_fault_addl_info_add("nicsw", "fail");
-              when(mymainmock.evel_post_event(flt)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(flt);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
+              AgentMain.evel_post_event(flt);
 
-   }
-
-   @Test
-   public void testBatch() {
               EvelBatch be = new EvelBatch();
               EvelFault flt2  = new EvelFault("Fault_vVNF", "vmname_ip",
             		  "NIC error", "Hardware failed",
@@ -154,23 +125,10 @@ public class TestJunit {
               //AgentMain.evel_post_event(stc);
 
               be.addEvent(stc);
-              when(mymainmock.evel_post_event(be)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(be);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
+              AgentMain.evel_post_event(be);
 
-   @Test
-   public void testMeasurement() {
               EvelScalingMeasurement sm  = new EvelScalingMeasurement(10.0,"Measurements_vVNF", "vmname_ip");
-              sm.evel_measurement_type_set("dummy");
-              sm.evel_measurement_addl_info_add("meas1","value1");
-              sm.evel_measurement_addl_info_add("meas2","value2");
-              sm.evel_measurement_concurrent_sessions_set(3);
-              sm.evel_measurement_config_entities_set(3);
               sm.evel_measurement_myerrors_set(10,20,30,40);
-              sm.evel_measurement_mean_req_lat_set(123.0);
-              sm.evel_measurement_request_rate_set(12);
               MEASUREMENT_CPU_USE my1 = sm.evel_measurement_new_cpu_use_add("cpu1", 100.0);
               my1.idle.SetValue(20.0);
               my1.sys.SetValue(21.0);
@@ -181,16 +139,7 @@ public class TestJunit {
               sm.evel_measurement_custom_measurement_add("group1","name2","val2");
               sm.evel_measurement_custom_measurement_add("group2","name1","val1");
               sm.evel_measurement_custom_measurement_add("group2","name2","val2");
-              sm.evel_measurement_cpu_use_idle_set(my1,0.5);
-              sm.evel_measurement_cpu_use_interrupt_set(my1,0.5);
-              sm.evel_measurement_cpu_use_nice_set(my1,0.5);
-              sm.evel_measurement_cpu_use_softirq_set(my1,0.5);
-              sm.evel_measurement_cpu_use_steal_set(my1,0.5);
-              sm.evel_measurement_cpu_use_system_set(my1,0.5);
-              sm.evel_measurement_cpu_use_usageuser_set(my1,0.5);
 
-              MEASUREMENT_MEM_USE mym1 = sm.evel_measurement_new_mem_use_add("mem1", "vm1",123456.0);
-              MEASUREMENT_DISK_USE mydisk1 = sm.evel_measurement_new_disk_use_add("disk1");
 
               MEASUREMENT_VNIC_PERFORMANCE vnic_p = sm.evel_measurement_new_vnic_performance("vnic1","true");
               vnic_p.recvd_bcast_packets_acc.SetValue(2400000.0);
@@ -199,69 +148,31 @@ public class TestJunit {
               vnic_p.tx_ucast_packets_acc.SetValue(547856576.0);
               vnic_p.tx_ucast_packets_delta.SetValue(540000.0);
               sm.evel_meas_vnic_performance_add(vnic_p);
-              sm.evel_measurement_fsys_use_add("fs1",40000.0, 5678.0, 5432.0,45.0,67.0,78.0);
-              sm.evel_measurement_feature_use_add("latefeature",40);
-              sm.evel_measurement_codec_use_add("codec",41);
-              sm.evel_measurement_vnic_performance_add("vnic","vals", 1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,11.,12.,13.,14.,15.,16.,17.,18.,19.,20.,21.,22.,23.,24.,25.,26.,27.,28.);
 
-              when(mymainmock.evel_post_event(sm)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(sm);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
+              AgentMain.evel_post_event(sm);
               
-   @Test
-   public void testSyslog() {
               EvelSyslog sysl = new EvelSyslog("Syslog_vVNF", "vmname_ip",
             		                    EvelFault.EVEL_SOURCE_TYPES.EVEL_SOURCE_ROUTER,
             		                   "Router failed","JUNIPER");
               sysl.evel_syslog_proc_id_set(456);
               sysl.evel_syslog_proc_set("routed");
+              AgentMain.evel_post_event(sysl);
               
-              when(mymainmock.evel_post_event(sysl)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(sysl);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
-              
-   @Test
-   public void testHtbtField() {
               EvelHeartbeatField hfld = new EvelHeartbeatField(123,"HeartbeatField_vVNF", "vmname_ip");
               hfld.evel_hrtbt_interval_set(23);
+              AgentMain.evel_post_event(hfld);
               
-              when(mymainmock.evel_post_event(hfld)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(hfld);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
-              
-   @Test
-   public void testSipSignaling() {
               
               EvelSipSignaling sip = new EvelSipSignaling("SipSignaling_vVNF", "vmname_ip","aricent","corlator","127.0.0.1","5647","10.1.1.124","5678");
+              AgentMain.evel_post_event(sip);
               
-              when(mymainmock.evel_post_event(sip)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(sip);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
-              
-   @Test
-   public void testVoiceQuality() {
               EvelVoiceQuality vq = new EvelVoiceQuality("VoiceQuality_vVNF", "vmname_ip",
             		  "calleeSideCodc",
       			    "callerSideCodc", "corlator",
     			    "midCllRtcp", "juniper");
               vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 15.1, 160.12, 170, 180, 190);
+              AgentMain.evel_post_event(vq);
               
-              when(mymainmock.evel_post_event(vq)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(vq);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
-              
-   @Test
-   public void testEvelOther() {
               EvelOther ev = new EvelOther("MyCustomEvent_vVNF", "vmname_ip");
               ev.evel_other_field_add("a1", "b1");
               ev.evel_other_field_add("a1", "b2");
@@ -270,15 +181,8 @@ public class TestJunit {
               ev.evel_other_field_add_namedarray("a1", "b2", "c2");
               ev.evel_other_field_add_namedarray("a2", "b1", "c1");
               ev.evel_other_field_add_namedarray("a2", "b1", "c1");
+              AgentMain.evel_post_event(ev);
               
-              when(mymainmock.evel_post_event(ev)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(ev);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
-              
-   @Test
-   public void testThresholdCross() {
       		String dateStart = "01/14/2012 09:29:58";
       		String dateStop = "01/15/2012 10:31:48";
 
@@ -313,23 +217,9 @@ public class TestJunit {
               tca.evel_thresholdcross_alertid_add("alert1");
               tca.evel_thresholdcross_alertid_add("alert2");
               
-              when(mymainmock.evel_post_event(tca)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(tca);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
+              AgentMain.evel_post_event(tca);
               
 
-   @Test
-   public void testMobileFlow() {
-      		String dateStart = "01/14/2012 09:29:58";
-      		Date d1 = null;
-      		SimpleDateFormat format = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-      		try {
-      			d1 = format.parse(dateStart);
-      		}catch (Exception e) {
-    			e.printStackTrace();
-    		}
               EvelMobileFlow mf = new EvelMobileFlow("MobileFlow_vVNF", "vmname_ip",
             		  "In",
                       null,
@@ -371,13 +261,11 @@ public class TestJunit {
                       27,
                       28);
               mf.gtp_per_flow_metrics = mygtp;
-              
-              when(mymainmock.evel_post_event(mf)).thenReturn(true);
-              boolean ret = mymainmock.evel_post_event(mf);
-              LOG.info("Returned "+ret);
-              assertTrue( ret );
-   }
+              AgentMain.evel_post_event(mf);
 
 
+    }
+
+  }
 }
 
