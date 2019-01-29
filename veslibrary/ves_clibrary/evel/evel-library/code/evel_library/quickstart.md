@@ -255,13 +255,12 @@ point the `evel_initialize()` function is called:
   ...
   if(evel_initialize(fqdn,                         /* FQDN                  */
                      port,                         /* Port                  */
-                     NULL,                         /* Backup FQDN           */
-                     0,                            /* Backup port           */
+                     fqdn2,                        /* Backup FQDN           */
+                     port2,                        /* Backup port           */
                      NULL,                         /* optional path         */
                      NULL,                         /* optional topic        */
                      100,                          /* Ring Buffer size      */
                      0,                            /* HTTPS?                */
-                     0,                            /* active mode?          */
                      NULL,                         /* cert file             */
                      NULL,                         /* key  file             */
                      NULL,                         /* ca   info             */

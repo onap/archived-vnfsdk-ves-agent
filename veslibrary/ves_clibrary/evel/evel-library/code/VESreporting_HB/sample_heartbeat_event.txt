@@ -1,0 +1,29 @@
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "heartbeat",
+            "eventId": "heartbeat000000010",
+            "eventName": "Heartbeat_VNF-AT&T_heartbeat",
+            "eventType": "platform",
+            "lastEpochMicrosec": 1548735913346089,
+            "nfNamingCode": "scfx",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "ssc",
+            "priority": "Normal",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1548735903336030,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.1",
+            "vesEventListenerVersion": "7.1"
+        },
+        "heartbeatFields": {
+            "heartbeatFieldsVersion": "3.0",
+            "heartbeatInterval": 10
+        }
+    }
+}
+

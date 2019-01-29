@@ -1,0 +1,33 @@
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "syslog",
+            "eventId": "syslog000000000",
+            "eventName": "syslog_vFirewall-AT&T_connectionReset",
+            "eventType": "applicationVnf",
+            "lastEpochMicrosec": 1548241988387486,
+            "nfNamingCode": "AFX",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "AFX",
+            "priority": "Normal",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 0,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.1",
+            "vesEventListenerVersion": "7.1"
+        },
+        "syslogFields": {
+            "eventSourceType": "virtualMachine",
+            "syslogFacility": 16,
+            "syslogFieldsVersion": "4.0",
+            "syslogMsg": "Jan 23 16:43:06 prakash-VirtualBox prakash: peer reset1234567891234567812345",
+            "syslogProc": "vSyslog",
+            "syslogTag": "peer reset"
+        }
+    }
+}
+

@@ -47,8 +47,8 @@ extern "C" {
 /* Supported API version.                                                    */
 /*****************************************************************************/
 #define EVEL_API_MAJOR_VERSION 7
-#define EVEL_API_MINOR_VERSION 0
-#define EVEL_API_PATCH_VERSION 2
+#define EVEL_API_MINOR_VERSION 1
+#define EVEL_API_PATCH_VERSION 0
 
 /**************************************************************************//**
  * Error codes
@@ -2975,7 +2975,6 @@ typedef struct copyright {
  * @param   topic   The optional topic part of the URL (may be NULL).
  * @param   ring_buf_size   Ring buffer size (>=100) ~ Avg Messages in 1hr
  * @param   secure  Whether to use HTTPS (0=HTTP, 1=HTTPS).
- * @param   activmode  Whether to use ActiveActive or ActiveStandby collector mode
  * @param   cert_file_path     Path to client certificate file
  * @param   key_file_path      Path to client key file
  * @param   ca_info            Path to CA info
@@ -3005,7 +3004,6 @@ EVEL_ERR_CODES evel_initialize(const char * const fqdn,
                                const char * const topic,
                                int ring_buf_size,
                                int secure,
-                               int activmode,
                                const char * const cert_file_path,
                                const char * const key_file_path,
                                const char * const ca_info,

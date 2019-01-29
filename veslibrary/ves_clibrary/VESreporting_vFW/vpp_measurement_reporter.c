@@ -15,6 +15,7 @@
  *
  ****************************************************************************/
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -603,15 +604,25 @@ int main(int argc, char** argv)
 {
   char* fqdn = argv[1];
   int port = atoi(argv[2]);
+  char* fqdn2 = NULL;
+  int port2 = 0;
   int i=0;
   int rc;
   pthread_attr_t attr;
   pthread_t hb_thread;
   pthread_t meas_thread;
   pthread_t flt_thread;
-
-  if (argc != 3)
+  
+  if(argc == 5)
   {
+     fqdn2 = argv[3];
+     port2 = atoi(argv[4]);
+  }
+
+  if (!((argc == 3) || (argc == 5)))
+  {
+    fprintf(stderr, "Usage: %s <FQDN>|<IP address> <port> <FQDN>|<IP address> <port>  \n", argv[0]);
+    fprintf(stderr, "OR\n");
     fprintf(stderr, "Usage: %s <FQDN>|<IP address> <port> \n", argv[0]);
     exit(-1);
   }
@@ -621,23 +632,22 @@ int main(int argc, char** argv)
   /**************************************************************************/
   if(evel_initialize(fqdn,                         /* FQDN                  */
                      port, 	                   /* Port                  */
-                     NULL, 	                   /* Backup FQDN           */
-                     0, 	                   /* Backup port           */
+                     fqdn2, 	                   /* Backup FQDN           */
+                     port2, 	                   /* Backup port           */
                      NULL,                         /* optional path         */
                      NULL,                         /* optional topic        */
                      100,                          /* Ring Buffer size      */
                      0,                            /* HTTPS?                */
-                     0,                            /* active mode?          */
                      NULL,                         /* cert file             */
                      NULL,                         /* key  file             */
                      NULL,                         /* ca   info             */
                      NULL,                         /* ca   file             */
                      0,                            /* verify peer           */
                      0,                            /* verify host           */
-                     "will",                       /* Username              */
-                     "pill",                       /* Password              */
-                     "",                           /* Username2             */
-                     "",                           /* Password2             */
+                     "sample1",                    /* Username              */
+                     "sample1",                    /* Password              */
+                     "sample1",                    /* Username2             */
+                     "sample1",                    /* Password2             */
                      NULL,                         /* Source ip             */
                      NULL,                         /* Source ip2            */
                      EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
