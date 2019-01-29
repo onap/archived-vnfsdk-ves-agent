@@ -47,11 +47,15 @@ Once initialized, and now MT-safe, there are factory functions to produce
 new events:
 - Faults  - ::evel_new_fault
 - Measurements - ::evel_new_measurement
-- Report - ::evel_new_report
 - State Change - ::evel_new_state_change
 - Syslog - ::evel_new_syslog
 - Other - ::evel_new_other
 - Mobile Flow - ::evel_new_mobile_flow
+- Notification - ::evel_new_notification
+- PNF Registration - ::evel_new_pnf_registration
+- SIP Signaling - ::evel_new_signaling
+- Threshold Crossing Alert - ::evel_new_threshold_cross
+- Voice Quality - ::evel_new_voice_quality
 
 There is also a factory function ::evel_new_mobile_gtp_flow_metrics to create
 the parameter gtp_per_flow_metrics, which is then configured and passed to the
@@ -76,16 +80,29 @@ The following fragment illustrates the above usage:
 
 ```C
 
-  if (evel_initialize(api_fqdn,
-                      api_port,
-                      api_path,
-                      api_topic,
-                      api_secure,
-                      "Alice",
-                      "This isn't very secure!",
-                      EVEL_SOURCE_VIRTUAL_MACHINE,
-                      "EVEL demo client",
-                      verbose_mode))
+  if(evel_initialize(fqdn,                         /* FQDN                  */
+                     port,                         /* Port                  */
+                     fqdn2,                        /* Backup FQDN           */
+                     port2,                        /* Backup port           */
+                     NULL,                         /* optional path         */
+                     NULL,                         /* optional topic        */
+                     100,                          /* Ring Buffer size      */
+                     0,                            /* HTTPS?                */
+                     NULL,                         /* cert file             */
+                     NULL,                         /* key  file             */
+                     NULL,                         /* ca   info             */
+                     NULL,                         /* ca   file             */
+                     0,                            /* verify peer           */
+                     0,                            /* verify host           */
+                     "",                           /* Username              */
+                     "",                           /* Password              */
+                     "",                           /* Username2             */
+                     "",                           /* Password2             */
+                     NULL,                         /* Source ip             */
+                     NULL,                         /* Source ip2            */
+                     EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
+                     "EVEL demo client",           /* Role                  */
+                     verbose_mode))                /* Verbosity             */
   {
     fprintf(stderr, "Failed to initialize the EVEL library!!!");
     exit(-1);
@@ -93,10 +110,14 @@ The following fragment illustrates the above usage:
 
   ...
 
-  fault = evel_new_fault("My alarm condition",
+ fault = evel_new_fault("fault_eNodeB_alarm",
+                         "fault000000001",
+                         "My alarm condition",
                          "It broke very badly",
                          EVEL_PRIORITY_NORMAL,
-                         EVEL_SEVERITY_MAJOR);
+                         EVEL_SEVERITY_MAJOR,
+                         EVEL_SOURCE_HOST,
+                         EVEL_VF_STATUS_READY_TERMINATE);
   if (fault != NULL)
   {
     evel_fault_type_set(fault, "Bad things happen...");
@@ -116,79 +137,6 @@ The public API to the library is defined in evel.h.  The internal APIs
 within library are defined in separate headers (<em>e.g.</em>
 evel_internal.h), but these should not need to be included by the code
 using the library.
-
-# Example Application
-
-A simple command-line application to generate events is provided as part of
-the source package (the above code fragment is taken from that application).
-
-The following illustrates its operation to a co-located "test-collector":
-```
-$ ./evel_demo --fqdn 127.0.0.1 --port 30000 --path vendor_event_listener --topic example_vnf --verbose
-./evel_demo built Feb 26 2016 18:14:48
-* About to connect() to 169.254.169.254 port 80 (#0)
-*   Trying 169.254.169.254... * Timeout
-* connect() timed out!
-* Closing connection #0
-* About to connect() to 127.0.0.1 port 30000 (#0)
-*   Trying 127.0.0.1... * connected
-* Connected to 127.0.0.1 (127.0.0.1) port 30000 (#0)
-* Server auth using Basic with user 'Alice'
-> POST /vendor_event_listener/eventListener/v1/example_vnf HTTP/1.1
-Authorization: Basic QWxpY2U6VGhpcyBpc24ndCB2ZXJ5IHNlY3VyZSE=
-User-Agent: libcurl-agent/1.0
-Host: 127.0.0.1:30000
-Accept: */*
-Content-type: application/json
-Content-Length: 510
-
-* HTTP 1.0, assume close after body
-< HTTP/1.0 204 No Content
-< Date: Fri, 04 Mar 2016 15:37:22 GMT
-< Server: WSGIServer/0.1 Python/2.6.6
-< 
-* Closing connection #0
-* About to connect() to 127.0.0.1 port 30000 (#0)
-*   Trying 127.0.0.1... * connected
-* Connected to 127.0.0.1 (127.0.0.1) port 30000 (#0)
-* Server auth using Basic with user 'Alice'
-> POST /vendor_event_listener/eventListener/v1/example_vnf HTTP/1.1
-Authorization: Basic QWxpY2U6VGhpcyBpc24ndCB2ZXJ5IHNlY3VyZSE=
-User-Agent: libcurl-agent/1.0
-Host: 127.0.0.1:30000
-Accept: */*
-Content-type: application/json
-Content-Length: 865
-
-* HTTP 1.0, assume close after body
-< HTTP/1.0 204 No Content
-< Date: Fri, 04 Mar 2016 15:37:22 GMT
-< Server: WSGIServer/0.1 Python/2.6.6
-< 
-* Closing connection #0
-* About to connect() to 127.0.0.1 port 30000 (#0)
-*   Trying 127.0.0.1... * connected
-* Connected to 127.0.0.1 (127.0.0.1) port 30000 (#0)
-* Server auth using Basic with user 'Alice'
-> POST /vendor_event_listener/eventListener/v1/example_vnf HTTP/1.1
-Authorization: Basic QWxpY2U6VGhpcyBpc24ndCB2ZXJ5IHNlY3VyZSE=
-User-Agent: libcurl-agent/1.0
-Host: 127.0.0.1:30000
-Accept: */*
-Content-type: application/json
-Content-Length: 2325
-
-* HTTP 1.0, assume close after body
-< HTTP/1.0 204 No Content
-< Date: Fri, 04 Mar 2016 15:37:22 GMT
-< Server: WSGIServer/0.1 Python/2.6.6
-< 
-* Closing connection #0
-^C
-
-Interrupted - quitting!
-$
-```
 
 # Restrictions and Limitations
 

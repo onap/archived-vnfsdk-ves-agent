@@ -1,0 +1,65 @@
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "measurement",
+            "eventId": "mvfs000000005",
+            "eventName": "Measurement_vFirewall-AT&T_nicPerformance",
+            "eventType": "applicationVnf",
+            "lastEpochMicrosec": 1547139835280053,
+            "nfNamingCode": "AFX",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "AFX",
+            "priority": "Normal",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1547139813738836,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.1",
+            "vesEventListenerVersion": "7.1"
+        },
+        "measurementFields": {
+            "cpuUsageArray": [
+                {
+                    "cpuIdentifier": "Cpu1",
+                    "cpuIdle": 25.0,
+                    "cpuUsageSystem": 25.0,
+                    "cpuUsageUser": 33.3,
+                    "percentUsage": 0.0
+                }
+            ],
+            "measurementFieldsVersion": "4.0",
+            "measurementInterval": 60,
+            "nicPerformanceArray": [
+                {
+                    "nicIdentifier": "lo",
+                    "receivedOctetsDelta": 2811.0,
+                    "receivedTotalPacketsDelta": 18.0,
+                    "transmittedOctetsDelta": 2811.0,
+                    "transmittedTotalPacketsDelta": 18.0,
+                    "valuesAreSuspect": "true"
+                },
+                {
+                    "nicIdentifier": "enp0s3",
+                    "receivedOctetsDelta": 354.0,
+                    "receivedTotalPacketsDelta": 4.0,
+                    "transmittedOctetsDelta": 350.0,
+                    "transmittedTotalPacketsDelta": 4.0,
+                    "valuesAreSuspect": "true"
+                },
+                {
+                    "nicIdentifier": "docker0",
+                    "receivedOctetsDelta": 0.0,
+                    "receivedTotalPacketsDelta": 0.0,
+                    "transmittedOctetsDelta": 0.0,
+                    "transmittedTotalPacketsDelta": 0.0,
+                    "valuesAreSuspect": "true"
+                }
+            ],
+            "requestRate": 0.0
+        }
+    }
+}
+

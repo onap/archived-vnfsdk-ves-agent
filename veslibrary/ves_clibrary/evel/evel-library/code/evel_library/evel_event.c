@@ -604,7 +604,7 @@ void evel_json_encode_header(EVEL_JSON_BUFFER * jbuf,
   evel_enc_kv_int(jbuf, "sequence", event->sequence);
   evel_enc_kv_string(jbuf, "sourceName", event->source_name);
   evel_enc_kv_ull(jbuf, "startEpochMicrosec", event->start_epoch_microsec);
-  char * version = "4.0.2";
+  char * version = "4.1";
   evel_enc_kv_string(jbuf, "version", version);
  // evel_enc_version(
  //   jbuf, "version", event->major_version, event->minor_version);
