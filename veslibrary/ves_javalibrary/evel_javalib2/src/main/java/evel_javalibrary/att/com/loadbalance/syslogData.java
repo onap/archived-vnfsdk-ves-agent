@@ -202,7 +202,7 @@ public class syslogData extends Thread{
 	      }
 	    } catch (SocketException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			
 		}
 
 		return hostname;
@@ -261,7 +261,7 @@ public class syslogData extends Thread{
                     "pill",
                     Level.TRACE); 
 		 }catch(Exception e) {
-			 e.printStackTrace();
+			 
 			 return;
 		 }
 		syslogData syslogDataThread = new syslogData();		

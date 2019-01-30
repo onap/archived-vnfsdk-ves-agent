@@ -140,16 +140,6 @@ public class MeasureData  extends Thread{
 				int transmittedOctetsDeltaLo = 0;
 				int transmittedTotalPacketsDeltaLo = 0;
 								
-				System.out.println("Data Array T0 "+vNic+" , "+ currentMetrics.get(vNic).getT0bytesIn()+" "
-						+ currentMetrics.get(vNic).getT0bytesOut()+" "
-								+ currentMetrics.get(vNic).getT0packetIn()+" "
-										+ currentMetrics.get(vNic).getT0packetOut());
-				System.out.println("Data Array T1 "+vNic+" , "+ currentMetrics.get(vNic).getT1Bytesin()+" "
-						+ currentMetrics.get(vNic).getT1Bytesout()+" "
-								+ currentMetrics.get(vNic).getT1Packetsin()+" "
-										+ currentMetrics.get(vNic).getT1Packetsout());
-				
-				
 				
 				    if (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesin()))
 							- Integer.parseInt((lastMetrics.get(vNic).getT0bytesIn()) ) > 0) {
@@ -288,7 +278,7 @@ public class MeasureData  extends Thread{
 	      }
 	    } catch (SocketException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			
 		}
 
 		return hostname;
@@ -536,8 +526,6 @@ public class MeasureData  extends Thread{
 		    		packetsOutchild.getInputStream())); 
 		    String readMetrics3= readerpacketsOut.readLine();
 		    
-		 //   System.out.println(device+" , T1 command data: "+ readMetrics+"," + readMetrics1+"," + readMetrics2+"," + readMetrics3);
-		 //   System.out.println(device+" , T0 command data: "+ readinitMetrics+"," + readinitMetrics2+"," + readinitMetrics3+"," + readinitMetrics4);
 		    
 		    //t1
 		    mddata.setT1Bytesin(readMetrics);
@@ -561,7 +549,7 @@ public class MeasureData  extends Thread{
 			}
 		    
 		        }catch (Exception e) {
-					e.printStackTrace();
+					
 				}   						
 		}		
 		return vppMetrics;
@@ -584,7 +572,7 @@ public class MeasureData  extends Thread{
                     "pill",
                     Level.TRACE); 
 		 }catch(Exception e) {
-			 e.printStackTrace();
+			 
 			 return;
 		 }
 		MeasureData mdataThread = new MeasureData();

@@ -182,7 +182,7 @@ public static String hostName() {
       }
     } catch (SocketException e) {
 		// TODO Auto-generated catch block
-		e.printStackTrace();
+		
 	}
 
 	return hostname;
@@ -201,7 +201,7 @@ public static void main(String[] args) {
                     "pill",
                     Level.TRACE); 
 		 }catch(Exception e) {
-			 e.printStackTrace();
+			 
 			 return;
 		 }
 		HeartBeatData hbDataThread = new HeartBeatData();		

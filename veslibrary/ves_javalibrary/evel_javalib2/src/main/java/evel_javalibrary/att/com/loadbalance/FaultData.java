@@ -528,7 +528,7 @@ public class FaultData{
 	
 	public static HashMap<String, String> readFalutConfig() throws IOException, ParseException {
 		
-		System.out.println("readFalutConfig calling out lo:");
+		
 		
 		List<String> list = new ArrayList<String>();
 		JSONParser jsonParser = new JSONParser();
@@ -645,7 +645,7 @@ public class FaultData{
 	        alarmConditionClear = tempAlaramClearParameter.get("alarmCondition").toString();
 	        specificProblemClear = tempAlaramClearParameter.get("specificProblem").toString();
 	        eventSeverityClear =   tempAlaramClearParameter.get("eventSeverity").toString();
-	        System.out.println("specificProblemClear data:"+ specificProblemClear);
+	        
 	        
 	        //tmp_faultInstance02
 	        Map.Entry faultInstance02Pair = null;
@@ -1217,7 +1217,7 @@ public static void main(String[] args) {
                     "pill",
                     Level.TRACE); 
 		 }catch(Exception e) {
-			 e.printStackTrace();
+			 
 			 return;
 		 }
 		FaultData flDataThread = new FaultData();	

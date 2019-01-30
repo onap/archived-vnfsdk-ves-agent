@@ -775,7 +775,7 @@ public class EvelHeader {
 	    String domain = evel_event_domain(event_domain);
 	    String prity = evel_event_priority(priority);
 	  //  double version = major_version+(double)minor_version/10;
-	    String version = "4.0.2";
+	    String version = "4.1";
 	    EVEL_ENTER();
 	    
 	    /***************************************************************************/
