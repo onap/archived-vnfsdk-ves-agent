@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 /**************************************************************************//**
  * @file
@@ -467,7 +467,6 @@ void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
   DLIST_ITEM * addlInfoItem = NULL;
 
   END_OF_CALL_VOICE_QUALITY_METRICS * vQMetrics = NULL;
-  DLIST_ITEM * vQMetricsItem = NULL;
 
   EVEL_ENTER();
 

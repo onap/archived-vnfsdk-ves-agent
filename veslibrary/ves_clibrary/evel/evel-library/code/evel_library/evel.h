@@ -1,5 +1,3 @@
-#ifndef EVEL_INCLUDED
-#define EVEL_INCLUDED
 /*************************************************************************//**
  *
  * Copyright © 2017 AT&T Intellectual Property. All rights reserved.
@@ -28,6 +26,9 @@
  * Zero return value is success (::EVEL_SUCCESS), non-zero is failure and will
  * be one of ::EVEL_ERR_CODES.
  *****************************************************************************/
+
+#ifndef EVEL_INCLUDED
+#define EVEL_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,7 +87,7 @@ typedef enum {
 /* Maximum string lengths.                                                   */
 /*****************************************************************************/
 #define EVEL_MAX_STRING_LEN          4096
-#define EVEL_MAX_JSON_BODY           16000
+#define EVEL_MAX_JSON_BODY           524288
 #define EVEL_MAX_ERROR_STRING_LEN    255
 #define EVEL_MAX_URL_LEN             511
 
@@ -117,6 +118,7 @@ static const int EVEL_EVENT_BUFFER_DEPTH = 100;
  *****************************************************************************/
 typedef enum {
   EVEL_DOMAIN_INTERNAL,       /** Internal event, not for external routing.  */
+  EVEL_DOMAIN_BATCH,          /** Batch event, composite event.              */
   EVEL_DOMAIN_HEARTBEAT,      /** A Heartbeat event (event header only).     */
   EVEL_DOMAIN_FAULT,          /** A Fault event.                             */
   EVEL_DOMAIN_MEASUREMENT,    /** A Measurement for VF Scaling event.        */
@@ -400,9 +402,11 @@ typedef struct internal_header_fields
 /*****************************************************************************/
 /* Supported Common Event Header version.                                    */
 /*****************************************************************************/
-#define EVEL_HEADER_MAJOR_VERSION 1
-#define EVEL_HEADER_MINOR_VERSION 2
+#define EVEL_HEADER_MAJOR_VERSION 3
+#define EVEL_HEADER_MINOR_VERSION 0
 
+#define EVEL_BATCH_MAJOR_VERSION 1
+#define EVEL_BATCH_MINOR_VERSION 0
 /**************************************************************************//**
  * Event header.
  * JSON equivalent field: commonEventHeader
@@ -436,14 +440,62 @@ typedef struct event_header {
   EVEL_OPTION_INTHEADER_FIELDS internal_field;
   EVEL_OPTION_STRING nfcnaming_code;
   EVEL_OPTION_STRING nfnaming_code;
+  DLIST batch_events;
 
 } EVENT_HEADER;
+
+/**************************************************************************//**
+ * Initialize a newly created event header.
+ *
+ * @param header  Pointer to the header being initialized.
+ * @param eventname Eventname string
+ * @param eventid   Event id : unique id for classification and analysis
+ * @param header  Pointer to the header being initialized.
+ *****************************************************************************/
+void evel_init_header_nameid(EVENT_HEADER * const header,const char *const eventname, const char *eventid);
+
+/**************************************************************************//**
+ * Create a new Batch event.
+ *
+ * @note    The mandatory fields on the Batch must be supplied to this factory
+ *          function and are immutable once set.  Optional fields have explicit
+ *          setter functions, but again values may only be set once so that the
+ *          Batch has immutable properties. At this time evename and eventid
+ *          for batch events are set but not used in json encoding
+ * @returns pointer to the newly manufactured ::EVENT_HEADER.  If the event is
+ *          not used (i.e. posted) it must be released using ::evel_free_batch.
+ * @retval  NULL  Failed to create the event.
+ *****************************************************************************/
+EVENT_HEADER * evel_new_batch(const char* ev_name, const char *ev_id);
+
+
+/**************************************************************************//**
+ * Add an Event into Batch Event
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param other     Pointer to the Batch Event.
+ * @param jsonobj   Pointer to  additional Event
+ *****************************************************************************/
+void evel_batch_add_event(EVENT_HEADER * batchev, EVENT_HEADER *child);
+
+/**************************************************************************//**
+ * Free an Batch.
+ *
+ * Free off the Batch supplied.  Will free all the contained allocated memory.
+ *
+ * @note It does not free the Batch itself, since that may be part of a
+ * larger structure.
+ *****************************************************************************/
+void evel_free_batch(EVENT_HEADER * event);
 
 /*****************************************************************************/
 /* Supported Fault version.                                                  */
 /*****************************************************************************/
 #define EVEL_FAULT_MAJOR_VERSION 2
-#define EVEL_FAULT_MINOR_VERSION 1
+#define EVEL_FAULT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Fault.
@@ -529,7 +581,7 @@ typedef struct json_object_instance
 {
 
   char *jsonstring;
-  unsigned long long objinst_epoch_microsec;
+  EVEL_OPTION_ULL objinst_epoch_microsec;
   DLIST object_keys; /*EVEL_INTERNAL_KEY list */
 
 } EVEL_JSON_OBJECT_INSTANCE;
@@ -597,7 +649,7 @@ void evel_free_jsonobject(EVEL_JSON_OBJECT * jsobj);
 /* Supported Measurement version.                                            */
 /*****************************************************************************/
 #define EVEL_MEASUREMENT_MAJOR_VERSION 2
-#define EVEL_MEASUREMENT_MINOR_VERSION 1
+#define EVEL_MEASUREMENT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Errors.
@@ -650,6 +702,37 @@ typedef struct event_measurement {
   DLIST vnic_usage;
 
 } EVENT_MEASUREMENT;
+
+
+
+/**************************************************************************//**
+ * Add an additional value name/value pair to the Measurement.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param measurement     Pointer to the measurement.
+ * @param name      ASCIIZ string with the attribute's name.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ * @param value     ASCIIZ string with the attribute's value.  The caller
+ *                  does not need to preserve the value once the function
+ *                  returns.
+ *****************************************************************************/
+void evel_measurement_addl_info_add(EVENT_MEASUREMENT * measurement, char * name, char * value);
+
+/**************************************************************************//**
+ * Add a json object to jsonObject list.
+ *
+ * The name and value are null delimited ASCII strings.  The library takes
+ * a copy so the caller does not have to preserve values after the function
+ * returns.
+ *
+ * @param measurement     Pointer to the ScalingMeasurement
+ * @param jsonobj   Pointer to json object
+ *****************************************************************************/
+void evel_measurement_addl_object_add(EVENT_MEASUREMENT * measurement, EVEL_JSON_OBJECT *jsonobj);
 
 /**************************************************************************//**
  * CPU Usage.
@@ -990,7 +1073,7 @@ typedef struct custom_measurement {
 /* Supported Report version.                                                 */
 /*****************************************************************************/
 #define EVEL_REPORT_MAJOR_VERSION 1
-#define EVEL_REPORT_MINOR_VERSION 1
+#define EVEL_REPORT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Report.
@@ -1082,8 +1165,8 @@ typedef struct mobile_gtp_per_flow_metrics {
 /*****************************************************************************/
 /* Supported Mobile Flow version.                                            */
 /*****************************************************************************/
-#define EVEL_MOBILE_FLOW_MAJOR_VERSION 1
-#define EVEL_MOBILE_FLOW_MINOR_VERSION 2
+#define EVEL_MOBILE_FLOW_MAJOR_VERSION 2
+#define EVEL_MOBILE_FLOW_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Mobile Flow.
@@ -1143,7 +1226,7 @@ typedef struct event_mobile_flow {
 /* Supported Other field version.                                            */
 /*****************************************************************************/
 #define EVEL_OTHER_EVENT_MAJOR_VERSION 1
-#define EVEL_OTHER_EVENT_MINOR_VERSION 1
+#define EVEL_OTHER_EVENT_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Other.
@@ -1173,14 +1256,14 @@ typedef struct other_field {
 /* Supported Service Events version.                                         */
 /*****************************************************************************/
 #define EVEL_HEARTBEAT_FIELD_MAJOR_VERSION 1
-#define EVEL_HEARTBEAT_FIELD_MINOR_VERSION 1
+#define EVEL_HEARTBEAT_FIELD_MINOR_VERSION 0
 
 
 /*****************************************************************************/
 /* Supported Signaling version.                                              */
 /*****************************************************************************/
-#define EVEL_SIGNALING_MAJOR_VERSION 2
-#define EVEL_SIGNALING_MINOR_VERSION 1
+#define EVEL_SIGNALING_MAJOR_VERSION 1
+#define EVEL_SIGNALING_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Vendor VNF Name fields.
@@ -1235,8 +1318,8 @@ typedef struct signaling_additional_field {
 /*****************************************************************************/
 /* Supported State Change version.                                           */
 /*****************************************************************************/
-#define EVEL_STATE_CHANGE_MAJOR_VERSION 1
-#define EVEL_STATE_CHANGE_MINOR_VERSION 2
+#define EVEL_STATE_CHANGE_MAJOR_VERSION 2
+#define EVEL_STATE_CHANGE_MINOR_VERSION 0
 
 /**************************************************************************//**
  * State Change.
@@ -1277,8 +1360,8 @@ typedef struct state_change_additional_field {
 /*****************************************************************************/
 /* Supported Syslog version.                                                 */
 /*****************************************************************************/
-#define EVEL_SYSLOG_MAJOR_VERSION 1
-#define EVEL_SYSLOG_MINOR_VERSION 2
+#define EVEL_SYSLOG_MAJOR_VERSION 3
+#define EVEL_SYSLOG_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Syslog.
@@ -1346,11 +1429,24 @@ typedef struct copyright {
  *
  * @param   fqdn    The API's FQDN or IP address.
  * @param   port    The API's port.
+ * @param   bakup_fqdn    The API's FQDN or IP address.
+ * @param   bakup_port    The API's port.
  * @param   path    The optional path (may be NULL).
  * @param   topic   The optional topic part of the URL (may be NULL).
+ * @param   ring_buf_size   Ring buffer size (>=100) ~ Avg Messages in 1hr
  * @param   secure  Whether to use HTTPS (0=HTTP, 1=HTTPS).
+ * @param   cert_file_path     Path to client certificate file
+ * @param   key_file_path      Path to client key file
+ * @param   ca_info            Path to CA info
+ * @param   ca_file_path       Path to CA file
+ * @param   verify_peer        SSL verification of peer 0 or 1
+ * @param   verify_host        SSL verification of host 0 or 1
  * @param   username  Username for Basic Authentication of requests.
  * @param   password  Password for Basic Authentication of requests.
+ * @param   bakup_username  Username for Basic Authentication of Bakup FQDN.
+ * @param   bakup_password  Password for Basic Authentication of Bakup FQDN.
+ * @param   source_ip       The ip of node we represent.(NULL for default ip)
+ * @param   bakup_source_ip The ip bakup fqdn interface.(NULL for default ip)
  * @param   source_type The kind of node we represent.
  * @param   role    The role this node undertakes.
  * @param   verbosity  0 for normal operation, positive values for chattier
@@ -1362,15 +1458,39 @@ typedef struct copyright {
  *****************************************************************************/
 EVEL_ERR_CODES evel_initialize(const char * const fqdn,
                                int port,
+                               const char * const bakup_fqdn,
+                               int bakup_port,
                                const char * const path,
                                const char * const topic,
+                               int ring_buf_size,
                                int secure,
+                               const char * const cert_file_path,
+                               const char * const key_file_path,
+                               const char * const ca_info,
+                               const char * const ca_file_path,
+                               long verify_peer,
+                               long verify_host,
                                const char * const username,
                                const char * const password,
+                               const char * const bakup_username,
+                               const char * const bakup_password,
+                               const char * const source_ip,
+                               const char * const bakup_source_ip,
                                EVEL_SOURCE_TYPES source_type,
                                const char * const role,
                                int verbosity
                                );
+
+/**************************************************************************//**
+ * Initialize value for vm_name for all coming events
+ * @param  source_name  Source name string.
+ *                      Must confirm with EVEL source name standard
+ * @returns Status code
+ * @retval  EVEL_SUCCESS      On success
+ * @retval  ::EVEL_ERR_CODES  On failure.
+ *****************************************************************************/
+EVEL_ERR_CODES evel_set_source_name(char * src_name);
+
 
 /**************************************************************************//**
  * Clean up the EVEL library.
@@ -1400,6 +1520,7 @@ void evel_free_event(void * event);
  * Encode the event as a JSON event object according to AT&T's schema.
  *
  * @param json      Pointer to where to store the JSON encoded data.
+ * @param mode      Event mode or Batch mode
  * @param max_size  Size of storage available in json_body.
  * @param event     Pointer to the ::EVENT_HEADER to encode.
  * @returns Number of bytes actually written.
@@ -1407,7 +1528,9 @@ void evel_free_event(void * event);
 int evel_json_encode_event(char * json,
                            int max_size,
                            EVENT_HEADER * event);
-
+int evel_json_encode_batch_event(char * json,
+                           int max_size,
+                           EVENT_HEADER * event);
 /**************************************************************************//**
  * Initialize an event instance id.
  *
@@ -1490,8 +1613,8 @@ EVENT_HEADER * evel_new_heartbeat(void);
  *
  * @note that the heartbeat is just a "naked" commonEventHeader!
  *
- * @param event_name  Unique Event Name confirming Domain AsdcModel Description
- * @param event_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
+ * @param event_name    Unique Event Name: {DomainAbbreviation}_{AsdcModel or ApplicationPlatform}_{DescriptionOfInfoBeingConveyed}
+ * @param event_id    A universal identifier of the event for: troubleshooting, cross-referencing of alarms for alarm correlation, offline log analysis, etc
  *
  * @returns pointer to the newly manufactured ::EVENT_HEADER.  If the event is
  *          not used it must be released using ::evel_free_event
@@ -1499,6 +1622,22 @@ EVENT_HEADER * evel_new_heartbeat(void);
  *****************************************************************************/
 EVENT_HEADER * evel_new_heartbeat_nameid(const char* ev_name, const char *ev_id);
 
+/**************************************************************************//**
+ * Create a new Heartbeat fields event.
+ *
+ * @note    The mandatory fields on the Heartbeat fields must be supplied to
+ *          this factory function and are immutable once set.  Optional fields
+ *          have explicit setter functions, but again values may only be set
+ *          once so that the event has immutable properties.
+ * @param ev_name  Unique Event Name confirming Domain AsdcModel Description
+ * @param ev_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
+ * @param interval    heartbeat interval
+ * @returns pointer to the newly manufactured ::EVENT_HEARTBEAT_FIELD.  If the event
+ *          is not used (i.e. posted) it must be released using
+ *          ::evel_free_hrtbt_field.
+ * @retval  NULL  Failed to create the event.
+ *****************************************************************************/
+EVENT_HEARTBEAT_FIELD * evel_new_heartbeat_field(int interval,const char* ev_name, const char *ev_id);
 
 /**************************************************************************//**
  * Free an event header.
@@ -1528,6 +1667,24 @@ void evel_init_header(EVENT_HEADER * const header,const char *const eventname);
  *****************************************************************************/
 void evel_header_type_set(EVENT_HEADER * const header,
                           const char * const type);
+
+/**************************************************************************//**
+ * Set the next event_sequence to use.
+ *
+ * @param sequence      The next sequence number to use.
+ *****************************************************************************/
+void evel_set_global_event_sequence(const int sequence);
+
+/**************************************************************************//**
+ * Set the Event Sequence property of the event header.
+ *
+ * @note This is mainly for tracking fault event sequence numbers
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param sequence_number
+ * 
+ *****************************************************************************/
+void evel_event_sequence_set(EVENT_HEADER * const header,const int sequence_number);
 
 /**************************************************************************//**
  * Set the Start Epoch property of the event header.
@@ -1565,6 +1722,17 @@ void evel_reporting_entity_name_set(EVENT_HEADER * const header,
                                     const char * const entity_name);
 
 /**************************************************************************//**
+ * Set the Source Name property of the event header.
+ *
+ * @note The Source Name defaults to the OpenStack VM Name.
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param entity_name   The source name to set.
+ *****************************************************************************/
+void evel_source_name_set(EVENT_HEADER * const header,
+                          const char * const source_name);
+
+/**************************************************************************//**
  * Set the Reporting Entity Id property of the event header.
  *
  * @note The Reporting Entity Id defaults to the OpenStack VM UUID.
@@ -1574,6 +1742,17 @@ void evel_reporting_entity_name_set(EVENT_HEADER * const header,
  *****************************************************************************/
 void evel_reporting_entity_id_set(EVENT_HEADER * const header,
                                   const char * const entity_id);
+
+/**************************************************************************//**
+ * Set the Source Id property of the event header.
+ *
+ * @note The Source Id defaults to the OpenStack VM UUID.
+ *
+ * @param header        Pointer to the ::EVENT_HEADER.
+ * @param entity_id     The Source id to set.
+ *****************************************************************************/
+void evel_source_id_set(EVENT_HEADER * const header,
+                        const char * const source_id);
 
 /**************************************************************************//**
  * Set the NFC Naming code property of the event header.
@@ -3955,7 +4134,7 @@ int evel_get_measurement_interval();
 /* Supported Report version.                                                 */
 /*****************************************************************************/
 #define EVEL_VOICEQ_MAJOR_VERSION 1
-#define EVEL_VOICEQ_MINOR_VERSION 1
+#define EVEL_VOICEQ_MINOR_VERSION 0
 
 /**************************************************************************//**
  * End of Call Voice Quality Metrices
@@ -4255,8 +4434,8 @@ typedef struct perf_counter {
 /*****************************************************************************/
 /* Supported Threshold Crossing version.                                     */
 /*****************************************************************************/
-#define EVEL_THRESHOLD_CROSS_MAJOR_VERSION 1
-#define EVEL_THRESHOLD_CROSS_MINOR_VERSION 1
+#define EVEL_THRESHOLD_CROSS_MAJOR_VERSION 2
+#define EVEL_THRESHOLD_CROSS_MINOR_VERSION 0
 
 /**************************************************************************//**
  * Threshold Crossing.

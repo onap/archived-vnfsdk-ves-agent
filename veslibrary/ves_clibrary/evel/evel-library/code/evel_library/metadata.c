@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 /**************************************************************************//**
  * @file
@@ -23,6 +23,7 @@
 #include <string.h>
 #include <assert.h>
 #include <malloc.h>
+#include <unistd.h>
 
 #include <curl/curl.h>
 
@@ -308,17 +309,59 @@ exit_label:
   return rc;
 }
 
+
 /**************************************************************************//**
  * Initialize default values for vm_name and vm_uuid - for testing purposes.
  *****************************************************************************/
 void openstack_metadata_initialize()
 {
+  char hostname[MAX_METADATA_STRING];
+
+  FILE * f = fopen ("/proc/sys/kernel/random/uuid", "r");
+
   strncpy(vm_uuid,
           "Dummy VM UUID - No Metadata available",
           MAX_METADATA_STRING);
   strncpy(vm_name,
           "Dummy VM name - No Metadata available",
           MAX_METADATA_STRING);
+
+  if( gethostname(hostname, 1024) != -1 )
+      strcpy(vm_name,hostname);
+
+  if (f)
+  {
+    if (fgets(vm_uuid,MAX_METADATA_STRING, f)!=NULL)
+    {
+      vm_uuid[strlen( vm_uuid ) - 1 ] = '\0';
+      EVEL_DEBUG("VM UUID: %s", vm_uuid);
+    }
+    fclose (f);
+  }
+
+}
+
+/**************************************************************************//**
+ * Initialize value for vm_name for all coming events
+ * @param  source_name  Source name string.
+ *                      Must confirm with EVEL source name standard
+ * @returns Status code
+ * @retval  EVEL_SUCCESS      On success
+ * @retval  ::EVEL_ERR_CODES  On failure.
+ *****************************************************************************/
+EVEL_ERR_CODES evel_set_source_name(char * src_name)
+{
+  if( src_name && src_name[0] )
+  {
+      if( strlen(src_name) < MAX_METADATA_STRING ){
+          strcpy(vm_name,src_name);
+          return EVEL_SUCCESS;
+       } else 
+          EVEL_DEBUG("Event Source Name too long");
+  }
+  else
+     EVEL_DEBUG("Invalid Event Source Name string");
+  return EVEL_ERR_GEN_FAIL;
 }
 
 /**************************************************************************//**

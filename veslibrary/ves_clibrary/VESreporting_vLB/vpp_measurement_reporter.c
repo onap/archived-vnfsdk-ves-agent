@@ -3,7 +3,6 @@
  *
  * Copyright © 2017 AT&T Intellectual Property. All rights reserved.
  *
- * Unless otherwise specified, all software contained herein is
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -121,31 +120,59 @@ int main(int argc, char** argv)
   char* fqdn = argv[1];
   int port = atoi(argv[2]);
   char* vnic = argv[3];
+  char* fqdn2 = NULL;
+  int port2 = 0;
+
+  if(argc == 6)
+  {
+     fqdn2 = argv[3];
+     port2 = atoi(argv[4]);
+     vnic = argv[5];
+  }
+  else
+     vnic = argv[3];
+
   MEASUREMENT_VNIC_PERFORMANCE * vnic_performance = NULL;
 
   printf("\nVector Packet Processing (VPP) measurement collection\n");
   fflush(stdout);
 
-  if (argc != 4)
+  if (!((argc == 6) || (argc == 4)))
   {
-    fprintf(stderr, "Usage: %s <FQDN>|<IP address> <port> <interface>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <FQDN>|<IP address> <port> <FQDN>|<IP address> <port> <interface> \n", argv[0]);
+    fprintf(stderr, "OR\n");
+    fprintf(stderr, "Usage: %s <FQDN>|<IP address> <port> <interface> \n", argv[0]);
     exit(-1);
   }
+
   srand(time(NULL));
 
   /**************************************************************************/
   /* Initialize                                                             */
   /**************************************************************************/
   if(evel_initialize(fqdn,                         /* FQDN                  */
-                     port, 	                   /* Port                  */
-                     NULL,                         /* optional path         */
-                     NULL,                         /* optional topic        */
-                     0,                            /* HTTPS?                */
-                     "",                           /* Username              */
-                     "",                           /* Password              */
-                     EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
-                     "vLoadBalancer",              /* Role                  */
-                     1))                           /* Verbosity             */
+                       port,                         /* Port                  */
+                       fqdn2,                        /* Backup FQDN           */
+                       port2,                        /* Backup port           */
+                       NULL,                         /* optional path         */
+                       NULL,                         /* optional topic        */
+                       100,                          /* Ring Buffer size      */
+                       0,                            /* HTTPS?                */
+                       NULL,                         /* cert file             */
+                       NULL,                         /* key  file             */
+                       NULL,                         /* ca   info             */
+                       NULL,                         /* ca   file             */
+                       0,                            /* verify peer           */
+                       0,                            /* verify host           */
+                       "sample1",                    /* Username              */
+                       "sample1",                    /* Password              */
+                       "sample1",                    /* Username2             */
+                       "sample1",                    /* Password2             */
+                       NULL,                         /* Source ip             */
+                       NULL,                         /* Backup Source IP      */
+                       EVEL_SOURCE_VIRTUAL_MACHINE,  /* Source type           */
+                       "vLoadBalancer",              /* Role                  */
+                       1))                           /* Verbosity             */
   {
     fprintf(stderr, "\nFailed to initialize the EVEL library!!!\n");
     exit(-1);
@@ -207,8 +234,8 @@ int main(int argc, char** argv)
       packets_out_this_round = 0;
     }
 
-    vpp_m = evel_new_measurement(READ_INTERVAL,"Measurement_vVNF","TrafficStats_1.2.3.4");
-    vnic_performance = (MEASUREMENT_VNIC_PERFORMANCE *)evel_measurement_new_vnic_performance("eth0", "true");
+    vpp_m = evel_new_measurement(READ_INTERVAL,"vLoadBalancer","TrafficStats_1.2.3.4");
+    vnic_performance = (MEASUREMENT_VNIC_PERFORMANCE *)evel_measurement_new_vnic_performance(vnic, "true");
     evel_meas_vnic_performance_add(vpp_m, vnic_performance);
 
     if(vpp_m != NULL) {

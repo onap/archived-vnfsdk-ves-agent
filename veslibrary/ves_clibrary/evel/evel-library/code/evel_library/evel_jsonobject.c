@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 
 /**************************************************************************//**
@@ -113,7 +113,7 @@ EVEL_JSON_OBJECT_INSTANCE * evel_new_jsonobjinstance(const char *const yourjson)
   assert(len > 0);
 
   /***************************************************************************/
-  /*  Validate JSON for json object
+  /*  Validate JSON for json object */
   /***************************************************************************/
   jsmn_init(&p);
   resultCode = jsmn_parse(&p, yourjson, len, tokens, sizeof(tokens)/sizeof(tokens[0]));
@@ -298,7 +298,7 @@ void evel_jsonobject_nfsubscriptionid_set(EVEL_JSON_OBJECT * pinst, const char *
 void evel_epoch_microsec_set(EVEL_JSON_OBJECT_INSTANCE * pinst, const unsigned long long epmicrosec)
 {
   assert(epmicrosec != 0 );
-  pinst->objinst_epoch_microsec = epmicrosec;
+  evel_set_option_ull(&pinst->objinst_epoch_microsec , epmicrosec, "Json object instance microsec set");
 }
 
 /**************************************************************************//**
@@ -321,7 +321,7 @@ void evel_jsonobject_add_jsoninstance(EVEL_JSON_OBJECT * pobj, EVEL_JSON_OBJECT_
   assert(pobj != NULL);
   assert(jinst != NULL);
 
-  EVEL_DEBUG("Adding json object instance");
+  EVEL_DEBUG("Adding json object instance %p",jinst);
 
   dlist_push_last(&pobj->jsonobjectinstances, jinst);
 
@@ -375,6 +375,7 @@ void evel_free_internal_key(EVEL_INTERNAL_KEY * keyp)
 
   free(keyp->keyname);
   evel_free_option_string(&keyp->keyvalue);
+  free(keyp);
   EVEL_EXIT();
 }
 
@@ -397,7 +398,7 @@ void evel_free_jsonobjinst(EVEL_JSON_OBJECT_INSTANCE * objinst)
   free(objinst->jsonstring);
 
   /***************************************************************************/
-  /* Free all internal internal keys
+  /* Free all internal internal keys */
   /***************************************************************************/
   other_field = dlist_pop_last(&objinst->object_keys);
   while (other_field != NULL)
@@ -407,6 +408,7 @@ void evel_free_jsonobjinst(EVEL_JSON_OBJECT_INSTANCE * objinst)
     evel_free_internal_key(other_field);
     other_field = dlist_pop_last(&objinst->object_keys);
   }
+  free(objinst);
 
   EVEL_EXIT();
 }
@@ -425,6 +427,7 @@ void evel_free_jsonobject(EVEL_JSON_OBJECT * jsobj)
   EVEL_ENTER();
   assert(jsobj != NULL);
 
+  EVEL_DEBUG("Freeing Json Object (%s)", jsobj->object_name);
   free(jsobj->object_name);
   evel_free_option_string(&jsobj->objectschema);
   evel_free_option_string(&jsobj->objectschemaurl);
@@ -437,11 +440,12 @@ void evel_free_jsonobject(EVEL_JSON_OBJECT * jsobj)
   other_field = dlist_pop_last(&jsobj->jsonobjectinstances);
   while (other_field != NULL)
   {
-    EVEL_DEBUG("Freeing Object Instance Field (%s)",
-               other_field->jsonstring);
+    EVEL_DEBUG("Freeing jsonObject Instance Field %p (%s)",
+               other_field,other_field->jsonstring);
     evel_free_jsonobjinst(other_field);
     other_field = dlist_pop_last(&jsobj->jsonobjectinstances);
   }
+  free(jsobj);
 
   EVEL_EXIT();
 }
