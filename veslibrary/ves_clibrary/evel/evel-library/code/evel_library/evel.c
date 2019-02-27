@@ -64,11 +64,24 @@ char *functional_role = NULL;
  *
  * @param   fqdn    The API's FQDN or IP address.
  * @param   port    The API's port.
+ * @param   bakup_fqdn    The API's Backup FQDN or IP address.
+ * @param   bakup_port    The API's Backup port.
  * @param   path    The optional path (may be NULL).
  * @param   topic   The optional topic part of the URL (may be NULL).
+ * @param   ring buf size  Ring buffer size
  * @param   secure  Whether to use HTTPS (0=HTTP, 1=HTTPS)
+ * @param   cert_file_path     Path to client certificate file
+ * @param   key_file_path      Path to client key file
+ * @param   ca_info            Path to CA cert file
+ * @param   ca_file_path       Path to CA cert files
+ * @param   verify_peer        SSL verification of peer 0 or 1
+ * @param   verify_host        SSL verification of host 0 or 1
  * @param   username  Username for Basic Authentication of requests.
  * @param   password  Password for Basic Authentication of requests.
+ * @param   bakup_username  Username for Basic Authentication of Bakup FQDN.
+ * @param   bakup_password  Password for Basic Authentication of Bakup FQDN.
+ * @param   source_ip       The ip of node we represent.(NULL for default ip)
+ * @param   bakup_source_ip The ip bakup fqdn interface.(NULL for default ip)
  * @param   source_type The kind of node we represent.
  * @param   role    The role this node undertakes.
  * @param   verbosity  0 for normal operation, positive values for chattier
@@ -80,11 +93,24 @@ char *functional_role = NULL;
  *****************************************************************************/
 EVEL_ERR_CODES evel_initialize(const char * const fqdn,
                                int port,
+                               const char * const bakup_fqdn,
+                               int bakup_port,
                                const char * const path,
                                const char * const topic,
+                               int ring_buf_size,
                                int secure,
+                               const char * const cert_file_path,
+                               const char * const key_file_path,
+                               const char * const ca_info,
+                               const char * const ca_file_path,
+                               long verify_peer,
+                               long verify_host,
                                const char * const username,
                                const char * const password,
+                               const char * const bakup_username,
+                               const char * const bakup_password,
+                               const char * const source_ip,
+                               const char * const bakup_source_ip,
                                EVEL_SOURCE_TYPES source_type,
                                const char * const role,
                                int verbosity
@@ -93,11 +119,13 @@ EVEL_ERR_CODES evel_initialize(const char * const fqdn,
   EVEL_ERR_CODES rc = EVEL_SUCCESS;
   char base_api_url[EVEL_MAX_URL_LEN + 1] = {0};
   char event_api_url[EVEL_MAX_URL_LEN + 1] = {0};
+  char bakup_api_url[EVEL_MAX_URL_LEN + 1] = {0};
   char throt_api_url[EVEL_MAX_URL_LEN + 1] = {0};
   char path_url[EVEL_MAX_URL_LEN + 1] = {0};
   char topic_url[EVEL_MAX_URL_LEN + 1] = {0};
   char version_string[10] = {0};
   int offset;
+  char * bakup_coll = NULL;
 
   /***************************************************************************/
   /* Check assumptions.                                                      */
@@ -107,10 +135,17 @@ EVEL_ERR_CODES evel_initialize(const char * const fqdn,
   assert(source_type < EVEL_MAX_SOURCE_TYPES);
   assert(role != NULL);
 
+  if( bakup_fqdn != NULL ) {
+    assert(bakup_port > 0 && bakup_port <= 65535);
+  }
+
   /***************************************************************************/
   /* Start logging so we can report on progress.                             */
   /***************************************************************************/
-  log_initialize(verbosity == 0 ? EVEL_LOG_INFO : EVEL_LOG_DEBUG, "EVEL");
+  if( verbosity >= EVEL_LOG_MIN && verbosity <= EVEL_LOG_MAX)
+     log_initialize(verbosity, "EVEL");
+  else
+     log_initialize(EVEL_LOG_MIN, "EVEL");
   EVEL_INFO("EVEL started");
   EVEL_INFO("API server is: %s", fqdn);
   EVEL_INFO("API port is: %d", port);
@@ -134,6 +169,42 @@ EVEL_ERR_CODES evel_initialize(const char * const fqdn,
   }
 
   EVEL_INFO("API transport is: %s", secure ? "HTTPS" : "HTTP");
+  if( secure ) {
+    assert( verify_peer >= 0 );
+    assert( verify_host >= 0 );
+    if (cert_file_path != NULL)
+    {
+      EVEL_INFO("Client cert is: %s", cert_file_path);
+    }
+    else
+    {
+      EVEL_INFO("No Client cert");
+    }
+    if (key_file_path != NULL)
+    {
+      EVEL_INFO("Key file is: %s", key_file_path);
+    }
+    else
+    {
+      EVEL_INFO("No Key file");
+    }
+    if (ca_file_path != NULL)
+    {
+      EVEL_INFO("Client CA certs path is: %s", ca_file_path);
+    }
+    else
+    {
+      EVEL_INFO("No CA certs path");
+    }
+    if (ca_info != NULL)
+    {
+      EVEL_INFO("Client CA cert file is: %s", ca_info);
+    }
+    else
+    {
+      EVEL_INFO("No CA cert file");
+    }
+  }
   EVEL_INFO("Event Source Type is: %d", source_type);
   EVEL_INFO("Functional Role is: %s", role);
   EVEL_INFO("Log verbosity is: %d", verbosity);
@@ -187,6 +258,36 @@ EVEL_ERR_CODES evel_initialize(const char * const fqdn,
   EVEL_INFO("Vendor Event Listener API is located at: %s", event_api_url);
 
   /***************************************************************************/
+  /* Build a common base of the Backup API URLs.                                    */
+  /***************************************************************************/
+  if( bakup_fqdn != NULL )
+  {
+    strcpy(path_url, "/");
+    snprintf(base_api_url,
+           EVEL_MAX_URL_LEN,
+           "%s://%s:%d%s/eventListener/v%s",
+           secure ? "https" : "http",
+           bakup_fqdn,
+           bakup_port,
+           (((path != NULL) && (strlen(path) > 0)) ?
+            strncat(path_url, path, EVEL_MAX_URL_LEN) : ""),
+           version_string);
+
+  /***************************************************************************/
+  /* Build the URL to the event API.                                         */
+  /***************************************************************************/
+    strcpy(topic_url, "/");
+    snprintf(bakup_api_url,
+           EVEL_MAX_URL_LEN,
+           "%s%s",
+           base_api_url,
+           (((topic != NULL) && (strlen(topic) > 0)) ?
+            strncat(topic_url, topic, EVEL_MAX_URL_LEN) : ""));
+    EVEL_INFO("Vendor Backup Event Listener API is located at: %s", bakup_api_url);
+    bakup_coll = bakup_api_url;
+  }
+
+  /***************************************************************************/
   /* Build the URL to the throttling API.                                    */
   /***************************************************************************/
   snprintf(throt_api_url,
@@ -199,9 +300,22 @@ EVEL_ERR_CODES evel_initialize(const char * const fqdn,
   /* Spin-up the event-handler, which gets cURL readied for use.             */
   /***************************************************************************/
   rc = event_handler_initialize(event_api_url,
+                                bakup_coll,
                                 throt_api_url,
+                                source_ip,
+                                bakup_source_ip,
+                                ring_buf_size,
+                                secure,
+                                cert_file_path,
+                                key_file_path,
+                                ca_info,
+                                ca_file_path,
+                                verify_peer,
+                                verify_host,
                                 username,
                                 password,
+                                bakup_username,
+                                bakup_password,
                                 verbosity);
   if (rc != EVEL_SUCCESS)
   {
@@ -385,6 +499,13 @@ void evel_free_event(void * event)
       EVEL_DEBUG("Event is a Threshold crossing at %lp", evt_ptr);
       evel_free_threshold_cross((EVENT_THRESHOLD_CROSS *)evt_ptr);
       memset(evt_ptr, 0, sizeof(EVENT_THRESHOLD_CROSS));
+      free(evt_ptr);
+      break;
+
+    case EVEL_DOMAIN_BATCH:
+      EVEL_DEBUG("Event is a Batch at %lp", evt_ptr);
+      evel_free_batch((EVENT_HEADER *)evt_ptr);
+      memset(evt_ptr, 0, sizeof(EVENT_HEADER));
       free(evt_ptr);
       break;
 

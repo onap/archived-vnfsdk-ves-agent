@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and 
  * limitations under the License.
- *
+ * ECOMP is a trademark and service mark of AT&T Intellectual Property.
  ****************************************************************************/
 
 /**************************************************************************//**
@@ -36,10 +36,9 @@
  *          this factory function and are immutable once set.  Optional fields
  *          have explicit setter functions, but again values may only be set
  *          once so that the event has immutable properties.
- * @param event_name  Unique Event Name confirming Domain AsdcModel Description
- * @param event_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
- * @param vendor_id     The vendor id to encode in the event instance id.
- * @param event_id      The vendor event id to encode in the event instance id.
+ * @param ev_name  Unique Event Name confirming Domain AsdcModel Description
+ * @param ev_id    A universal identifier of the event for: troubleshooting correlation, analysis, etc
+ * @param interval    heartbeat interval
  * @returns pointer to the newly manufactured ::EVENT_HEARTBEAT_FIELD.  If the event
  *          is not used (i.e. posted) it must be released using
  *          ::evel_free_hrtbt_field.

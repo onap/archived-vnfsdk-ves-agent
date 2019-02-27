@@ -1,4 +1,3 @@
-
 #############################################################################
 #
 # Copyright © 2017 AT&T Intellectual Property. All rights reserved.
@@ -17,9 +16,9 @@
 #############################################################################
 
 CC=gcc
+
 ARCH=$(shell getconf LONG_BIT)
-#CODE_ROOT=$(CURDIR)/../../..
-CODE_ROOT=../VES5.0/evel/evel-library
+CODE_ROOT=$(CURDIR)/../..
 LIBS_DIR=$(CODE_ROOT)/libs/x86_$(ARCH)
 INCLUDE_DIR=$(CODE_ROOT)/code/evel_library
 
@@ -38,4 +37,10 @@ vpp_measurement_reporter: vpp_measurement_reporter.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o vpp_measurement_reporter \
                                     -L $(LIBS_DIR) \
                                     -I $(INCLUDE_DIR) \
-                               vpp_measurement_reporter.c -lm -lpthread -level -lcurl
+                               vpp_measurement_reporter.c \
+                              -lpthread \
+                              -level \
+                              -lm \
+                              -lcurl
+
+
