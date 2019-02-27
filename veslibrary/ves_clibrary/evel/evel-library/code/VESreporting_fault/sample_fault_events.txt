@@ -1,0 +1,140 @@
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000001",
+            "eventName": "Fault_vFirewall-AT&T_serviceDownError",
+            "eventType": "applicationVnf",
+            "lastEpochMicrosec": 1547036995590759,
+            "nfNamingCode": "AFX",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "AFX",
+            "priority": "Low",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 1,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1547036995590759,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.1",
+            "vesEventListenerVersion": "7.1"
+        },
+        "faultFields": {
+            "alarmCondition": "service down trap_alarm",
+            "alarmInterfaceA": "afx@input.service",
+            "eventCategory": "other",
+            "eventSeverity": "MAJOR",
+            "eventSourceType": "virtualMachine",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "service is down",
+            "vfStatus": "Idle"
+        }
+    }
+}
+
+===============================================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000001",
+            "eventName": "Fault_vFirewall-AT&T_serviceDownError",
+            "eventType": "applicationVnf",
+            "lastEpochMicrosec": 1547037005665702,
+            "nfNamingCode": "AFX",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "AFX",
+            "priority": "Low",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1547036995590759,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.2",
+            "vesEventListenerVersion": "7.0.2"
+        },
+        "faultFields": {
+            "alarmCondition": "service up trap_alarm",
+            "alarmInterfaceA": "afx@input.service",
+            "eventCategory": "other",
+            "eventSeverity": "NORMAL",
+            "eventSourceType": "virtualMachine",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "service is up",
+            "vfStatus": "Idle"
+        }
+    }
+}
+===============================================================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000001",
+            "eventName": "Fault_vFirewall-AT&T_linkDownError",
+            "eventType": "applicationVnf",
+            "lastEpochMicrosec": 1547037007342515,
+            "nfNamingCode": "AFX",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "AFX",
+            "priority": "Low",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 1,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1547037007342515,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.2",
+            "vesEventListenerVersion": "7.0.2"
+        },
+        "faultFields": {
+            "alarmCondition": "link down trap_alarm",
+            "alarmInterfaceA": "enps03",
+            "eventCategory": "link",
+            "eventSeverity": "MAJOR",
+            "eventSourceType": "router",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "physical or logical connection to a remote router is down",
+            "vfStatus": "Idle"
+        }
+    }
+}
+==================================================================
+{
+    "event": {
+        "commonEventHeader": {
+            "domain": "fault",
+            "eventId": "fault000000001",
+            "eventName": "Fault_vFirewall-AT&T_linkDownError",
+            "eventType": "applicationVnf",
+            "lastEpochMicrosec": 1547037028498530,
+            "nfNamingCode": "AFX",
+            "nfVendorName": "AT&T",
+            "nfcNamingCode": "AFX",
+            "priority": "Low",
+            "reportingEntityId": "cc305d54-75b4-431b-adb2-eb6b9e541234",
+            "reportingEntityName": "ibcx0001vm002oam001",
+            "sequence": 0,
+            "sourceId": "de305d54-75b4-431b-adb2-eb6b9e546014",
+            "sourceName": "scfx0001vm002cap001",
+            "startEpochMicrosec": 1547037007722752,
+            "timeZoneOffset": "UTC-05:30",
+            "version": "4.0.2",
+            "vesEventListenerVersion": "7.0.2"
+        },
+        "faultFields": {
+            "alarmCondition": "link up trap_alarm",
+            "alarmInterfaceA": "enps03",
+            "eventCategory": "link",
+            "eventSeverity": "NORMAL",
+            "eventSourceType": "router",
+            "faultFieldsVersion": "4.0",
+            "specificProblem": "physical or logical connection to a remote router is up",
+            "vfStatus": "Idle"
+        }
+    }
+}

@@ -4658,7 +4658,7 @@ void evel_json_encode_ipmi(EVEL_JSON_BUFFER * jbuf, MEASUREMENT_IPMI * ipmi_entr
   /* IPMI Global Aggregate Temperature margin                                */
   /***************************************************************************/
   evel_json_checkpoint(jbuf);
-  if (evel_json_open_opt_named_list(jbuf, "globalAggregateTemperatureMarginArray"))
+  if (evel_json_open_opt_named_list(jbuf, "ipmiGlobalAggregateTemperatureMarginArray"))
   {
     bool item_added = false;
 

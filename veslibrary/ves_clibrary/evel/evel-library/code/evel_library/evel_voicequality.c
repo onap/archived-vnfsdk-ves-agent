@@ -199,7 +199,7 @@ void evel_voice_quality_caller_codec_set(EVENT_VOICE_QUALITY * voiceQuality,
     assert(voiceQuality->header.event_domain == EVEL_DOMAIN_VOICE_QUALITY);
     assert(callerCodecForCall != NULL);
 
-    voiceQuality->calleeSideCodec = strdup(callerCodecForCall);
+    voiceQuality->callerSideCodec = strdup(callerCodecForCall);
 
     EVEL_EXIT();
 }
