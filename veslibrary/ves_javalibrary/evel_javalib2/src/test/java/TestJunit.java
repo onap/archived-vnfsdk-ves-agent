@@ -53,6 +53,12 @@ import evel_javalibrary.att.com.EvelStateChange.EVEL_ENTITY_STATE;
 import evel_javalibrary.att.com.EvelSyslog.EVEL_SYSLOG_FACILITIES;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_ALERT_TYPE;
 import evel_javalibrary.att.com.EvelThresholdCross.EVEL_EVENT_ACTION;
+import evel_javalibrary.att.com.loadbalance.DeviceData;
+import evel_javalibrary.att.com.loadbalance.FaultData;
+import evel_javalibrary.att.com.loadbalance.HeartBeatData;
+import evel_javalibrary.att.com.loadbalance.MeasureData;
+import evel_javalibrary.att.com.loadbalance.syslogData;
+import evel_javalibrary.att.com.maindir.Main;
 
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
@@ -102,6 +108,104 @@ public class TestJunit {
     }
 
 
+    @Test
+    public void testMain() {
+    	Main mains = new Main();
+    	String[] strArray = {"args1","args2","args3"}; 
+    	mains.main(strArray);
+
+    }
+    
+    @Test
+    public void testLBHeartBeat() {
+    	HeartBeatData hb = new HeartBeatData();
+    	hb.start();    	
+    }
+   
+    @Test
+    public void testLBFalut() {
+    	FaultData flDataThread = new FaultData();   	
+    	new Thread(flDataThread.faultInstance01).start();	
+        new Thread(flDataThread.faultInstance02).start();
+        
+    	String[] strArray = {"name1","name12","name13"}; 
+    	flDataThread.main(strArray);
+    }
+    
+    @Test
+    public void testLBMeasurement() {
+    	MeasureData mdataThread = new MeasureData();
+    	mdataThread.start();
+    	
+    	String[] strArra = {"meas1","meas1","meas1"}; 
+    	mdataThread.main(strArra);
+    	
+
+    }
+    
+    @Test
+    public void testLBSyslog() {
+    	syslogData syslogDataThread = new syslogData();
+    	syslogDataThread.start();
+ 
+    }
+    
+    @Test
+    public void testLBDevicedata() {
+    	DeviceData dd = new DeviceData();
+    	dd.setInstanceres02Command("91764");
+    	dd.setT0bytesIn("16644");
+    	dd.setT0bytesOut("233331");
+    	dd.setT0packetIn("34567");
+    	dd.setT0packetOut("41985");
+    	dd.setT1Bytesin("53047");
+    	dd.setT1Bytesout("671940");
+    	dd.setT1Packetsin("73017");
+    	dd.setT1Packetsout("86180");
+
+    }
+
+    
+    @Test
+    public void testRingBuffer() {
+    	RingBuffer rr = new RingBuffer(2);
+    	rr.take();
+    	rr.remainingCapacity();
+    	
+
+    }
+    
+    @Test
+    public void testEvelOptionTime() {
+    	EvelOptionTime optionLong = new EvelOptionTime();
+    	optionLong.set_option(true);
+
+    }
+    
+    @Test
+    public void testEvelOptionLong() {
+    	EvelOptionLong optionLong = new EvelOptionLong();
+    	optionLong.set_option(true);
+    	optionLong.SetValue(0L);
+    	optionLong.SetValuePr(0L, "0L");
+
+    }
+    
+    @Test
+    public void testEvelStateChange() {
+        EvelStateChange stc  = new EvelStateChange("StateChange_vVNF", "vmname_ip",
+  		      EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_IN_SERVICE,
+                EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_OUT_OF_SERVICE,"bgp");
+    stc.evel_statechange_addl_info_add("bgpa", "fail");
+    stc.evel_statechange_addl_info_add("bgpb", "fail");
+        when(mymainmock.evel_post_event(stc)).thenReturn(true);
+    boolean ret = mymainmock.evel_post_event(stc);
+    LOG.info("Returned "+ret);
+    assertTrue( ret );
+
+    }
+
+    
    @Test
    public void testHeartbeat() {
 
@@ -182,9 +286,262 @@ public class TestJunit {
                           EVEL_ENTITY_STATE.EVEL_ENTITY_STATE_OUT_OF_SERVICE,"bgp");
               stc.evel_statechange_addl_info_add("bgpa", "fail");
               stc.evel_statechange_addl_info_add("bgpb", "fail");
-              //AgentMain.evel_post_event(stc);
-
+              //AgentMain.evel_post_event(stc);                          
               be.addEvent(stc);
+              
+              
+              EvelSyslog sysl = new EvelSyslog("Syslog_vVNF", "vmname_ip",
+              		   EvelFault.EVEL_SOURCE_TYPES.EVEL_SOURCE_ROUTER,
+                         "Router failed","JUNIPER");             
+                 sysl.evel_syslog_event_source_host_set("SL Host");
+                 sysl.evel_syslog_priority_set(21);
+                 sysl.evel_syslog_proc_id_set(456);
+                 sysl.evel_syslog_proc_set("routed");
+                 sysl.evel_syslog_s_data_set("sys data");
+                 sysl.evel_syslog_sdid_set("200");
+                 sysl.evel_syslog_severity_set("Alert");              
+                 sysl.evel_syslog_facility_set(EVEL_SYSLOG_FACILITIES.EVEL_SYSLOG_FACILITY_INTERNAL);
+                 sysl.evel_syslog_severity_set("Data");
+                 sysl.evel_syslog_version_set(20);
+                 sysl.evel_syslog_msghost_set("Hostmsg");
+                 sysl.evel_syslogTs_set("SyslogTs");                            
+                 sysl.evel__syslog_addl_info_add("name1", "value1");
+                 sysl.evel__syslog_addl_info_add("name2", "value2");
+                 be.addEvent(sysl);
+                 
+                 
+                 EvelNotification notification = new EvelNotification("Notification_vVNF", "vmname_ip","change_identifier", "configuration changed");
+                 notification.evel_notification_add_newState_set("maintainance");
+                 notification.evel_notification_add_oldState_set("out of Service");
+                 notification.evel_notification_add_changeContact_set("ChangeContact");
+                 notification.evel_notification_addl_info_add("name1", "value1");
+                 notification.evel_notification_addl_info_add("name4", "value5");              
+                 notification.evel_notification_add_namedarray("hmNam1", "hmName1", "hmNmae2");            
+                 notification.evel_notification_add_stateInterface_set("StateChange");
+                 be.addEvent(notification);
+                 
+
+                 
+                 EvelPnfRegistration pnfRegistration = new EvelPnfRegistration("PnfRegistration_vVNF", "vmname_ip");
+                 pnfRegistration.evel_pnrregistration_add_lastServiceDate_set("10FEB2019");
+                 pnfRegistration.evel_pnrregistration_add_modelNumber_set("123456789");
+                 pnfRegistration.evel_pnfRegistration_serialNumber_set("6061ZW3");
+                 pnfRegistration.evel_pnrregistration_add_macaddress_set("localhost");
+                 pnfRegistration.evel_pnrregistration_add_manufactureDate_set("FEB2011");
+                 pnfRegistration.evel_pnrregistration_add_oamV4IpAddress_set("localhost");
+                 
+                 pnfRegistration.evel_pnfRegistration_softwareVersion_set("SW1234");
+                 
+                 
+                 pnfRegistration.evel_pnfRegistration_unitFamily_set("unitFamily222");
+                 pnfRegistration.evel_pnfRegistration_unitType_set("unitType1");
+                 
+                 pnfRegistration.evel_pnrregistration_add_oamV4IpAddress_set("localhost");
+                 pnfRegistration.evel_pnrregistration_add_oamV6IpAddress_set("localhost");
+                 
+                 
+                 pnfRegistration.evel_pnfRegistration_vendorName_set("Vend_nam_123");
+                 pnfRegistration.evel_pnrregistration_addl_info_add("Name1", "value1");
+                 pnfRegistration.evel_pnrregistration_addl_info_add("Name2", "value2");
+                 be.addEvent(pnfRegistration);
+                 
+                 EvelSipSignaling sip = new EvelSipSignaling("SipSignaling_vVNF", "vmname_ip","aricent","corlator","localhost","5647","localhost","5678");
+                 sip.evel_signaling_vnfmodule_name_set("nfName");
+                 sip.evel_signaling_vnfname_set("nf_name");
+                 sip.evel_signaling_addl_info_add("name1", "value1");
+                 sip.evel_signaling_addl_info_add("name2", "value2");
+                sip.evel_signaling_compressed_sip_set("CompressedIP");    
+                sip.evel_signaling_summary_sip_set("SummarySip");
+                be.addEvent(sip);
+               
+                EvelVoiceQuality vq = new EvelVoiceQuality("VoiceQuality_vVNF", "vmname_ip",
+                        "calleeSideCodc",
+                        "callerSideCodc", "corlator",
+                        "midCllRtcp", "juniper");
+                vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 20, 30, 40, 50, 60, 70, 80, 100, 110, 120, 130, 140, 1.1, 160.12, 17, 190, 200,210,220,230,240,250,260,270,280,290,300);                          
+                vq.evel_voice_quality_phone_number_set("PhoneNumber");
+                vq.evel_voice_quality_vnfmodule_name_set("vnfNaming");
+                vq.evel_voice_quality_vnfname_set("vnfName");
+                vq.evel_voice_quality_addl_info_add("Name1", "value1");
+                vq.evel_voice_quality_addl_info_add("Name2", "value2");
+                be.addEvent(vq);
+                
+                EvelOther ev = new EvelOther("MyCustomEvent_vVNF", "vmname_ip");
+                ev.evel_other_field_add("name1", "value1");
+                ev.evel_other_field_add("name2", "value2");
+                ev.evel_other_field_add("name3", "value3");
+                ev.evel_other_field_add("name4", "value4");
+                
+                ev.evel_other_field_add_namedarray("value3", "name3", "value6");
+                ev.evel_other_field_add_namedarray("value1", "name4", "value7");
+                ev.evel_other_field_add_namedarray("value1", "name4", "value7");
+                ev.evel_other_field_add_namedarray("value4", "name5", "value8");
+               
+
+                       JsonObjectBuilder jsonObjBld =
+                               Json.createObjectBuilder()
+                                       .add("trackIdentifier", 12345)
+                                       .add("remoteSource", "vm1235")
+                                       .add("ended", "12:45:67")
+                                       .add("detached", 633453)
+                                       .add("frameWidth", 765765)
+                                       .add("frameHeight", 767867)
+                                       .add("framesPerSecond", 334343)
+                                       .add("framesSent", 8976786)
+                                       .add("framesReceived", 233423)
+                                       .add("frameHeight", 8897896)
+                                       .add("framesDecoded", 3434533)
+                                       .add("framesDropped", 87867676)
+                                       .add("framesCorrupted", 3345342)
+                                       .add("audioLevel", "-45dBm");
+                       JsonObject custom = jsonObjBld.build();
+
+                       ev.evel_other_field_add_jsonobj(custom);
+                       be.addEvent(ev);
+                       
+                 		String dateStart = "01/14/2012 09:29:58";
+                 		String dateStop = "01/15/2012 10:31:48";
+
+                 		//HH converts hour in 24 hours format (0-23), day calculation
+                 		SimpleDateFormat format = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+
+                 		Date d1 = null;
+                 		Date d2 = null;
+
+                 		try {
+                 			d1 = format.parse(dateStart);
+                 			d2 = format.parse(dateStop);
+                 		}catch (Exception e) {
+               			
+               		}
+                         
+                       EvelThresholdCross tca = new EvelThresholdCross("ThresholdCross_vVNF", "vmname_ip", "CRIT", 
+                       		"mcastRxPackets", EvelThresholdCross.EVEL_EVENT_ACTION.EVEL_EVENT_ACTION_CLEAR, 
+                       		"Mcast Rx breached", 
+                       		EvelThresholdCross.EVEL_ALERT_TYPE.EVEL_CARD_ANOMALY, 
+                       		
+                       		d1, EvelThresholdCross.EVEL_SEVERITIES.EVEL_SEVERITY_CRITICAL, 
+                       		d2);
+                       
+                       tca.evel_threshold_cross_alertvalue_set("alertvalue");
+                       tca.evel_threshold_cross_data_collector_set("data_collector");
+                       tca.evel_threshold_cross_data_elementtype_set("data_elementtype");
+                       tca.evel_threshold_cross_interfacename_set("interfacename");
+                       tca.evel_threshold_cross_networkservice_set("networkservice");
+                       tca.evel_threshold_cross_possible_rootcause_set("possible_rootcause");
+                       
+                       tca.evel_thresholdcross_addl_info_add("addname1", "addvalue1");
+                       tca.evel_thresholdcross_addl_info_add("addname2", "addvalue2");
+                       tca.evel_thresholdcross_alertid_add("alert1");
+                       tca.evel_thresholdcross_alertid_add("alert2");
+                       tca.evel_thresholdcross_alertid_add("alert3");
+                       tca.evel_thresholdcross_hashMap_add("hashName", "hashValue");
+                       be.addEvent(tca);
+                 
+                 		
+                 		
+                 		
+                 		try {
+                 			d1 = format.parse(dateStart);
+                 		}catch (Exception e) {
+               			
+               		}
+                       EvelMobileFlow mf = new EvelMobileFlow("MobileFlow_vVNF", "vmname_ip",
+                               "In",
+                               null,
+                               "GTP",
+                               "v2.3",
+                               "localhost",
+                               345556,
+                               "localhost",
+                               334344);
+           			MOBILE_GTP_PER_FLOW_METRICS mygtp = mf.new MOBILE_GTP_PER_FLOW_METRICS(
+                               1.01,
+                               2.02,
+                               3,
+                               4,
+                               5,
+                               6,
+                               7,
+                               8,
+                               9,
+                               d1,
+                               "ACTIVE",
+                               10,
+                               11,
+                               12,
+                               13,
+                               14,
+                               15,
+                               16,
+                               17,
+                               18,
+                               19,
+                               20,
+                               21,
+                               22,
+                               23,
+                               24,
+                               25,
+                               26,
+                               27,
+                               28);
+                       mf.gtp_per_flow_metrics = mygtp;
+                       
+                       
+                       mf.evel_mobile_gtp_metrics_dur_con_fail_set(mygtp, 1);
+                       mf.evel_mobile_gtp_metrics_dur_tun_fail_set(mygtp, 1);
+                       mf.evel_mobile_gtp_metrics_act_by_set(mygtp, "Active");
+                       mf.evel_mobile_gtp_metrics_act_time_set(mygtp, "Time");
+                       mf.evel_mobile_gtp_metrics_deact_by_set(mygtp, "FlowDeactivation");
+                       mf.evel_mobile_gtp_metrics_con_status_set(mygtp, "Status");
+                       mf.evel_mobile_gtp_metrics_tun_status_set(mygtp, "Tunnel Status");
+                       mf.evel_mobile_gtp_metrics_large_pkt_rtt_set(mygtp, 12);
+                       mf.evel_mobile_gtp_metrics_large_pkt_thresh_set(mygtp, 123);
+                       mf.evel_mobile_gtp_metrics_max_rcv_bit_rate_set(mygtp, 12);
+                       mf.evel_mobile_gtp_metrics_max_trx_bit_rate_set(mygtp, 12);
+                       mf.evel_mobile_gtp_metrics_num_echo_fail_set(mygtp, 1);
+                       mf.evel_mobile_gtp_metrics_num_tun_fail_set(mygtp, 2);
+                       mf.evel_mobile_gtp_metrics_num_http_errors_set(mygtp, 2);
+                       
+                       mf.evel_mobile_gtp_metrics_iptos_set(mygtp,2, 3);            
+                       mf.evel_mobile_gtp_metrics_iptos_set(mygtp,5, 6);
+                       
+                       mf.evel_mobile_gtp_metrics_tcp_flag_count_add(mygtp, 3, 4);
+                       mf.evel_mobile_gtp_metrics_tcp_flag_count_add(mygtp, 5, 8);
+                       
+                       mf.evel_mobile_gtp_metrics_qci_cos_count_add(mygtp, 2, 3);
+                       mf.evel_mobile_gtp_metrics_qci_cos_count_add(mygtp, 5, 6);
+                       mf.evel_mobile_flow_addl_field_add("mobileFlowName1", "mobileValue1");          
+                       mf.evel_mobile_flow_app_type_set("application type");
+                       mf.evel_mobile_flow_app_prot_type_set("appProtocolType");
+                       mf.evel_mobile_flow_app_prot_ver_set("appProtocolVersion");
+                       mf.evel_mobile_flow_cid_set("CID");
+                       mf.evel_mobile_flow_con_type_set("ConnectionType");
+                       mf.evel_mobile_flow_ecgi_set("ECGI");
+                       mf.evel_mobile_flow_gtp_prot_type_set("gtpProtocalType");
+                       mf.evel_mobile_flow_gtp_prot_ver_set("GtpVersion");
+                       mf.evel_mobile_flow_http_header_set("HttpHeader");
+                       mf.evel_mobile_flow_imei_set("IMEI");
+                       mf.evel_mobile_flow_imsi_set("IMSI");
+                       mf.evel_mobile_flow_lac_set("LAC");
+                       mf.evel_mobile_flow_mcc_set("MCC");
+                       mf.evel_mobile_flow_mnc_set("MNC");
+                       mf.evel_mobile_flow_msisdn_set("Msisdn");
+                       mf.evel_mobile_flow_other_func_role_set("OtherFunctionRole");
+                       
+                       mf.evel_mobile_flow_rac_set("RAC");
+                       mf.evel_mobile_flow_radio_acc_tech_set("RadoiAcessTech");
+                       mf.evel_mobile_flow_sac_set("SAC");
+                       
+                       mf.evel_mobile_flow_samp_alg_set(123);
+                       mf.evel_mobile_flow_tac_set("TAC");
+                       mf.evel_mobile_flow_tunnel_id_set("Tunnel");
+                       mf.evel_mobile_flow_vlan_id_set("Vlan");
+                       be.addEvent(mf);
+
+              
+              
               when(mymainmock.evel_post_event(be)).thenReturn(true);
               boolean ret = mymainmock.evel_post_event(be);
               LOG.info("Returned "+ret);

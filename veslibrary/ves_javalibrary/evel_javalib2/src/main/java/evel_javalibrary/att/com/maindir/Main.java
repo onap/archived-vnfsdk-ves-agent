@@ -83,7 +83,6 @@ public class Main
         } catch( Exception e )
         {            
         }
-
         for(int i= 0; i < 30; i++) //srikanth no need for forloop , send only once.
         {
         	
@@ -543,7 +542,7 @@ public class Main
                     "calleeSideCodc",
                     "callerSideCodc", "corlator",
                     "midCllRtcp", "juniper");
-            vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 20, 30, 40, 50, 60, 70, 80, 100, 110, 120, 130, 140, 15.1, 160.12, 170, 190, 200,210,220,230,240,250,260,270,280,290,300);
+            vq.evel_voice_quality_end_metrics_set("adjname", "Caller", 20, 30, 40, 50, 60, 70, 80, 100, 110, 120, 130, 140, 1.1, 160.12, 17, 190, 200,210,220,230,240,250,260,270,280,290,300);
             
             
             vq.evel_voice_quality_phone_number_set("PhoneNumber");
