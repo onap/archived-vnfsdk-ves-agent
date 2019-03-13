@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -85,9 +86,11 @@ public class MeasureData  extends Thread{
 	static String linkStart = "";
 	static int linkCount; 
 	
+	private static final Logger logger = Logger.getLogger(AgentMain.class);
+	Long startEpochMicrosec = 0L;
+	Long lastEpochMicrosec = 0L;
 	
-	Long start_epoch_microsec = 0L;
-	Long last_epoch_microsec = 0L;
+	@Override
 	public void run() {
         
 		try {
@@ -95,7 +98,7 @@ public class MeasureData  extends Thread{
 			readMeasurementConfig();
 			readVppMetrics(resDevice);
 		} catch (IOException | ParseException e1) {
-			e1.printStackTrace();
+			logger.error(e1);
 		}
 	
 		String[] intFaceMap = resDevice;
@@ -113,12 +116,13 @@ public class MeasureData  extends Thread{
 
 		try {
 		Thread.sleep(1000);  
-		}catch(Exception e) {}
+		}catch(Exception e) {
+			logger.error(e);
+		}
 
 		
 		while(true) {
 			HashMap<String, DeviceData> lastMetrics = readVppMetrics(resDevice);
-			//HashMap<String, DeviceData> currentMetrics = readVppMetrics(resDevice);;
 			HashMap<String, DeviceData> currentMetrics = lastMetrics;
 			requestRate =2;
 			eventId2 = eventId1+ eventId+(gmEventId++);
@@ -143,7 +147,7 @@ public class MeasureData  extends Thread{
 				
 				    if (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesin()))
 							- Integer.parseInt((lastMetrics.get(vNic).getT0bytesIn()) ) > 0) {
-						receivedOctetsDeltaLo = (int) (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesin()) )
+						receivedOctetsDeltaLo = (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesin()) )
 								- Integer.parseInt((lastMetrics.get(vNic).getT0bytesIn()) ));
 					} else {
 						receivedOctetsDeltaLo = 0;
@@ -152,7 +156,7 @@ public class MeasureData  extends Thread{
 					
 					if (Integer.parseInt((currentMetrics.get(vNic).getT1Packetsin()))
 							- Integer.parseInt((lastMetrics.get(vNic).getT0packetIn()) ) > 0) {
-						receivedTotalPacketsDeltaLo = (int) (Integer.parseInt((currentMetrics.get(vNic).getT1Packetsin()) )
+						receivedTotalPacketsDeltaLo =(Integer.parseInt((currentMetrics.get(vNic).getT1Packetsin()) )
 								- Integer.parseInt((lastMetrics.get(vNic).getT0packetIn())  ));
 					} else {
 						receivedTotalPacketsDeltaLo = 0;
@@ -161,7 +165,7 @@ public class MeasureData  extends Thread{
 					
 					if (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesout()))
 							- Integer.parseInt((lastMetrics.get(vNic).getT0bytesOut()) ) > 0) {
-						transmittedOctetsDeltaLo = (int) (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesout()) )
+						transmittedOctetsDeltaLo = (Integer.parseInt((currentMetrics.get(vNic).getT1Bytesout()) )
 								- Integer.parseInt((lastMetrics.get(vNic).getT0bytesOut())));
 					} else {
 						transmittedOctetsDeltaLo = 0;
@@ -170,22 +174,20 @@ public class MeasureData  extends Thread{
 					
 					if (Integer.parseInt((currentMetrics.get(vNic).getT1Packetsout()))
 							- Integer.parseInt((lastMetrics.get(vNic).getT0packetOut()) ) > 0) {
-						transmittedTotalPacketsDeltaLo = (int) (Integer.parseInt((currentMetrics.get(vNic).getT1Packetsout()) )
+						transmittedTotalPacketsDeltaLo = (Integer.parseInt((currentMetrics.get(vNic).getT1Packetsout()) )
 								- Integer.parseInt((lastMetrics.get(vNic).getT0packetOut())));
 					} else {
 						transmittedTotalPacketsDeltaLo = 0;
 					}
 
 				EvelScalingMeasurement.MEASUREMENT_NIC_PERFORMANCE vNicPerf = eveMeas.evel_measurement_new_vnic_performance(vNic.replaceAll("^[\"']+|[\"']+$", ""), "true");
-				//eveMeas.evel_meas_vnic_performance_add(vNicPerf);
-				
 				if( measConfig.get("eventType")!=null) {
 					String hostName = hostName();
-					start_epoch_microsec = last_epoch_microsec;
-            	    last_epoch_microsec = System.nanoTime()/1000;            		
-            	    eveMeas.evel_last_epoch_set(start_epoch_microsec);
-            	    eveMeas.evel_start_epoch_set(last_epoch_microsec);										
-					eveMeas.evel_measurement_type_set( measConfig.get("eventType").toString());
+					startEpochMicrosec = lastEpochMicrosec;
+					lastEpochMicrosec = System.nanoTime()/1000;            		
+            	    eveMeas.evel_last_epoch_set(startEpochMicrosec);
+            	    eveMeas.evel_start_epoch_set(lastEpochMicrosec);										
+					eveMeas.evel_measurement_type_set( measConfig.get("eventType"));
 					
 					
 					eveMeas.evel_vnic_performance_rx_octets_delta_set( vNicPerf, receivedOctetsDeltaLo);
@@ -193,22 +195,22 @@ public class MeasureData  extends Thread{
 					eveMeas.evel_vnic_performance_tx_octets_delta_set( vNicPerf, transmittedOctetsDeltaLo);
 					eveMeas.evel_vnic_performance_tx_total_pkt_delta_set(vNicPerf, transmittedTotalPacketsDeltaLo);
 			
-					eveMeas.evel_nfcnamingcode_set(measConfig.get("nfcNamingCode").toString());
-					eveMeas.evel_nfnamingcode_set(measConfig.get("nfNamingCode").toString());					
+					eveMeas.evel_nfcnamingcode_set(measConfig.get("nfcNamingCode"));
+					eveMeas.evel_nfnamingcode_set(measConfig.get("nfNamingCode"));					
             		if(measConfig.get("reportingEntityName") == null) {
             			eveMeas.evel_reporting_entity_name_set(hostName);
             			}else {
-            				eveMeas.evel_reporting_entity_name_set(measConfig.get("reportingEntityName").toString());
+            				eveMeas.evel_reporting_entity_name_set(measConfig.get("reportingEntityName"));
             			}											
-					eveMeas.evel_reporting_entity_id_set(measConfig.get("reportingEntityId").toString());
-					eveMeas.evel_nfVendorName_set(measConfig.get("nfVendorName").toString());
-					eveMeas.evel_header_set_sourceid(true,measConfig.get("sourceId").toString());					
+					eveMeas.evel_reporting_entity_id_set(measConfig.get("reportingEntityId"));
+					eveMeas.evel_nfVendorName_set(measConfig.get("nfVendorName"));
+					eveMeas.evel_header_set_sourceid(true,measConfig.get("sourceId"));					
 		     		if(measConfig.get("sourceName") == null) {
 		     			eveMeas.evel_header_set_source_name(hostName);
             			}else {
-            				eveMeas.evel_header_set_source_name(measConfig.get("sourceName").toString());	
+            				eveMeas.evel_header_set_source_name(measConfig.get("sourceName"));	
             			}												
-					eveMeas.evel_timeZoneOffset_set(measConfig.get("timeZoneOffset").toString());
+					eveMeas.evel_timeZoneOffset_set(measConfig.get("timeZoneOffset"));
 					
 				}
 				
@@ -220,7 +222,7 @@ public class MeasureData  extends Thread{
 				try {
 					Thread.sleep(100);
 					}catch (Exception e) {
-						// TODO: handle exception
+                     logger.error(e);
 					}
 				if(System.currentTimeMillis() >= (curr+Integer.parseInt(measurmentInterval))) {
 					continues = false;				
@@ -244,7 +246,6 @@ public class MeasureData  extends Thread{
 	}
 	public static String hostName() {
 	    String hostname = "Unknown";
-	    String uuid = "Unknown";
 	    try
 	    {
 	        InetAddress addr;
@@ -253,6 +254,7 @@ public class MeasureData  extends Thread{
 	    }
 	    catch (UnknownHostException ex)
 	    {
+	    	logger.error(ex);
 	    }	    
 	    try{	    	
 	      Enumeration<NetworkInterface> networks =
@@ -273,12 +275,11 @@ public class MeasureData  extends Thread{
 	         }
 	        }
 	        if (mac != null) {
-	            uuid = bytesToHex(mac);
+	            bytesToHex(mac);
 	        }
 	      }
 	    } catch (SocketException e) {
-			// TODO Auto-generated catch block
-			
+		   logger.error(e);			
 		}
 
 		return hostname;
@@ -286,7 +287,7 @@ public class MeasureData  extends Thread{
 
 	
 	
-	public static HashMap<String, String> readMeasurementConfig() throws IOException, ParseException {
+	private static HashMap<String, String> readMeasurementConfig() throws IOException, ParseException {
 		JSONParser jsonParser = new JSONParser();
 		
 		try {
@@ -305,7 +306,7 @@ public class MeasureData  extends Thread{
 	        	measConfig.put(directres[0], directres[1]);	        
 	        } 		
 	        
-	        String eventName  = measConfig.get("eventName").toString();   
+	        String eventName  = measConfig.get("eventName");   
 	        JSONArray arrJson = (JSONArray) directParameters.get("tmp_device");
 	        resDevice = new String[arrJson.size()];
 	        for(int i = 0; i < arrJson.size(); i++)
@@ -324,11 +325,6 @@ public class MeasureData  extends Thread{
 	        	indirectres = indirectObject.split("=");
 	        	measConfig.put(indirectres[0], indirectres[1]);	        
 	        } 	
-	        
-
-	            
-	        //tmp_init
-	 //       Map tempInitParameters = ((Map)indirectParameters.get("tmp_init"));
 	        
 	        //tmp_init
 	        Map.Entry tempcommandPair = null;
@@ -370,14 +366,14 @@ public class MeasureData  extends Thread{
 	        String receivedOctetsDelta = vNicPerformanceArray.get("receivedOctetsDelta");
 	        
 			} catch (ClassCastException ex) {
-			
+			logger.error(ex);
 		}
 		return measConfig;
 	}
 	
 
 	
-	public static HashMap<String, DeviceData> readVppMetrics(String[] linkStart) {
+	private static HashMap<String, DeviceData> readVppMetrics(String[] linkStart) {
 		DeviceData mddata = null;  new DeviceData();
 	
 		
@@ -500,7 +496,6 @@ public class MeasureData  extends Thread{
 		    Thread.sleep(Integer.parseInt(measConfig.get("measurementInterval"))); 		    
 			Runtime rt1 = Runtime.getRuntime();
 		    Process bytesinchild = rt1.exec(t1BytesinArray);
-		  //  bytesinchild.waitFor();
 		    BufferedReader readerBytesin = new BufferedReader(new InputStreamReader(        
 		    		bytesinchild.getInputStream())); 
 		    String readMetrics= readerBytesin.readLine();
@@ -549,7 +544,7 @@ public class MeasureData  extends Thread{
 			}
 		    
 		        }catch (Exception e) {
-					
+					logger.error(e);
 				}   						
 		}		
 		return vppMetrics;
@@ -560,8 +555,7 @@ public class MeasureData  extends Thread{
 	
 	
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-        
+
 		try {
             AgentMain.evel_initialize("http://127.0.0.1",30000,
                     null,null,
@@ -571,8 +565,7 @@ public class MeasureData  extends Thread{
                     "http://127.0.0.1",30001, "will",
                     "pill",
                     Level.TRACE); 
-		 }catch(Exception e) {
-			 
+		 }catch(Exception e) {			 
 			 return;
 		 }
 		MeasureData mdataThread = new MeasureData();

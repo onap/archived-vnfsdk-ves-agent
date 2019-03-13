@@ -39,9 +39,6 @@ import org.apache.log4j.Logger;
 
 public class EvelMobileFlow extends EvelHeader {
 	
-	int major_version = 2;
-	int minor_version = 0;
-	
 	
 	static int EVEL_TOS_SUPPORTED    =  256;
 	/**************************************************************************//**
@@ -421,7 +418,6 @@ public class EvelMobileFlow extends EvelHeader {
 	  /***************************************************************************/
 	  /* Optional fields                                                         */
 	  /***************************************************************************/
-	  //ArrayList<String[]> ipTosList;
 	  Map<String,String> additional_inf;
 	  
 	  Map<String,String> hashMap;
@@ -1969,7 +1965,6 @@ public class EvelMobileFlow extends EvelHeader {
 	    	    
 	    	    		
 	    	    
-
 	    	    metrics.dur_connection_failed_status.encJsonValue(obj, "durConnectionFailedStatus");
 	    	    metrics.dur_tunnel_failed_status.encJsonValue(obj, "durTunnelFailedStatus");
 	    	    metrics.flow_activated_by.encJsonValue(obj, "flowActivatedBy");
@@ -2097,7 +2092,7 @@ public class EvelMobileFlow extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  JsonObject evel_json_encode_event()
+	  public JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -2115,7 +2110,7 @@ public class EvelMobileFlow extends EvelHeader {
 
 	  }
 	  
-	  JsonObject evel_json_encode_event_batch()
+	  public JsonObject evel_json_encode_event_batch()
 	  {
 		EVEL_ENTER();
 		

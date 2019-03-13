@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -56,29 +57,34 @@ public class syslogData extends Thread{
 	static String eventId1 = "syslog";
 	static String eventId = "00000000";
 	static String eventId2=null;
-	
+	private static final Logger logger = Logger.getLogger(AgentMain.class);
 	private static int linesReadFromFile =0;
-	
+	@Override
 	public void run() {
 		try {
 			readSyslogConfig();
-			
-		} catch (IOException | ParseException e) {}
+		} catch (IOException | ParseException e) {
+			logger.error(e);
+		}
 		
 		while(true) {
-			String tagToCompare = syslogConfig.get("syslogTag").toString();
-			
+			String tagToCompare = syslogConfig.get("syslogTag");
+			try {
 			syslogFileRead(tagToCompare );
-		
-			try { Thread.sleep(500);}catch(Exception e) {}
+			}catch (Exception e) {
+				logger.error(e);
+			}
+			try { Thread.sleep(500);}catch(Exception e) {
+				logger.error(e);
+			}
 
 		}
 	}
 	
 	
 	public void sendSysLogEvent(String sysTag,String syslogMsg) {
-		Long start_epoch_microsec = 0L;
-		Long last_epoch_microsec = 0L;
+		Long startEpochMicrosec = 0L;
+		Long lastEpochMicrosec = 0L;
 		String hostName = hostName();
 		
 		eventId2 = eventId1+ eventId+(gmEventId++);
@@ -87,33 +93,33 @@ public class syslogData extends Thread{
 				syslogMsg, sysTag);
 					
 		if( syslogConfig.get("eventType")!=null) {			
-			start_epoch_microsec = last_epoch_microsec;
-    	    last_epoch_microsec = System.nanoTime()/1000;
+			startEpochMicrosec = lastEpochMicrosec;
+			lastEpochMicrosec = System.nanoTime()/1000;
     		
-    	    eveSyslog.evel_last_epoch_set(start_epoch_microsec);
-    	    eveSyslog.evel_start_epoch_set(last_epoch_microsec);
+    	    eveSyslog.evel_last_epoch_set(startEpochMicrosec);
+    	    eveSyslog.evel_start_epoch_set(lastEpochMicrosec);
 		
-    	    eveSyslog.evel_header_type_set(syslogConfig.get("eventType").toString());
-    	    eveSyslog.evel_nfcnamingcode_set(syslogConfig.get("nfcNamingCode").toString());
-    	    eveSyslog.evel_nfnamingcode_set(syslogConfig.get("nfNamingCode").toString());
+    	    eveSyslog.evel_header_type_set(syslogConfig.get("eventType"));
+    	    eveSyslog.evel_nfcnamingcode_set(syslogConfig.get("nfcNamingCode"));
+    	    eveSyslog.evel_nfnamingcode_set(syslogConfig.get("nfNamingCode"));
 		if(syslogConfig.get("reportingEntityName") == null) {
 			eveSyslog.evel_reporting_entity_name_set(hostName);
 		}else {
-			eveSyslog.evel_reporting_entity_name_set(syslogConfig.get("reportingEntityName").toString());
+			eveSyslog.evel_reporting_entity_name_set(syslogConfig.get("reportingEntityName"));
 		}
-		eveSyslog.evel_reporting_entity_id_set(syslogConfig.get("reportingEntityId").toString());
-		eveSyslog.evel_nfVendorName_set(syslogConfig.get("nfVendorName").toString());
-		eveSyslog.evel_header_set_sourceid(true,syslogConfig.get("sourceId").toString());
+		eveSyslog.evel_reporting_entity_id_set(syslogConfig.get("reportingEntityId"));
+		eveSyslog.evel_nfVendorName_set(syslogConfig.get("nfVendorName"));
+		eveSyslog.evel_header_set_sourceid(true,syslogConfig.get("sourceId"));
 		if(syslogConfig.get("sourceName") == null) {
 			eveSyslog.evel_header_set_source_name(hostName);
 		}else {
-			eveSyslog.evel_header_set_source_name(syslogConfig.get("sourceName").toString());
+			eveSyslog.evel_header_set_source_name(syslogConfig.get("sourceName"));
 		}				
-		eveSyslog.evel_timeZoneOffset_set(syslogConfig.get("timeZoneOffset").toString());
+		eveSyslog.evel_timeZoneOffset_set(syslogConfig.get("timeZoneOffset"));
 		}
 		
 		eveSyslog.evel_syslog_facility_set(EVEL_SYSLOG_FACILITIES.EVEL_SYSLOG_FACILITY_LOCAL0);
-		eveSyslog.evel_syslog_proc_set(syslogConfig.get("syslogProc").toString());			
+		eveSyslog.evel_syslog_proc_set(syslogConfig.get("syslogProc"));			
 
 		
 		
@@ -121,14 +127,11 @@ public class syslogData extends Thread{
 
 	}
 	
-	public  String syslogFileRead(String tagToCompare){		
-		String syslines ="";
+	public  String syslogFileRead(String tagToCompare) throws IOException{		
+		
 		int currentIndex = 0;
 		boolean compare = false;
-		
-	        try {
-	        	
-	        	BufferedReader reader = new BufferedReader(new FileReader("/var/log/syslog"));
+	        try (BufferedReader reader = new BufferedReader(new FileReader("/var/log/syslog"))){
 				String line = reader.readLine();
 				while (line != null) {
 					if( currentIndex == linesReadFromFile ) {
@@ -141,15 +144,14 @@ public class syslogData extends Thread{
 					currentIndex ++;					
 					
 					line = reader.readLine();
-				}
-				
-				if( compare )
+				}				
+				if( compare ) {
 				linesReadFromFile=currentIndex;
-	        	
+				}
 	        	
 	        } catch (Exception ex) {
-	           ex.printStackTrace();
-	        } 
+	           logger.error(ex);
+	        }
 	        
 	  return null;
 	}
@@ -167,7 +169,7 @@ public class syslogData extends Thread{
 
 	public static String hostName() {
 	    String hostname = "Unknown";
-	    String uuid = "Unknown";
+	    
 	    try
 	    {
 	        InetAddress addr;
@@ -176,7 +178,7 @@ public class syslogData extends Thread{
 	    }
 	    catch (UnknownHostException ex)
 	    {
-	        
+	        logger.error(ex);
 	    }	    
 	    try{	    	
 	      Enumeration<NetworkInterface> networks =
@@ -197,11 +199,11 @@ public class syslogData extends Thread{
 	         }
 	        }
 	        if (mac != null) {
-	            uuid = bytesToHex(mac);
+	             bytesToHex(mac);
 	        }
 	      }
 	    } catch (SocketException e) {
-			// TODO Auto-generated catch block
+			logger.error(e);
 			
 		}
 
@@ -209,7 +211,7 @@ public class syslogData extends Thread{
 	}
 
 	
-	public static HashMap<String, String> readSyslogConfig() throws IOException, ParseException {
+	private static HashMap<String, String> readSyslogConfig() throws IOException, ParseException {
 
 		JSONParser jsonParser = new JSONParser();
 		try {
@@ -240,16 +242,15 @@ public class syslogData extends Thread{
 	        	indirectres = indirectObject.split("=");
 	        	syslogConfig.put(indirectres[0], indirectres[1]);	        
 	        } 	
-	        syslogFile =      syslogConfig.get("tmp_syslogFile").toString();
+	        syslogFile =      syslogConfig.get("tmp_syslogFile");
 			} catch (ClassCastException ex) {
-			ex.printStackTrace();
+			logger.error(ex);
 		}
 		return syslogConfig;
 	}
 	
 	
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
         
 		try {
             AgentMain.evel_initialize("http://127.0.0.1",30000,

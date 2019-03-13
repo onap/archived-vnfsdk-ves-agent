@@ -38,6 +38,7 @@ import evel_javalibrary.att.com.AgentMain;
 import evel_javalibrary.att.com.EvelHeartbeatField;
 
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -45,26 +46,28 @@ import org.json.simple.parser.ParseException;
 
 public class HeartBeatData extends Thread{
 	static HashMap<String, String> hbConfig = new HashMap();	
-	static int  gm_event_id = 1;
-	static String event_id1 = "heartbeatvfs";
-	static String event_id = "00000000";
-	static String event_id2=null;
+	static int    gmEventid = 1;
+	static String eventId1 = "heartbeatvfs";
+	static String eventId = "00000000";
+	static String eventId2=null;
 	
+	private static final Logger logger = Logger.getLogger(AgentMain.class);
 	
-	public void run() {
-		
-		Long start_epoch_microsec = 0L;
-		Long last_epoch_microsec = 0L;
+	@Override
+	public void run() {		
+		Long startEpochMicrosec = 0L;
+		Long lastEpochMicrosec = 0L;
         String hostName = hostName();
 		try {
 		readHeartbeatConfig();
-		}catch(Exception e) {			
+		}catch(Exception e) {	
+			logger.error(e);
 		}
 		while(true) {
 		String heatBeatInterval="";
 		long milliseconds = 60000;
 		
-		event_id2 = event_id1+ event_id+(gm_event_id++);	
+		eventId2 = eventId1+ eventId+(gmEventid++);	
 		if(hbConfig.get("heartbeatInterval") == null) {
 			heatBeatInterval = Long.toString(milliseconds);
 		}else {
@@ -72,46 +75,46 @@ public class HeartBeatData extends Thread{
 		}
 		EvelHeartbeatField evelHb = new EvelHeartbeatField(Integer.parseInt(heatBeatInterval) ,
 				hbConfig.get("eventName"),
-                event_id2);
+				eventId2);
 		
 		if( hbConfig.get("eventType")!=null) {			
-			start_epoch_microsec = last_epoch_microsec;
-    	    last_epoch_microsec = System.nanoTime()/1000;
+			startEpochMicrosec = lastEpochMicrosec;
+			lastEpochMicrosec = System.nanoTime()/1000;
     		
-    	    evelHb.evel_last_epoch_set(start_epoch_microsec);
-    	    evelHb.evel_start_epoch_set(last_epoch_microsec);
+    	    evelHb.evel_last_epoch_set(startEpochMicrosec);
+    	    evelHb.evel_start_epoch_set(lastEpochMicrosec);
 		
-		evelHb.evel_header_type_set(hbConfig.get("eventType").toString());
-		evelHb.evel_nfcnamingcode_set(hbConfig.get("nfcNamingCode").toString());
-		evelHb.evel_nfnamingcode_set(hbConfig.get("nfNamingCode").toString());
+		evelHb.evel_header_type_set(hbConfig.get("eventType"));
+		evelHb.evel_nfcnamingcode_set(hbConfig.get("nfcNamingCode"));
+		evelHb.evel_nfnamingcode_set(hbConfig.get("nfNamingCode"));
 		if(hbConfig.get("reportingEntityName") == null) {
 		evelHb.evel_reporting_entity_name_set(hostName);
 		}else {
-		evelHb.evel_reporting_entity_name_set(hbConfig.get("reportingEntityName").toString());
+		evelHb.evel_reporting_entity_name_set(hbConfig.get("reportingEntityName"));
 		}
-		evelHb.evel_reporting_entity_id_set(hbConfig.get("reportingEntityId").toString());
-		evelHb.evel_nfVendorName_set(hbConfig.get("nfVendorName").toString());
-		evelHb.evel_header_set_sourceid(true,hbConfig.get("sourceId").toString());
+		evelHb.evel_reporting_entity_id_set(hbConfig.get("reportingEntityId"));
+		evelHb.evel_nfVendorName_set(hbConfig.get("nfVendorName"));
+		evelHb.evel_header_set_sourceid(true,hbConfig.get("sourceId"));
 		if(hbConfig.get("sourceName") == null) {
 			evelHb.evel_header_set_source_name(hostName);
 		}else {
-			evelHb.evel_header_set_source_name(hbConfig.get("sourceName").toString());
+			evelHb.evel_header_set_source_name(hbConfig.get("sourceName"));
 		}				
-		evelHb.evel_timeZoneOffset_set(hbConfig.get("timeZoneOffset").toString());
+		evelHb.evel_timeZoneOffset_set(hbConfig.get("timeZoneOffset"));
 		
 		}
 		
 		try {
 			Thread.sleep(Integer.parseInt(heatBeatInterval));
 			}catch(Exception e) {
-				
+				logger.error(e);
 			}
 		AgentMain.evel_post_event(evelHb);
 		}
 	}
 	
 	
-	public static HashMap<String, String> readHeartbeatConfig() throws IOException, ParseException {
+	private static HashMap<String, String> readHeartbeatConfig() throws IOException, ParseException {
 		JSONParser jsonParser = new JSONParser();
 		try {
 			
@@ -130,7 +133,7 @@ public class HeartBeatData extends Thread{
 	        } 			
 	        
 			} catch (ClassCastException ex) {
-			ex.printStackTrace();
+			   logger.error(ex);
 		}
 		return hbConfig;
 	}
@@ -148,7 +151,7 @@ private static String bytesToHex(byte[] bytes) {
 
 public static String hostName() {
     String hostname = "Unknown";
-    String uuid = "Unknown";
+    
     try
     {
         InetAddress addr;
@@ -157,6 +160,7 @@ public static String hostName() {
     }
     catch (UnknownHostException ex)
     {
+    	logger.error(ex);
     }	    
     try{	    	
       Enumeration<NetworkInterface> networks =
@@ -177,19 +181,18 @@ public static String hostName() {
          }
         }
         if (mac != null) {
-            uuid = bytesToHex(mac);
+            bytesToHex(mac);
         }
       }
     } catch (SocketException e) {
-		// TODO Auto-generated catch block
-		
+		logger.error(e);
 	}
 
 	return hostname;
 }
 	
 public static void main(String[] args) {
-		// TODO Auto-generated method stub
+
         
 		try {
             AgentMain.evel_initialize("http://127.0.0.1",30000,

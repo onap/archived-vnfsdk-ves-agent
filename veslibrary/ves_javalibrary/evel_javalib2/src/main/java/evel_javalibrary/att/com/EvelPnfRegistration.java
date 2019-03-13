@@ -372,7 +372,7 @@ public class EvelPnfRegistration extends EvelHeader{
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  JsonObject evel_json_encode_event()
+	  public JsonObject evel_json_encode_event()
 	  {
 		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_PNFREGISTRATION);
 		//encode common event header and body     
@@ -388,7 +388,7 @@ public class EvelPnfRegistration extends EvelHeader{
 
 	  }	
 	  
-	  JsonObject evel_json_encode_event_batch()
+	 public JsonObject evel_json_encode_event_batch()
 	  {
 		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_PNFREGISTRATION);
 		//encode common event header and body     

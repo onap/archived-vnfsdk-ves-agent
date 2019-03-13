@@ -259,7 +259,7 @@ public class EvelStateChange extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON state change event message
 	   *****************************************************************************/
-	 JsonObject evel_json_encode_event()
+	 public JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -277,7 +277,7 @@ public class EvelStateChange extends EvelHeader {
 
 	  }
 	 
-	 JsonObject evel_json_encode_event_batch()
+	 public JsonObject evel_json_encode_event_batch()
 	  {
 		EVEL_ENTER();
 		

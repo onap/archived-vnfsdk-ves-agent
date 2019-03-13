@@ -39,6 +39,7 @@ import java.util.Map;
 
 
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -116,7 +117,7 @@ public class FaultData{
 	
 	static int falut_raised =0;
 
-	
+	private static final Logger logger = Logger.getLogger(AgentMain.class);
 	public final Runnable faultInstance01;
 	public final Runnable faultInstance02;
 	
@@ -126,17 +127,17 @@ public class FaultData{
 			
 			@Override
 			public void run() {
-				 int  gm_event_id = 1;
-				  String event_id2=null;
+				 int  gmEventId = 1;
+				  String eventId2=null;
 				
-				Long start_epoch_microsec = 0L;
-				Long last_epoch_microsec = 0L;
+				Long startEpochMicrosec = 0L;
+				Long lastEpochMicrosec = 0L;
 				String hostName = hostName();
 				try {
 					readFalutConfig();		
 					readVppMetrics(resDevice);						
 				} catch (IOException | ParseException e1) {
-
+					logger.error(e1);
 				}		
 				
 				
@@ -149,41 +150,41 @@ public class FaultData{
 					return;
 				}				
 				
-				HashMap<String, DeviceData> falut_last_metrics = readVppMetrics(resDevice);		
+				HashMap<String, DeviceData> falutLastMetrics = readVppMetrics(resDevice);		
 				
 				while(true) {
 					try {				
-					EvelBatch ebt = new EvelBatch();
+					
 				
 					for( String falut : intFaceMapFault ) {				
 					    
-						HashMap<String, DeviceData> falut_current_metrics = readVppMetrics(resDevice);
+						HashMap<String, DeviceData> falutCurrentMetrics = readVppMetrics(resDevice);
 
 						
-						for( String tmp_device :falut_current_metrics.keySet() ) {
+						for( String tmp_device :falutCurrentMetrics.keySet() ) {
 						
 						
 							
-							int receivedOctetsDelta = Integer.parseInt((falut_current_metrics.get(tmp_device).getT1Bytesin()) )
-									- Integer.parseInt((falut_last_metrics.get(tmp_device).getT0bytesIn()));
+							int receivedOctetsDelta = Integer.parseInt((falutCurrentMetrics.get(tmp_device).getT1Bytesin()) )
+									- Integer.parseInt((falutLastMetrics.get(tmp_device).getT0bytesIn()));
 							
-							int receivedTotalPacketsDelta = Integer.parseInt((falut_current_metrics.get(tmp_device).getT1Packetsin()) )
-									- Integer.parseInt((falut_last_metrics.get(tmp_device).getT0packetIn()));
+							int receivedTotalPacketsDelta = Integer.parseInt((falutCurrentMetrics.get(tmp_device).getT1Packetsin()) )
+									- Integer.parseInt((falutLastMetrics.get(tmp_device).getT0packetIn()));
 							
-							int transmittedOctetsDelta = Integer.parseInt((falut_current_metrics.get(tmp_device).getT1Bytesout()) )
-							- Integer.parseInt((falut_last_metrics.get(tmp_device).getT0bytesOut()));
+							int transmittedOctetsDelta = Integer.parseInt((falutCurrentMetrics.get(tmp_device).getT1Bytesout()) )
+							- Integer.parseInt((falutLastMetrics.get(tmp_device).getT0bytesOut()));
 							
 							
 							
-							int transmittedTotalPacketsDelta = Integer.parseInt((falut_current_metrics.get(tmp_device).getT1Packetsout()) )
-							- Integer.parseInt((falut_last_metrics.get(tmp_device).getT0packetOut()));
+							int transmittedTotalPacketsDelta = Integer.parseInt((falutCurrentMetrics.get(tmp_device).getT1Packetsout()) )
+							- Integer.parseInt((falutLastMetrics.get(tmp_device).getT0packetOut()));
 							
 						
-						String alarmInterface = tmp_device; //resDevice[0];
+						String alarmInterface = tmp_device;
 						if((receivedOctetsDelta < Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark")) || transmittedOctetsDelta < Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark")) || 
 								receivedTotalPacketsDelta < Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark")) || transmittedTotalPacketsDelta < Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark"))) && falut_raised == 0){
-							event_id2 = event_id1+ event_id+(gm_event_id++);
-							EvelFault eveFalt  = new EvelFault(faultInstanceres01.get("eventName"),event_id2, alarmCondition, specificProblem,
+							eventId2 = event_id1+ event_id+(gmEventId++);
+							EvelFault eveFalt  = new EvelFault(faultInstanceres01.get("eventName"),eventId2, alarmCondition, specificProblem,
 				                    EvelHeader.PRIORITIES.EVEL_PRIORITY_LOW,
 				                    EVEL_SEVERITIES.EVEL_SEVERITY_MAJOR,
 				                    EVEL_SOURCE_TYPES.EVEL_SOURCE_ROUTER,
@@ -195,32 +196,32 @@ public class FaultData{
 		                    	if( faultConfig.get("eventType")!=null) {
 		                    		eveFalt.evel_fault_type_set(faultConfig.get("eventType"));
 		                    		
-		                    		start_epoch_microsec = last_epoch_microsec;
-		                    	    last_epoch_microsec = System.nanoTime()/1000;
+		                    		startEpochMicrosec = lastEpochMicrosec;
+		                    		lastEpochMicrosec = System.nanoTime()/1000;
 		                    		
-		                    		eveFalt.evel_last_epoch_set(start_epoch_microsec);
-		                    		eveFalt.evel_start_epoch_set(last_epoch_microsec);
+		                    		eveFalt.evel_last_epoch_set(startEpochMicrosec);
+		                    		eveFalt.evel_start_epoch_set(lastEpochMicrosec);
 		                    		
 		                    		eveFalt.evel_fault_category_set(eventCategory);
 		                    		eveFalt.evel_fault_interface_set(alarmInterface.replaceAll("^[\"']+|[\"']+$", ""));
-		                    		eveFalt.evel_nfcnamingcode_set(faultConfig.get("nfcNamingCode").toString());
-		                    		eveFalt.evel_nfnamingcode_set(faultConfig.get("nfNamingCode").toString());
+		                    		eveFalt.evel_nfcnamingcode_set(faultConfig.get("nfcNamingCode"));
+		                    		eveFalt.evel_nfnamingcode_set(faultConfig.get("nfNamingCode"));
 		                    		if(faultConfig.get("reportingEntityName") == null) {
 		                    			eveFalt.evel_reporting_entity_name_set(hostName);
 		                    			}else {
-		                    			eveFalt.evel_reporting_entity_name_set(faultConfig.get("reportingEntityName").toString());
+		                    			eveFalt.evel_reporting_entity_name_set(faultConfig.get("reportingEntityName"));
 		                    			}		                   		
-		        					eveFalt.evel_reporting_entity_id_set(faultConfig.get("reportingEntityId").toString());
-		        					eveFalt.evel_nfVendorName_set(faultConfig.get("nfVendorName").toString());
-		        					eveFalt.evel_header_set_sourceid(true,faultConfig.get("sourceId").toString()); 
+		        					eveFalt.evel_reporting_entity_id_set(faultConfig.get("reportingEntityId"));
+		        					eveFalt.evel_nfVendorName_set(faultConfig.get("nfVendorName"));
+		        					eveFalt.evel_header_set_sourceid(true,faultConfig.get("sourceId")); 
 		        					
 		        		     		if(faultConfig.get("sourceName") == null) {
 		        		     			eveFalt.evel_header_set_source_name(hostName);
 		                    			}else {
-		                    				eveFalt.evel_header_set_source_name(faultConfig.get("sourceName").toString());
+		                    				eveFalt.evel_header_set_source_name(faultConfig.get("sourceName"));
 		                    			}			        					
 		        							
-		        					eveFalt.evel_timeZoneOffset_set(faultConfig.get("timeZoneOffset").toString());
+		        					eveFalt.evel_timeZoneOffset_set(faultConfig.get("timeZoneOffset"));
 		        					AgentMain.evel_post_event(eveFalt);		
 		                    	}
 		                    	
@@ -229,8 +230,8 @@ public class FaultData{
 						}else if((receivedOctetsDelta > Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark")) && transmittedOctetsDelta > Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark")) && 
 								receivedTotalPacketsDelta > Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark")) && transmittedTotalPacketsDelta > Integer.parseInt((String)faultInstanceres01.get("tmp_lowWaterMark"))) && falut_raised == 1) {							
 							
-							event_id2 = event_id1+event_id+ (gm_event_id++);
-							EvelFault eveFalt  = new EvelFault(faultInstanceres01.get("eventName"),event_id2, alarmConditionClear, specificProblemClear,
+							eventId2 = event_id1+event_id+ (gmEventId++);
+							EvelFault eveFalt  = new EvelFault(faultInstanceres01.get("eventName"),eventId2, alarmConditionClear, specificProblemClear,
 				                    EvelHeader.PRIORITIES.EVEL_PRIORITY_LOW,
 				                    EVEL_SEVERITIES.EVEL_SEVERITY_NORMAL,
 				                    EVEL_SOURCE_TYPES.EVEL_SOURCE_ROUTER,
@@ -246,28 +247,28 @@ public class FaultData{
 		                    		eveFalt.evel_fault_category_set(eventCategory);
 		                    		eveFalt.evel_fault_interface_set(alarmInterface.replaceAll("^[\"']+|[\"']+$", ""));
 		                    		                    		
-		                    		eveFalt.evel_nfcnamingcode_set(faultConfig.get("nfcNamingCode").toString());
-		                    		eveFalt.evel_nfnamingcode_set(faultConfig.get("nfNamingCode").toString());
+		                    		eveFalt.evel_nfcnamingcode_set(faultConfig.get("nfcNamingCode"));
+		                    		eveFalt.evel_nfnamingcode_set(faultConfig.get("nfNamingCode"));
 		                    		
 		                    		if(faultConfig.get("reportingEntityName") == null) {
 		                    			eveFalt.evel_reporting_entity_name_set(hostName);
 		                    			}else {
-		                    			eveFalt.evel_reporting_entity_name_set(faultConfig.get("reportingEntityName").toString());
+		                    			eveFalt.evel_reporting_entity_name_set(faultConfig.get("reportingEntityName"));
 		                    			}	
 		                    		
 		                    		
-		        					eveFalt.evel_reporting_entity_id_set(faultConfig.get("reportingEntityId").toString());
-		        					eveFalt.evel_nfVendorName_set(faultConfig.get("nfVendorName").toString());
-		        					eveFalt.evel_header_set_sourceid(true,faultConfig.get("sourceId").toString());
+		        					eveFalt.evel_reporting_entity_id_set(faultConfig.get("reportingEntityId"));
+		        					eveFalt.evel_nfVendorName_set(faultConfig.get("nfVendorName"));
+		        					eveFalt.evel_header_set_sourceid(true,faultConfig.get("sourceId"));
 		        					
 		        		     		if(faultConfig.get("sourceName") == null) {
 		        		     			eveFalt.evel_header_set_source_name(hostName);
 		                    			}else {
-		                    				eveFalt.evel_header_set_source_name(faultConfig.get("sourceName").toString());
+		                    				eveFalt.evel_header_set_source_name(faultConfig.get("sourceName"));
 		                    			}		
 		        					
 		        							
-		        					eveFalt.evel_timeZoneOffset_set(faultConfig.get("timeZoneOffset").toString());
+		        					eveFalt.evel_timeZoneOffset_set(faultConfig.get("timeZoneOffset"));
 		        					AgentMain.evel_post_event(eveFalt);		
 		                    		
 		                    	}
@@ -296,7 +297,7 @@ public class FaultData{
 					
 					
 					}catch (Exception e) {
-						
+						logger.error(e);
 					}
 					
 					
@@ -308,10 +309,10 @@ public class FaultData{
 			
 			@Override
 			public void run() {
-				 int  gm_event_id = 1;
-				  String event_id2=null;
-				Long start_epoch_microsec = 0L;
-				Long last_epoch_microsec = 0L;
+				 int  gmEventid = 1;
+				  String eventid2=null;
+				Long startEpochmicrosec = 0L;
+				Long lastEpochmicrosec = 0L;
 				String hostName = hostName();
 				try {
 					readFalutConfig();		
@@ -343,8 +344,8 @@ public class FaultData{
 					
 						if(ins02Cmd < Integer.parseInt((String)falutMetric.get("Instanceres02Cmd").getInstanceres02Command())){					
 							
-							event_id2 = event_id1+ event_id+(gm_event_id++);
-							EvelFault eveFalt  = new EvelFault(Instance02eventName,event_id2, setAlarmCondition, setSpecificProblem,
+							eventid2 = event_id1+ event_id+(gmEventid++);
+							EvelFault eveFalt  = new EvelFault(Instance02eventName,eventid2, setAlarmCondition, setSpecificProblem,
 				                    EvelHeader.PRIORITIES.EVEL_PRIORITY_LOW,
 				                    EVEL_SEVERITIES.EVEL_SEVERITY_MAJOR,
 				                    EVEL_SOURCE_TYPES.EVEL_SOURCE_VIRTUAL_MACHINE,
@@ -360,11 +361,11 @@ public class FaultData{
 		                    	if( faultConfig.get("eventType")!=null) {
 		                    		eveFalt.evel_fault_type_set(faultConfig.get("eventType"));
 		                    		
-		                    		start_epoch_microsec = last_epoch_microsec;
-		                    	    last_epoch_microsec = System.nanoTime()/1000;
+		                    		startEpochmicrosec = lastEpochmicrosec;
+		                    		lastEpochmicrosec = System.nanoTime()/1000;
 		                    		
-		                    		eveFalt.evel_last_epoch_set(start_epoch_microsec);
-		                    		eveFalt.evel_start_epoch_set(last_epoch_microsec);
+		                    		eveFalt.evel_last_epoch_set(startEpochmicrosec);
+		                    		eveFalt.evel_start_epoch_set(lastEpochmicrosec);
 		                    		
 		                    		eveFalt.evel_fault_category_set(Instance02eventCategory);
 		                    		eveFalt.evel_fault_interface_set(Instance02alarmInterfaceA.replaceAll("^[\"']+|[\"']+$", ""));
@@ -398,8 +399,8 @@ public class FaultData{
 						}else if(ins02Cmd > Integer.parseInt((String)falutMetric.get("Instanceres02Cmd").getInstanceres02Command())) {
 							
 							
-							event_id2 = event_id1+ event_id+(gm_event_id++);
-							EvelFault eveFalt  = new EvelFault(Instance02eventName,event_id2, ins02alarmConditionClear, ins02specificProblemClear,
+							eventid2 = event_id1+ event_id+(gmEventid++);
+							EvelFault eveFalt  = new EvelFault(Instance02eventName,eventid2, ins02alarmConditionClear, ins02specificProblemClear,
 				                    EvelHeader.PRIORITIES.EVEL_PRIORITY_LOW,
 				                    EVEL_SEVERITIES.EVEL_SEVERITY_NORMAL,
 				                    EVEL_SOURCE_TYPES.EVEL_SOURCE_VIRTUAL_MACHINE,
@@ -458,14 +459,14 @@ public class FaultData{
 						}
 					Thread.sleep(Integer.parseInt(Ins02Interval));					
 					}catch(Exception e) {
-						
+						logger.error(e);
 					}
 					
 					}catch (Exception e) {
-						
+						logger.error(e);
 					}
 					
-					
+					break;
 				}
 			}
 		};
@@ -517,8 +518,7 @@ public class FaultData{
 	        }
 	      }
 	    } catch (SocketException e) {
-			// TODO Auto-generated catch block
-			
+			logger.error(e);
 		}
 
 		return hostname;
@@ -526,7 +526,7 @@ public class FaultData{
 	
 	
 	
-	public static HashMap<String, String> readFalutConfig() throws IOException, ParseException {
+	private static HashMap<String, String> readFalutConfig() throws IOException, ParseException {
 		
 		
 		
@@ -717,7 +717,7 @@ public class FaultData{
 	        	        
 	        
 			} catch (ClassCastException ex) {
-			ex.printStackTrace();
+			logger.error(ex);
 		}
 		return faultConfig;
 	}
@@ -725,207 +725,15 @@ public class FaultData{
 
 
 	
-	public static HashMap<String, String> readFalutConfig1() throws IOException, ParseException {
-		List<String> list = new ArrayList<String>();
-		JSONParser jsonParser = new JSONParser();
-		try {
-			
-			FileReader reader = new FileReader("./src/main/java/evel_javalibrary/att/com/loadbalance/flt_config.json");
-			JSONObject obj = (JSONObject) jsonParser.parse(reader);
-			Map.Entry directPair = null;
-			String directObject ="";
-			String[] directres;
-			Map directParameters = ((Map)obj.get("tmp_directParameters"));
-			Iterator<Map.Entry> itr1 = directParameters.entrySet().iterator(); 
-	        while (itr1.hasNext()) { 
-	        	directPair = itr1.next(); 
-	        	directObject=String.valueOf(directPair);  
-	        	directres = directObject.split("=");
-	            faultConfig.put(directres[0], directres[1]);	        
-	        } 		
-	        JSONArray arrJson = (JSONArray) directParameters.get("tmp_device");
-	        resDevice = new String[arrJson.size()];
-	        for(int i = 0; i < arrJson.size(); i++)
-	        	resDevice[i] = (String) arrJson.get(i);
-	        
-	        
-	        //tmp_indirectParameters
-	        Map.Entry indirectPair = null;
-	        String indirectObject ="";
-	        String[] indirectres;
-			Map indirectParameters = ((Map)obj.get("tmp_indirectParameters"));
-			Iterator<Map.Entry> itr2 = indirectParameters.entrySet().iterator(); 
-	        while (itr2.hasNext()) { 
-	        	indirectPair = itr2.next(); 
-	        	indirectObject=String.valueOf(indirectPair);  
-	        	indirectres = indirectObject.split("=");
-	            faultConfig.put(indirectres[0], indirectres[1]);	        
-	        } 	
-	        
-	        
-	        //tmp_faultInstance01
-	        Map.Entry faultInstancePair = null;
-	        String faultInstanceObject ="";
-	        String[] faultInstanceres;
-			Map faultInstanceParameters = ((Map)indirectParameters.get("tmp_faultInstance01"));
-			Iterator<Map.Entry> itr3 = faultInstanceParameters.entrySet().iterator(); 
-	        while (itr3.hasNext()) { 
-	        	faultInstancePair = itr3.next(); 
-	        	faultInstanceObject=String.valueOf(faultInstancePair);  
-	        	faultInstanceres = faultInstanceObject.split("=");
-	        	faultInstanceres01.put(faultInstanceres[0], faultInstanceres[1]);	        
-	        } 
-	        
-	         
-	        eventCategory = faultInstanceres01.get("eventCategory").toString();
-	        eventSourceType = faultInstanceres01.get("eventSourceType").toString();
-	        //tmp_init
-	        Map.Entry tempInitPair = null;
-	        String tempInitObject ="";
-			Map tempInitParameters = ((Map)faultInstanceParameters.get("tmp_init"));
-			Iterator<Map.Entry> itr4 = tempInitParameters.entrySet().iterator(); 
-	        while (itr4.hasNext()) { 
-	        	tempInitPair = itr4.next(); 
-	        	tempInitObject=String.valueOf(tempInitPair);  
-	        	tempInitres = tempInitObject.split("=");
-	        	faultConfigTempInit.put(tempInitres[0], tempInitres[1]);	        
-	        } 	
-	        
-	        String tmp_t0BytesOut = faultConfigTempInit.get("tmp_init");
-	        
-	        
-	        
-	        //tmp_command
-	        Map.Entry tempcommandPair = null;
-	        String tempcommandObject ="";	        
-			Map tempcommandParameters = ((Map)faultInstanceParameters.get("tmp_command"));
-			Iterator<Map.Entry> itr5 = tempcommandParameters.entrySet().iterator(); 
-	        while (itr5.hasNext()) { 
-	        	tempcommandPair = itr5.next(); 
-	        	tempcommandObject=String.valueOf(tempcommandPair);  
-	        	tempcommandres = tempcommandObject.split("=");
-	            faultConfig.put(tempcommandres[0], tempcommandres[1]);	        
-	        } 	
-	        
-	        //tmp_alarmSetParameters
-	        Map.Entry alarmSetPair = null;
-	        String alarmSetObject ="";
-	        String[] alarmSetres;
-			Map alarmSetParameters = ((Map)faultInstanceParameters.get("tmp_alarmSetParameters"));
-			Iterator<Map.Entry> itr6 = alarmSetParameters.entrySet().iterator(); 
-	        while (itr6.hasNext()) { 
-	        	alarmSetPair = itr6.next(); 
-	        	alarmSetObject=String.valueOf(alarmSetPair);  
-	        	alarmSetres = alarmSetObject.split("=");
-	            faultConfig.put(alarmSetres[0], alarmSetres[1]);	        
-	        } 	
-	        
-	        
-	        alarmCondition = faultConfig.get("alarmCondition").toString();
-	        specificProblem = faultConfig.get("specificProblem").toString();
-	        eventSeverity =   faultConfig.get("eventSeverity").toString();
-	        
-	        //tmp_alarmClearParameters
-	        Map.Entry alarmClearPair = null;
-	        String alarmClearObject ="";
-	        String[] alarmClearres;
-			Map alarmClearParameters = ((Map)faultInstanceParameters.get("tmp_alarmClearParameters"));
-			Iterator<Map.Entry> itr7 = alarmClearParameters.entrySet().iterator(); 
-	        while (itr7.hasNext()) { 
-	        	alarmClearPair = itr7.next(); 
-	        	alarmClearObject=String.valueOf(alarmClearPair);  
-	        	alarmClearres = alarmClearObject.split("=");
-	            tempAlaramClearParameter.put(alarmClearres[0], alarmClearres[1]);	        
-	        } 	
-	        
-	        alarmConditionClear = tempAlaramClearParameter.get("alarmCondition").toString();
-	        specificProblemClear = tempAlaramClearParameter.get("specificProblem").toString();
-	        eventSeverityClear =   tempAlaramClearParameter.get("eventSeverity").toString();
-	        
-	        
-	        //tmp_faultInstance02
-	        Map.Entry faultInstance02Pair = null;
-	        String faultInstance02Object ="";
-	        String[] faultInstance02res;
-			Map faultInstance02Parameters = ((Map)indirectParameters.get("tmp_faultInstance02"));
-			Iterator<Map.Entry> itr8 = faultInstance02Parameters.entrySet().iterator(); 
-	        while (itr8.hasNext()) { 
-	        	faultInstance02Pair = itr8.next(); 
-	        	faultInstance02Object=String.valueOf(faultInstance02Pair);  
-	        	faultInstance02res = faultInstance02Object.split("=");
-	        	faultInstanceres02.put(faultInstance02res[0], faultInstance02res[1]);	        
-	        } 	
-	        Instance02alarmInterfaceA  = faultInstanceres02.get("alarmInterfaceA");
-	        Instance02eventCategory  = faultInstanceres02.get("eventCategory");
-	        Instance02eventSourceType  = faultInstanceres02.get("eventSourceType");
-	        Instance02eventName  = faultInstanceres02.get("eventName");
-	        
-	        //tmp_command
-	        Map.Entry tempcommand02Pair = null;
-	        String tempcommand02Object ="";	        
-			Map tempcommand02Parameters = ((Map)faultInstance02Parameters.get("tmp_command"));
-			Iterator<Map.Entry> itr9 = tempcommand02Parameters.entrySet().iterator(); 
-	        while (itr9.hasNext()) { 
-	        	tempcommand02Pair = itr9.next(); 
-	        	tempcommand02Object=String.valueOf(tempcommand02Pair);  
-	        	tempcommand02res = tempcommand02Object.split("=");
-	        	faultInstanceres02.put(tempcommand02res[0], tempcommand02res[1]);	        
-	        } 	
-	        
-	        
-	        
-	        //tmp_alarmSetParameters
-	        Map.Entry Instance02alarmSetPair = null;
-	        String Instance02alarmSetObject ="";
-	        String[] Instance02alarmSetres;
-			Map Instance02alarmSetParameters = ((Map)faultInstance02Parameters.get("tmp_alarmSetParameters"));
-			Iterator<Map.Entry> itr10 = Instance02alarmSetParameters.entrySet().iterator(); 
-	        while (itr10.hasNext()) { 
-	        	Instance02alarmSetPair = itr10.next(); 
-	        	Instance02alarmSetObject=String.valueOf(Instance02alarmSetPair);  
-	        	Instance02alarmSetres = Instance02alarmSetObject.split("=");
-	        	faultInstanceres02.put(Instance02alarmSetres[0], Instance02alarmSetres[1]);	        
-	        } 	
-	        
-	        
-	        setAlarmCondition = faultInstanceres02.get("alarmCondition").toString();
-	        setSpecificProblem = faultInstanceres02.get("specificProblem").toString();
-	        setEventSeverity =   faultInstanceres02.get("eventSeverity").toString();
-	        
-	        //tmp_alarmClearParameters
-	        Map.Entry Instanceres02alarmClearPair = null;
-	        String Instanceres02alarmClearObject ="";
-	        String[] Instanceres02alarmClearres;
-			Map Instanceres02alarmClearParameters = ((Map)faultInstance02Parameters.get("tmp_alarmClearParameters"));
-			Iterator<Map.Entry> itr11 = Instanceres02alarmClearParameters.entrySet().iterator(); 
-	        while (itr11.hasNext()) { 
-	        	Instanceres02alarmClearPair = itr11.next(); 
-	        	Instanceres02alarmClearObject=String.valueOf(Instanceres02alarmClearPair);  
-	        	Instanceres02alarmClearres = Instanceres02alarmClearObject.split("=");
-	        	Instanceres02ClearParameter.put(Instanceres02alarmClearres[0], Instanceres02alarmClearres[1]);	        
-	        } 	
-	        
-	        ins02alarmConditionClear = Instanceres02ClearParameter.get("alarmCondition").toString();
-	        ins02specificProblemClear = Instanceres02ClearParameter.get("specificProblem").toString();
-	        ins02eventSeverityClear =   Instanceres02ClearParameter.get("eventSeverity").toString();
-	        
-
-	        	        
-	        
-			} catch (ClassCastException ex) {
-			ex.printStackTrace();
-		}
-		return faultConfig;
-	}
 	
 	
-	public static HashMap<String, DeviceData> readVppMetrics(String[] linkStart) {
+	private static HashMap<String, DeviceData> readVppMetrics(String[] linkStart) {
 		
 		//t0
-		String Bytesin = faultConfigTempInit.get("tmp_t0BytesIn");
-		String BytesOut = faultConfigTempInit.get("tmp_t0BytesOut").toString();
-		String PacketsIn = faultConfigTempInit.get("tmp_t0PacketsIn");
-		String PacketsOut = faultConfigTempInit.get("tmp_t0PacketsOut");
+		String bytesIn = faultConfigTempInit.get("tmp_t0BytesIn");
+		String bytesOut = faultConfigTempInit.get("tmp_t0BytesOut").toString();
+		String packetsIn = faultConfigTempInit.get("tmp_t0PacketsIn");
+		String packetsOut = faultConfigTempInit.get("tmp_t0PacketsOut");
 		
 		
 		//t1
@@ -946,31 +754,31 @@ public class FaultData{
 		
 		//t0
 		String replaceBytesin ="";
-		if(Bytesin.contains("$tmp_device")) {
-		 String repString = Bytesin.replace("$tmp_device", device.trim());
+		if(bytesIn.contains("$tmp_device")) {
+		 String repString = bytesIn.replace("$tmp_device", device.trim());
 		 replaceBytesin = repString.replace("sudo", "/bin/sh,-c,");
 		}			
 		String[] bytesinArray= replaceBytesin.split(",");
 		
 		
 		String replaceBytesOut ="";
-		if(BytesOut.contains("$tmp_device")) {
-		 String  repString = BytesOut.replace("$tmp_device", device.trim());
+		if(bytesOut.contains("$tmp_device")) {
+		 String  repString = bytesOut.replace("$tmp_device", device.trim());
 		 replaceBytesOut = repString.replace("sudo", "/bin/sh,-c,");
 		}		
 		String[] bytesoutArray = replaceBytesOut.split(",");
 		
 		
 		String replacePacketsIn ="";
-		if(PacketsIn.contains("$tmp_device")) {
-		 String repString = PacketsIn.replace("$tmp_device", device.trim());
+		if(packetsIn.contains("$tmp_device")) {
+		 String repString = packetsIn.replace("$tmp_device", device.trim());
 		 replacePacketsIn = repString.replace("sudo", "/bin/sh,-c,");
 		}		
 		String[] packetsInArray= replacePacketsIn.split(",");
 				
 		String replacePacketsOut ="";
-		if(PacketsOut.contains("$tmp_device")) {
-		 String repString = PacketsOut.replace("$tmp_device", device.trim());
+		if(packetsOut.contains("$tmp_device")) {
+		 String repString = packetsOut.replace("$tmp_device", device.trim());
 		 replacePacketsOut = repString.replace("sudo", "/bin/sh,-c,");
 		}		
 		String[] packetsOutArray= replacePacketsOut.split(",");
@@ -1096,7 +904,7 @@ public class FaultData{
 			}
 		    
 		        }catch (Exception e) {
-					
+					logger.error(e);
 				}   						
 		}		
 		return vppMetrics;
@@ -1104,108 +912,8 @@ public class FaultData{
 
 
 
-	public static HashMap<String, DeviceData> readVppMetrics1(String[] linkStart) {
-		String Bytesin = faultConfigTempInit.get("tmp_t0BytesIn");
-		String BytesOut = faultConfigTempInit.get("tmp_t0BytesOut").toString();
-		String PacketsIn = faultConfigTempInit.get("tmp_t0PacketsIn");
-		String PacketsOut = faultConfigTempInit.get("tmp_t0PacketsOut");
-		
-		String echoFalut = faultInstanceres02.get("tmp_cmd1");
-		HashMap<String, DeviceData> vppMetrics =  new HashMap<>();
-		
-		for(int i=0;i<linkStart.length;i++) {
-		String device = linkStart[i];
-		String replaceBytesin ="";
-		if(Bytesin.contains("$tmp_device")) {
-		 String repString = Bytesin.replace("$tmp_device", device.trim());
-		 replaceBytesin = repString.replace("sudo", "/bin/sh,-c,");
-
-		}	
-		
-		String[] bytesinArray= replaceBytesin.split(",");
-		
-		
-		String replaceBytesOut ="";
-		if(BytesOut.contains("$tmp_device")) {
-		 String  repString = BytesOut.replace("$tmp_device", device.trim());
-		 replaceBytesOut = repString.replace("sudo", "/bin/sh,-c,");
-		}
-		
-		String[] bytesoutArray = replaceBytesOut.split(",");
-		
-		
-		
-		
-		String replacePacketsIn ="";
-		if(PacketsIn.contains("$tmp_device")) {
-		 String repString = PacketsIn.replace("$tmp_device", device.trim());
-		 replacePacketsIn = repString.replace("sudo", "/bin/sh,-c,");
-
-		}		
-		String[] packetsInArray= replacePacketsIn.split(",");
-		
-		
-		String replacePacketsOut ="";
-		if(PacketsOut.contains("$tmp_device")) {
-		 String repString = PacketsOut.replace("$tmp_device", device.trim());
-		 replacePacketsOut = repString.replace("sudo", "/bin/sh,-c,");
-
-		}		
-		String[] packetsOutArray= replacePacketsOut.split(",");
-		try {
-			
-			Runtime rt1 = Runtime.getRuntime();
-		    Process bytesinchild = rt1.exec(bytesinArray);
-		    BufferedReader readerBytesin = new BufferedReader(new InputStreamReader(        
-		    		bytesinchild.getInputStream())); 
-		    String readMetrics= readerBytesin.readLine();
-		    Runtime rt2 = Runtime.getRuntime();
-     	    Process bytesoutchild = rt2.exec(bytesoutArray);
-		    BufferedReader readerBytesout = new BufferedReader(new InputStreamReader(        
-		    		bytesoutchild.getInputStream())); 
-		    String readMetrics1= readerBytesout.readLine();
-		    Runtime rt3 = Runtime.getRuntime();
-     	    Process packetsInchild = rt3.exec(packetsInArray);
-		    BufferedReader readerPacketsIn = new BufferedReader(new InputStreamReader(        
-		    		packetsInchild.getInputStream())); 
-		    String readMetrics2= readerPacketsIn.readLine();
-		    Runtime rt4 = Runtime.getRuntime();
-     	    Process packetsOutchild = rt4.exec(packetsOutArray);
-		    BufferedReader readerpacketsOut = new BufferedReader(new InputStreamReader(        
-		    		packetsOutchild.getInputStream())); 
-		    String readMetrics3= readerpacketsOut.readLine();
-		    Runtime rt5 = Runtime.getRuntime();
-     	    Process echoFaultchild = rt5.exec(echoFalut);
-		    BufferedReader readerechoFault = new BufferedReader(new InputStreamReader(        
-		    		echoFaultchild.getInputStream())); 
-		    String echoFaultMetric= readerechoFault.readLine();
-		    DeviceData mddata = new DeviceData();
-		    
-//		    mddata.setBytesIn(readMetrics);
-//		    mddata.setBytesOut(readMetrics1);
-//		    mddata.setPacketIn(readMetrics2);
-//		    mddata.setPacketOut(readMetrics3);
-		    
-		    mddata.setInstanceres02Command(echoFaultMetric);
-		    
-		    vppMetrics.put("Instanceres02Cmd", mddata);
-		    
-		    if(device.equals("enp0s3")) {
-		    	vppMetrics.put("enp0s3", mddata);
-		    }else if(device.equals("lo")) {
-		    	vppMetrics.put("lo", mddata);
-			}else if(device.equals("docker0")) {
-				vppMetrics.put("docker0", mddata);
-			}
-		        }catch (Exception e) {
-					
-				}   						
-		}		
-		return vppMetrics;
-	}	
 	
 public static void main(String[] args) {
-		// TODO Auto-generated method stub
         
 		try {
             AgentMain.evel_initialize("http://127.0.0.1",30000,

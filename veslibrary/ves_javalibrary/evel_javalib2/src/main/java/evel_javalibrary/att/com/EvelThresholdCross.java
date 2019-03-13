@@ -43,10 +43,6 @@ import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 
 public class EvelThresholdCross extends EvelHeader {
 	
-	
-	int major_version = 1;
-	int minor_version = 0;
-	
 	/**************************************************************************//**
 	 * Alert types.
 	 * JSON equivalent fields: newState, oldState
@@ -104,7 +100,6 @@ public class EvelThresholdCross extends EvelHeader {
 	/***************************************************************************/
 	/* Optional fields                                                         */
 	/***************************************************************************/
-    //ArrayList<String[]> additional_info;
     Map<String,String> additional_inf;
     
     
@@ -151,18 +146,14 @@ public class EvelThresholdCross extends EvelHeader {
 		super(evname,evid);
 		event_domain = EvelHeader.DOMAINS.EVEL_DOMAIN_THRESHOLD_CROSSING;
 		assert( tcriticality!= null );
-	//	assert( tname!= null );
 		assert( tthresholdCrossed!= null );
-	//	assert( tvalue!= null );
 		assert( talertAction!= null );
 		
 		additionalParameters = new PERF_COUNTER();
 		assert( additionalParameters != null);
 		
 		additionalParameters.criticality = tcriticality;
-	//	additionalParameters.name = tname;
 		additionalParameters.thresholdCrossed = tthresholdCrossed;
-	//	additionalParameters.value = tvalue;
 		
 		
 		additionalParameters.hashMap = null;
@@ -252,7 +243,6 @@ public class EvelThresholdCross extends EvelHeader {
 	 *****************************************************************************/
 	public void evel_thresholdcross_addl_info_add(String name, String value)
 	{
-	  //String[] addl_info = null;
 	  EVEL_ENTER();
 
 	  /***************************************************************************/
@@ -264,17 +254,11 @@ public class EvelThresholdCross extends EvelHeader {
 	  
 	  if( additional_inf == null )
 	  {
-		 // additional_info = new ArrayList<String[]>();
 		  additional_inf = new HashMap<String,String>();
 	  }
 
 	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-	//  addl_info = new String[2];
-	//  assert(addl_info != null);
-	//  addl_info[0] = name;
-	//  addl_info[1] = value;
 	  additional_inf.put(name,  value);
-	//  additional_info.add(addl_info);
 
 	  EVEL_EXIT();
 	}
@@ -296,7 +280,7 @@ public class EvelThresholdCross extends EvelHeader {
 	 *****************************************************************************/
 	public void evel_thresholdcross_hashMap_add(String name, String value)
 	{
-	  //String[] addl_info = null;
+
 	  EVEL_ENTER();
 
 	  /***************************************************************************/
@@ -308,17 +292,11 @@ public class EvelThresholdCross extends EvelHeader {
 	  
 	  if( additionalParameters.hashMap == null )
 	  {
-		 // additional_info = new ArrayList<String[]>();
 		  additionalParameters.hashMap = new HashMap<String,String>();
 	  }
 
 	  LOGGER.debug(MessageFormat.format("Adding name={0} value={1}", name, value));
-	//  addl_info = new String[2];
-	//  assert(addl_info != null);
-	//  addl_info[0] = name;
-	//  addl_info[1] = value;
 	  additionalParameters.hashMap.put(name,  value);
-	//  additional_info.add(addl_info);
 
 	  EVEL_EXIT();
 	}
@@ -708,7 +686,7 @@ public class EvelThresholdCross extends EvelHeader {
 	     * Encode the event as a JSON event object according to AT&T's schema.
 	     * retval : String of JSON TCA event message
 	     *****************************************************************************/
-	  JsonObject evel_json_encode_event()
+	  public JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -726,7 +704,7 @@ public class EvelThresholdCross extends EvelHeader {
 
 	  }
 	  
-	  JsonObject evel_json_encode_event_batch()
+	  public JsonObject evel_json_encode_event_batch()
 	  {
 		EVEL_ENTER();
 		

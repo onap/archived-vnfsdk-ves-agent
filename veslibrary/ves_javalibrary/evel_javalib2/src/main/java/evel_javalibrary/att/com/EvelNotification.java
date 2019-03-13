@@ -461,7 +461,7 @@ public class EvelNotification extends EvelHeader {
 	}
 	 
 	 
-	 JsonObject evel_json_encode_event()
+	 public JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -479,7 +479,7 @@ public class EvelNotification extends EvelHeader {
 
 	  }
 	 
-	 JsonObject evel_json_encode_event_batch()
+	 public JsonObject evel_json_encode_event_batch()
 	  {
 		EVEL_ENTER();
 		

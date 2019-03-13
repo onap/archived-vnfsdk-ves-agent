@@ -39,9 +39,6 @@ import org.apache.log4j.Logger;
 
 public class EvelHeartbeatField extends EvelHeader {
 	
-	//version of Heartbeat field format revisions
-	int major_version = 1;
-	int minor_version = 0;
 	
 	/**************************************************************************//**
 	 * Alert types.
@@ -57,7 +54,6 @@ public class EvelHeartbeatField extends EvelHeader {
 	/***************************************************************************/
 	/* Optional fields                                                         */
 	/***************************************************************************/
-	 // ArrayList<String[]> additional_info;
 	  
 	  HashMap<String, String > additional_inf;
 	
@@ -212,7 +208,7 @@ public class EvelHeartbeatField extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  JsonObject evel_json_encode_event()
+	  public JsonObject evel_json_encode_event()
 	  {
 		EVEL_ENTER();
 		
@@ -230,7 +226,7 @@ public class EvelHeartbeatField extends EvelHeader {
 
 	  }
 	  
-	  JsonObject evel_json_encode_event_batch()
+	  public JsonObject evel_json_encode_event_batch()
 	  {
 		EVEL_ENTER();
 		

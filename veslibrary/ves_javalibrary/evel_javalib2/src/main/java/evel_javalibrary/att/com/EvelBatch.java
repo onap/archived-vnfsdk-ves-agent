@@ -60,7 +60,7 @@ public class EvelBatch {
 	* Encode the event as a JSON event object according to AT&T's schema.
 	* retval : String of JSON event header only message
 	*****************************************************************************/
-	  JsonObject evel_json_encode_event()
+	  public JsonObject evel_json_encode_event()
 	  {
 		  JsonObjectBuilder batchobj = Json.createObjectBuilder();
 		  

@@ -463,7 +463,6 @@ public class EvelFault extends EvelHeader {
 	  String fault_severity;
 	  String fault_source_type;
 	  String fault_vf_status;
-	 // double version = major_version+(double)minor_version/10;
 	  String version = "4.0";
 	  EVEL_ENTER();
 	  
@@ -547,7 +546,7 @@ public class EvelFault extends EvelHeader {
 	   * Encode the event as a JSON event object according to AT&T's schema.
 	   * retval : String of JSON event message
 	   *****************************************************************************/
-	  JsonObject evel_json_encode_event()
+	  public JsonObject evel_json_encode_event()
 	  {
 		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_FAULT);
 		//encode common event header and body     
@@ -563,7 +562,7 @@ public class EvelFault extends EvelHeader {
 
 	  }
 	  
-	  JsonObject evel_json_encode_event_batch()
+	  public JsonObject evel_json_encode_event_batch()
 	  {
 		assert(event_domain == EvelHeader.DOMAINS.EVEL_DOMAIN_FAULT);
 		//encode common event header and body     
