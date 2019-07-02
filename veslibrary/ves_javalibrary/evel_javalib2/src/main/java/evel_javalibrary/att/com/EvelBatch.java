@@ -70,7 +70,7 @@ public class EvelBatch {
 		    for(int i=0;i<batch_events.size();i++) {
 			  EvelHeader el = batch_events.get(i);
 			  //add Json objects
-			  builder.add(el.evel_json_encode_event());
+			  builder.add(el.evel_json_encode_event_batch());
 		    }
 		    
 			batchobj.add("eventList", builder);
