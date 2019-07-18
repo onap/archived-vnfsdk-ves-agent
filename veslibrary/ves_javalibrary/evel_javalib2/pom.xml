@@ -24,13 +24,13 @@ ECOMP is a trademark and service mark of AT&T Intellectual Property.
     <parent>
         <groupId>org.onap.oparent</groupId>
         <artifactId>oparent</artifactId>
-        <version>1.2.0</version>
+        <version>2.0.0</version>
     </parent>
 
   <groupId>org.onap.vnfsdk.ves-agent</groupId>
   <artifactId>evel_javalib2</artifactId>
   <name>vnfsdk-ves-agent-vesjavalibrary</name>
-    <!--internal <version>2.4.0</version>-->
+  <version>1.1.1-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
