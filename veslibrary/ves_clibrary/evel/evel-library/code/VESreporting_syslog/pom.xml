@@ -32,6 +32,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.onap.demo.vnf.ves5</groupId>
   <artifactId>ves_vfw_reporting</artifactId>
+  <version>1.1.1-SNAPSHOT</version>
 
   <build>
     <plugins>

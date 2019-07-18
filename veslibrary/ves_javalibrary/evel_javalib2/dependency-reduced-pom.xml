@@ -10,6 +10,7 @@
   <groupId>org.onap.vnfsdk.ves-agent</groupId>
   <artifactId>evel_javalib2</artifactId>
   <name>vnfsdk-ves-agent-vesjavalibrary</name>
+  <version>1.1.1-SNAPSHOT</version>
   <build>
     <plugins>
       <plugin>
