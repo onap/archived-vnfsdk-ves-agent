@@ -164,6 +164,11 @@ typedef struct evel_throttle_spec {
 /*****************************************************************************/
 #define EVEL_THROTTLE_FIELD_DEPTH 3
 
+/*****************************************************************************/
+/* EVEL_JSON_BUFFER json buffer grow bytes.
+/*****************************************************************************/
+#define EVEL_JSON_BUFFER_GROW_BYTES 512
+
 /**************************************************************************//**
  * Initialize the event handler.
  *
@@ -274,6 +279,7 @@ typedef struct evel_json_buffer
   char * json;
   int offset;
   int max_size;
+  bool extend;
 
   /***************************************************************************/
   /* The working throttle specification, which can be NULL.                  */
@@ -461,6 +467,39 @@ void evel_json_buffer_init(EVEL_JSON_BUFFER * jbuf,
                            char * const json,
                            const int max_size,
                            EVEL_THROTTLE_SPEC * throttle_spec);
+
+/**************************************************************************//**
+ * Cleanup a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to initialise.
+ *****************************************************************************/
+void evel_json_buffer_cleanup(EVEL_JSON_BUFFER * jbuf);
+
+/**************************************************************************//**
+ * Encode a list item with format and param list to a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param format        Format string in standard printf format.
+ * @param ...           Variable parameters for format string.
+ *****************************************************************************/
+void evel_json_printf(EVEL_JSON_BUFFER * jbuf, const char* const format, ...);
+
+/**************************************************************************//**
+ * Encode a list item with format and param list to a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param format        Format string in standard printf format.
+ * @param largs         Variable parameters for format string.
+ *****************************************************************************/
+void evel_json_vprintf(EVEL_JSON_BUFFER * jbuf, const char* const format, va_list largs);
+
+/**************************************************************************//**
+ * Extend the json buffer to size of max_size.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param max_size      The max json buffer size.
+ *****************************************************************************/
+void evel_json_extend(EVEL_JSON_BUFFER * jbuf, int max_size);
 
 /**************************************************************************//**
  * Encode a string key and string value to a ::EVEL_JSON_BUFFER.
