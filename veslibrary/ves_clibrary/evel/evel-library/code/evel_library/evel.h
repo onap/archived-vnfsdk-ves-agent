@@ -3063,7 +3063,11 @@ void evel_free_event(void * event);
  * @param mode      Event mode or Batch mode
  * @param max_size  Size of storage available in json_body.
  * @param event     Pointer to the ::EVENT_HEADER to encode.
- * @returns Number of bytes actually written.
+ * @returns The number of characters that would have been written if max_size 
+            had been sufficiently large, not counting the terminating null 
+            character. Notice that only when this returned value is less than 
+            max_size, the string has been completely written(similar to snprintf). 
+            Otherwise, need to enlarge the buffer size to returned value +1.
  *****************************************************************************/
 int evel_json_encode_event(char * json,
                            int max_size,
