@@ -52,12 +52,125 @@ void evel_json_buffer_init(EVEL_JSON_BUFFER * jbuf,
   jbuf->json = json;
   jbuf->max_size = max_size;
   jbuf->offset = 0;
+  jbuf->extend = false;
   jbuf->throttle_spec = throttle_spec;
   jbuf->depth = 0;
   jbuf->checkpoint = -1;
 
   EVEL_EXIT();
 }
+
+/**************************************************************************//**
+ * Cleanup a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to the ::EVEL_JSON_BUFFER to initialise.
+ *****************************************************************************/
+void evel_json_buffer_cleanup(EVEL_JSON_BUFFER * jbuf)
+{
+  EVEL_ENTER();
+
+  assert(jbuf != NULL);
+  if (jbuf->extend && jbuf->json)
+  {
+      free(jbuf->json);
+      jbuf->extend = false;
+  }
+
+  EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Encode a list item with format and param list to a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param format        Format string in standard printf format.
+ * @param ...           Variable parameters for format string.
+ *****************************************************************************/
+void evel_json_printf(EVEL_JSON_BUFFER * jbuf, const char* const format, ...)
+{
+    EVEL_ENTER();
+
+    assert(jbuf != NULL);
+    assert(format != NULL);
+
+    va_list largs;
+    va_start(largs, format);
+    evel_json_vprintf(jbuf, format, largs);
+    va_end(largs);
+
+    EVEL_EXIT();
+}
+
+/**************************************************************************//**
+ * Encode a list item with format and param list to a ::EVEL_JSON_BUFFER.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param format        Format string in standard printf format.
+ * @param largs         Variable parameters for format string.
+ *****************************************************************************/
+void evel_json_vprintf(EVEL_JSON_BUFFER * jbuf, const char* const format, va_list largs) 
+{
+    EVEL_ENTER();
+
+    assert(jbuf != NULL);
+    assert(format != NULL);
+
+    va_list largs_dup;
+    va_copy(largs_dup, largs);
+
+    int left = jbuf->max_size - jbuf->offset;
+    int len = vsnprintf(jbuf->json + jbuf->offset, left, format, largs);
+
+    if (len < left)
+    {
+        jbuf->offset += len;
+    }
+    else //buffer is not enough
+    {
+        evel_json_extend(jbuf, jbuf->offset + len + 1 + EVEL_JSON_BUFFER_GROW_BYTES);
+        jbuf->offset += vsnprintf(jbuf->json + jbuf->offset, jbuf->max_size - jbuf->offset, format, largs_dup);
+    }
+
+    va_end(largs_dup);
+
+    EVEL_EXIT();
+}
+
+
+/**************************************************************************//**
+ * Extend the json buffer to size of max_size.
+ *
+ * @param jbuf          Pointer to working ::EVEL_JSON_BUFFER.
+ * @param max_size      The max json buffer size.
+ *****************************************************************************/
+void evel_json_extend(EVEL_JSON_BUFFER * jbuf, int max_size)
+{
+    EVEL_ENTER();
+
+    assert(jbuf != NULL);
+
+    if (jbuf->max_size < max_size)
+    {
+      if (jbuf->extend) //already extent the buffer
+      {
+          jbuf->json = (char*)realloc(jbuf->json, max_size);
+          assert(jbuf->json != NULL);
+      }
+      else // extent for the first time
+      {
+          char* json = (char*)malloc(max_size);
+          assert(json != NULL);
+          strncpy(json, jbuf->json, jbuf->offset);
+          jbuf->json = json;
+          jbuf->extend = true;
+      }
+
+      jbuf->max_size = max_size;
+    }
+
+    EVEL_EXIT();
+}
+
 
 /**************************************************************************//**
  * Encode an integer value to a JSON buffer.
@@ -75,9 +188,7 @@ void evel_enc_int(EVEL_JSON_BUFFER * jbuf,
   /***************************************************************************/
   assert(jbuf != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%d", value);
+  evel_json_printf(jbuf, "%d", value);
 
   EVEL_EXIT();
 }
@@ -146,11 +257,10 @@ void evel_enc_kv_string(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": \"",
-                           evel_json_kv_comma(jbuf),
-                           key);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": \"",
+                   evel_json_kv_comma(jbuf),
+                   key);
 
   /***************************************************************************/
   /* We need to escape quotation marks and backslashes in the value.         */
@@ -159,13 +269,8 @@ void evel_enc_kv_string(EVEL_JSON_BUFFER * jbuf,
 
   for (index = 0; index < length; index++)
   {
-    /*************************************************************************/
-    /* Drop out if no more space.                                            */
-    /*************************************************************************/
-    if (jbuf->max_size - jbuf->offset < 2)
-    {
-      break;
-    }
+    //make sure there are 3 bytes available(2 for json, 1 for null)
+    evel_json_extend(jbuf, jbuf->offset + 3);
 
     /*************************************************************************/
     /* Add an escape character if necessary, then write the character        */
@@ -181,9 +286,7 @@ void evel_enc_kv_string(EVEL_JSON_BUFFER * jbuf,
     jbuf->offset++;
   }
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "\"");
+  evel_json_printf(jbuf, "\"");
 
   EVEL_EXIT();
 }
@@ -250,12 +353,11 @@ void evel_enc_kv_int(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": %d",
-                           evel_json_kv_comma(jbuf),
-                           key,
-                           value);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": %d",
+                   evel_json_kv_comma(jbuf),
+                   key,
+                   value);
 
   EVEL_EXIT();
 }
@@ -279,12 +381,11 @@ void evel_enc_kv_object(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": %s",
-                           evel_json_kv_comma(jbuf),
-                           key,
-                           value);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": %s",
+                   evel_json_kv_comma(jbuf),
+                   key,
+                   value);
 
   EVEL_EXIT();
 }
@@ -350,12 +451,11 @@ void evel_enc_kv_double(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": %1f",
-                           evel_json_kv_comma(jbuf),
-                           key,
-                           value);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": %1f",
+                   evel_json_kv_comma(jbuf),
+                   key,
+                   value);
 
   EVEL_EXIT();
 }
@@ -421,12 +521,11 @@ void evel_enc_kv_ull(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": %llu",
-                           evel_json_kv_comma(jbuf),
-                           key,
-                           value);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": %llu",
+                   evel_json_kv_comma(jbuf),
+                   key,
+                   value);
 
   EVEL_EXIT();
 }
@@ -493,18 +592,20 @@ void evel_enc_kv_time(EVEL_JSON_BUFFER * jbuf,
   assert(key != NULL);
   assert(time != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": \"",
-                           evel_json_kv_comma(jbuf),
-                           key);
-  jbuf->offset += strftime(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           EVEL_RFC2822_STRFTIME_FORMAT,
-                           localtime(time));
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "\"");
+  evel_json_printf(jbuf, 
+                   "%s\"%s\": \"",
+                   evel_json_kv_comma(jbuf),
+                   key);
+
+  char time_buf[128] = { 0 };
+  strftime(time_buf,
+           sizeof(time_buf),
+           EVEL_RFC2822_STRFTIME_FORMAT,
+           localtime(time));
+  evel_json_printf(jbuf, time_buf);
+
+  evel_json_printf(jbuf, "\"");
+
   EVEL_EXIT();
 }
 
@@ -532,12 +633,11 @@ void evel_enc_version(EVEL_JSON_BUFFER * jbuf,
 
   ver = (float)major_version + (float)minor_version/10.0;
 
-    jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": \"%.1f\"",
-                           evel_json_kv_comma(jbuf),
-                           key,
-                           ver);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": \"%.1f\"",
+                   evel_json_kv_comma(jbuf),
+                   key,
+                   ver);
 
   EVEL_EXIT();
 }
@@ -597,11 +697,11 @@ void evel_json_open_named_list(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": [",
-                           evel_json_kv_comma(jbuf),
-                           key);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": [",
+                   evel_json_kv_comma(jbuf),
+                   key);
+
   jbuf->depth++;
 
   EVEL_EXIT();
@@ -621,9 +721,8 @@ void evel_json_close_list(EVEL_JSON_BUFFER * jbuf)
   /***************************************************************************/
   assert(jbuf != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "]");
+  evel_json_printf(jbuf, "]");
+
   jbuf->depth--;
 
   EVEL_EXIT();
@@ -655,16 +754,13 @@ void evel_enc_list_item(EVEL_JSON_BUFFER * jbuf,
   /***************************************************************************/
   if (jbuf->json[jbuf->offset - 1] != '[')
   {
-    jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                             jbuf->max_size - jbuf->offset,
-                             ", ");
+      evel_json_printf(jbuf, ", ");
   }
 
   va_start(largs, format);
-  jbuf->offset += vsnprintf(jbuf->json + jbuf->offset,
-                            jbuf->max_size - jbuf->offset,
-                            format,
-                            largs);
+
+  evel_json_vprintf(jbuf, format, largs);
+
   va_end(largs);
 
   EVEL_EXIT();
@@ -725,11 +821,11 @@ void evel_json_open_named_object(EVEL_JSON_BUFFER * jbuf,
   assert(jbuf != NULL);
   assert(key != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s\"%s\": {",
-                           evel_json_kv_comma(jbuf),
-                           key);
+  evel_json_printf(jbuf,
+                   "%s\"%s\": {",
+                   evel_json_kv_comma(jbuf),
+                   key);
+  
   jbuf->depth++;
 
   EVEL_EXIT();
@@ -760,10 +856,10 @@ void evel_json_open_object(EVEL_JSON_BUFFER * jbuf)
     comma = "";
   }
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "%s{",
-                           comma);
+  evel_json_printf(jbuf, 
+                   "%s{",
+                   comma);
+
   jbuf->depth++;
 
   EVEL_EXIT();
@@ -783,9 +879,8 @@ void evel_json_close_object(EVEL_JSON_BUFFER * jbuf)
   /***************************************************************************/
   assert(jbuf != NULL);
 
-  jbuf->offset += snprintf(jbuf->json + jbuf->offset,
-                           jbuf->max_size - jbuf->offset,
-                           "}");
+  evel_json_printf(jbuf, "}");
+
   jbuf->depth--;
 
   EVEL_EXIT();
