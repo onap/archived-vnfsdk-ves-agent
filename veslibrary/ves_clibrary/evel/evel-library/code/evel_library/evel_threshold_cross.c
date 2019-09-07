@@ -495,7 +495,8 @@ void evel_json_encode_perf_counter( EVEL_JSON_BUFFER * jbuf, PERF_COUNTER *pcoun
     {
       if (evel_json_open_opt_named_object(jbuf, "hashMap"))
       {
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -622,8 +623,8 @@ void evel_json_encode_threshold_cross(EVEL_JSON_BUFFER * const jbuf,
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */

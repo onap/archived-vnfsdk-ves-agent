@@ -536,8 +536,8 @@ void evel_json_encode_voice_quality(EVEL_JSON_BUFFER * jbuf,
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_object(jbuf, "additionalInformation"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
