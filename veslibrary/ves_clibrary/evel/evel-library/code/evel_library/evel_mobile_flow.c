@@ -961,8 +961,8 @@ void evel_json_encode_mobile_flow(EVEL_JSON_BUFFER * jbuf,
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_object(jbuf, "additionalFields"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -2240,8 +2240,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_object(jbuf, "ipTosCountList"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -2287,8 +2287,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_list(jbuf, "ipTosList"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -2331,8 +2331,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_object(jbuf, "mobileQciCosCountList"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -2378,8 +2378,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_list(jbuf, "mobileQciCosList"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -2422,8 +2422,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_object(jbuf, "tcpFlagCountList"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
@@ -2469,8 +2469,8 @@ void evel_json_encode_mobile_flow_gtp_flow_metrics(
       evel_json_checkpoint(jbuf);
       if (evel_json_open_opt_named_list(jbuf, "tcpFlagList"))
       {
-
-        for(unsigned int idx = 0; idx < ht->size; idx++ )
+        unsigned int idx = 0;
+        for(; idx < ht->size; idx++ )
         {
           /*****************************************************************/
           /* Get the first entry of a particular Key and loop through the  */
