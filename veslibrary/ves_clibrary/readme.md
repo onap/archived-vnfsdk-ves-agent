@@ -2,7 +2,7 @@
 
 “The content of this directory is currently under development and, at this stage, is not intended for demonstration and/or testing.”
 
-This project contains a C library that supports interfacing to AT&T's ECOMP
+This project contains a C library that supports interfacing to AT&T's ECOMP ..
 Vendor Event Listener. For an overview of ECOMP, see the 
 [ECOMP White Paper](http://att.com/ECOMP).
 
