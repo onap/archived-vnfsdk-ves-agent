@@ -1,0 +1,6 @@
+namespace cpp vagt.transport.rpc
+                                                                 
+service XRpcTransport
+{                                                                
+    i16 post(1: string data)                  
+}                                                                
