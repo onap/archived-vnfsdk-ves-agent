@@ -160,7 +160,7 @@ std::string vagt::queue::XDiskQueue::front()
 std::string vagt::queue::XDiskQueue::createKey()
 {
     auto now = chrono::system_clock::now().time_since_epoch().count();
-    snprintf(key, sizeof(key), "%020ld_%010u", now, keyId_.fetch_add(1));
+    snprintf(key, sizeof(key), "%020ld_%010ld", now, keyId_.fetch_add(1));
     return key;
 }
 

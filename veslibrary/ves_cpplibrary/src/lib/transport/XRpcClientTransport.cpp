@@ -65,12 +65,12 @@ XErrorCode vagt::transport::XRpcClientTransport::post(const std::string & event)
     {
         return (XErrorCode)(rpcClient_->post(event));
     }
-    catch (TTransportException ex)
+    catch (TTransportException& ex)
     {
         SPDLOG_ERROR("Fail to post event:({}).", ex.what());
         return XErrorNetworkError;
     }
-    catch (TException ex)
+    catch (TException& ex)
     {
         SPDLOG_ERROR("Fail to post event:({}).", ex.what());
         return XErrorNetworkError;
@@ -133,12 +133,12 @@ XErrorCode vagt::transport::XRpcClientTransport::startRPC()
     {
         rpcTransport_->open();
     }
-    catch (TTransportException ex)
+    catch (TTransportException& ex)
     {
         SPDLOG_ERROR("Fail to start rpc client:({}).", ex.what());
         return XErrorNok;
     }
-    catch (TException ex)
+    catch (TException& ex)
     {
         SPDLOG_ERROR("Fail to start rpc client:({}).", ex.what());
         return XErrorNok;
@@ -164,12 +164,12 @@ XErrorCode vagt::transport::XRpcClientTransport::stopRPC()
         rpcTransport_->close();
         rpcTransport_.reset();
     }
-    catch (TTransportException ex)
+    catch (TTransportException& ex)
     {
         SPDLOG_ERROR("Fail to stop rpc client:({}).", ex.what());
         return XErrorNok;
     }
-    catch (TException ex)
+    catch (TException& ex)
     {
         SPDLOG_ERROR("Fail to stop rpc client:({}).", ex.what());
         return XErrorNok;
