@@ -74,7 +74,9 @@ public class syslogData extends Thread{
 			}catch (Exception e) {
 				logger.error(e);
 			}
-			try { Thread.sleep(500);}catch(Exception e) {
+			try { 
+			    Thread.sleep(500);
+			}catch(Exception e) {
 				logger.error(e);
 			}
 

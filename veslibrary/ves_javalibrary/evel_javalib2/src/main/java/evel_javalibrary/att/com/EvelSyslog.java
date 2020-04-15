@@ -23,7 +23,6 @@ package evel_javalibrary.att.com;
  *****************************************************************************/
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -35,10 +34,7 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import org.apache.log4j.Logger;
-import org.slf4j.helpers.MessageFormatter;
 
-import evel_javalibrary.att.com.EvelFault.EVEL_SEVERITIES;
-import evel_javalibrary.att.com.EvelFault.EVEL_SOURCE_TYPES;
 
 
 public class EvelSyslog extends EvelHeader {

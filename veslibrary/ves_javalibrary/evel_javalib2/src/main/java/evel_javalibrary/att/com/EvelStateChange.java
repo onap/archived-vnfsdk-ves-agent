@@ -35,7 +35,6 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
 import org.apache.log4j.Logger;
-import org.slf4j.helpers.MessageFormatter;
 
 import evel_javalibrary.att.com.EvelFault.EVEL_SEVERITIES;
 
