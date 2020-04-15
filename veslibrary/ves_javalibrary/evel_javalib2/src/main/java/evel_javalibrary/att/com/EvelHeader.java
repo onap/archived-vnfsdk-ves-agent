@@ -27,7 +27,6 @@ package evel_javalibrary.att.com;
 import java.text.MessageFormat;
 import java.util.Enumeration;
 import java.util.logging.Logger;
-import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -36,11 +35,6 @@ import java.net.UnknownHostException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-import javax.json.JsonString;
-import javax.json.JsonWriter;
-
-import org.slf4j.helpers.MessageFormatter;
-
 
 
 public class EvelHeader {

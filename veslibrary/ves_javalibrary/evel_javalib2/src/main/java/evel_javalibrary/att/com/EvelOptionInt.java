@@ -80,7 +80,8 @@ public class EvelOptionInt extends EvelOption {
 	 {
 		 //If option is set encodes int value into JSON object
 		 // with name tag
-		 if( is_set ) obj.add(name, value);
+		 if( is_set )
+            obj.add(name, value);
 		 return is_set;
 	 }
 

@@ -21,7 +21,6 @@ package evel_javalibrary.att.com;
  * limitations under the License.
  *****************************************************************************/
 
-import java.util.Date;
 
 public class EvelOptionIntHeader extends EvelOption {
 

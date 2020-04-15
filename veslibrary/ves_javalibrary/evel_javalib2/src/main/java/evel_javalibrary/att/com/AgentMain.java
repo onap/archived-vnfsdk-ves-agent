@@ -38,7 +38,6 @@ import java.io.OutputStreamWriter;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.nio.channels.InterruptedByTimeoutException;
 import java.security.KeyStore;
