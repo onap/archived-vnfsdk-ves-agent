@@ -26,14 +26,11 @@ package evel_javalibrary.att.com.maindir;
  *****************************************************************************/
 
 
-import org.apache.log4j.Logger;
 
 import evel_javalibrary.att.com.*;
-import evel_javalibrary.att.com.AgentMain.EVEL_ERR_CODES;
 import evel_javalibrary.att.com.EvelFault.EVEL_SEVERITIES;
 import evel_javalibrary.att.com.EvelFault.EVEL_SOURCE_TYPES;
 import evel_javalibrary.att.com.EvelFault.EVEL_VF_STATUSES;
-import evel_javalibrary.att.com.EvelHeader.PRIORITIES;
 import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MACHINE_CHECK_EXCEPTION;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_CODEC_USE;
@@ -49,17 +46,12 @@ import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_MEM_USE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_NIC_PERFORMANCE;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_PROCESS_STATS;
 import evel_javalibrary.att.com.EvelScalingMeasurement.MEASUREMENT_IPMI.MEASUREMENT_IPMI_PROCESSOR;
-import evel_javalibrary.att.com.EvelStateChange.EVEL_ENTITY_STATE;
 import evel_javalibrary.att.com.EvelSyslog.EVEL_SYSLOG_FACILITIES;
-import evel_javalibrary.att.com.EvelThresholdCross.EVEL_ALERT_TYPE;
-import evel_javalibrary.att.com.EvelThresholdCross.EVEL_EVENT_ACTION;
 
 import org.apache.log4j.Level;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Date;
 
 public class Main

@@ -37,8 +37,6 @@ import javax.json.JsonObjectBuilder;
 
 import org.apache.log4j.Logger;
 
-import evel_javalibrary.att.com.EvelHeader.PRIORITIES;
-import evel_javalibrary.att.com.EvelMobileFlow.MOBILE_GTP_PER_FLOW_METRICS;
 
 
 public class EvelThresholdCross extends EvelHeader {

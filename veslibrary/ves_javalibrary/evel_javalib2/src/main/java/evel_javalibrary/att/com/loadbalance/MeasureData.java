@@ -32,7 +32,6 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -47,7 +46,6 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import evel_javalibrary.att.com.AgentMain;
-import evel_javalibrary.att.com.EvelBatch;
 import evel_javalibrary.att.com.EvelScalingMeasurement;
 
 public class MeasureData  extends Thread{
@@ -374,7 +372,8 @@ public class MeasureData  extends Thread{
 
 	
 	private static HashMap<String, DeviceData> readVppMetrics(String[] linkStart) {
-		DeviceData mddata = null;  new DeviceData();
+		DeviceData mddata = null;
+		new DeviceData();
 	
 		
 		//tmp_t0

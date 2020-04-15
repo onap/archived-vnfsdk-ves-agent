@@ -82,7 +82,8 @@ public class EvelOptionTime extends EvelOption {
 	  */	 
 	 public boolean encJsonValue(JsonObjectBuilder obj, String name)
 	 {
-		 if( is_set ) obj.add(name, (JsonValue) value);
+		 if( is_set )
+            obj.add(name, (JsonValue) value);
 		 return is_set;
 	 }
 

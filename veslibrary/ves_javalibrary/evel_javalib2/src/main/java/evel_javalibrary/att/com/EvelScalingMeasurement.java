@@ -22,7 +22,6 @@ package evel_javalibrary.att.com;
  * limitations under the License.
  *****************************************************************************/
 
-import java.awt.im.spi.InputMethod;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
